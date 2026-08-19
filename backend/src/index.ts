@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import authRoutes from './routes/auth';
+import prisma from './prisma';
 import customersRoutes from './routes/customers';
 import materialsRoutes from './routes/materials';
 import vehiclesRoutes from './routes/vehicles';
@@ -51,6 +52,25 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(port, () => {
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test the Prisma database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: "OK",
+      backend: "connected",
+      database: "connected"
+    });
+  } catch (error) {
+    console.error('Health check database connection failed:', error);
+    res.status(500).json({
+      status: "ERROR",
+      backend: "connected",
+      database: "disconnected"
+    });
+  }
+});
+
+app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
 });
