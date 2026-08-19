@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { 
   Truck, Scale, History as HistoryIcon, Settings as SettingsIcon, 
   LayoutDashboard, Users, UserSquare, Package, UserCircle,
@@ -248,7 +248,7 @@ import Login from './pages/Login';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Layout />}>
@@ -266,7 +266,7 @@ function App() {
           <Route path="/reports" element={<Reports />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
