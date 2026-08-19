@@ -1,0 +1,125 @@
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const Database = require('better-sqlite3');
+import path from 'node:path';
+import { app } from 'electron';
+
+let dbInstance: any = null;
+
+export function initDatabase() {
+  const dbPath = path.join(app.getPath('userData'), 'weighbridge_offline.db');
+  dbInstance = new Database(dbPath, { verbose: console.log });
+
+  dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      gstin TEXT
+    );
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id TEXT PRIMARY KEY,
+      vehicleNumber TEXT NOT NULL,
+      tareWeight REAL
+    );
+    CREATE TABLE IF NOT EXISTS materials (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS drivers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS transporters (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS weighments (
+      id TEXT PRIMARY KEY,
+      slipNumber TEXT,
+      vehicleId TEXT,
+      vehicleNumber TEXT,
+      customerId TEXT,
+      customerName TEXT,
+      materialId TEXT,
+      materialName TEXT,
+      driverId TEXT,
+      driverName TEXT,
+      transporterId TEXT,
+      transporterName TEXT,
+      firstWeight REAL,
+      secondWeight REAL,
+      netWeight REAL,
+      status TEXT,
+      syncStatus TEXT,
+      date TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      loadType TEXT,
+      firstWeightDate TEXT,
+      secondWeightDate TEXT,
+      firstWeightSource TEXT,
+      secondWeightSource TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS local_sync_queue (
+      id TEXT PRIMARY KEY,
+      entityType TEXT,
+      entityId TEXT,
+      operation TEXT,
+      payload TEXT,
+      status TEXT,
+      retryCount INTEGER DEFAULT 0,
+      errorMessage TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      userId TEXT,
+      action TEXT,
+      entity TEXT,
+      entityId TEXT,
+      details TEXT,
+      createdAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS auth_cache (
+      id TEXT PRIMARY KEY,
+      username TEXT,
+      email TEXT,
+      name TEXT,
+      role TEXT,
+      localHash TEXT,
+      applicationAccess TEXT
+    );
+  `);
+
+  // Safe alter tables for backwards compatibility with existing DB
+  const alters = [
+    "ALTER TABLE weighments ADD COLUMN loadType TEXT",
+    "ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
+    "ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
+    "ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT",
+    "ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT",
+  ];
+  for (const query of alters) {
+    try {
+      dbInstance.exec(query);
+    } catch (e) {
+      // Ignore "duplicate column name" errors
+    }
+  }
+
+  return dbInstance;
+}
+
+export function executeQuery(query: string, params: any[] = []) {
+  if (!dbInstance) {
+    dbInstance = initDatabase();
+  }
+  const stmt = dbInstance.prepare(query);
+  if (query.trim().toUpperCase().startsWith('SELECT')) {
+    return stmt.all(...params);
+  } else {
+    return stmt.run(...params);
+  }
+}

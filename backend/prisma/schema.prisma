@@ -1,0 +1,323 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+  WEIGHBRIDGE_OPERATOR
+}
+
+model User {
+  id                String      @id @default(uuid())
+  username          String?     @unique
+  email             String      @unique
+  mobile            String?
+  password          String
+  name              String
+  role              Role        @default(ADMIN)
+  status            String      @default("ACTIVE") // ACTIVE, INACTIVE, LOCKED
+  applicationAccess String[]    @default(["GST_BILLING", "WEIGHBRIDGE"])
+  lastLoginAt       DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  auditLogs         AuditLog[]
+  weighments        Weighment[]
+}
+
+model Customer {
+  id         String      @id @default(uuid())
+  name       String
+  gstin      String?     @unique
+  address    String?
+  stateName  String?
+  stateCode  String?
+  phone      String?
+  email      String?
+  balance    Float       @default(0.0)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  invoices   Invoice[]
+  payments   Payment[]
+  weighments Weighment[]
+}
+
+model Material {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  hsnCode      String?
+  unit         String        @default("TON") // TON, KG, LOAD, CFT
+  defaultRate  Float
+  gstRateId    String
+  taxRate      TaxRate       @relation(fields: [gstRateId], references: [id])
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  invoiceItems InvoiceItem[]
+  weighments   Weighment[]
+}
+
+model Vehicle {
+  id             String  @id @default(uuid())
+  vehicleNumber  String  @unique
+  vehicleType    String?
+  state          String?
+  capacityWeight Float?
+
+  transporterId String?
+  transporter   Transporter? @relation(fields: [transporterId], references: [id])
+
+  driverId String?
+  driver   Driver? @relation(fields: [driverId], references: [id])
+
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  invoices   Invoice[]
+  weighments Weighment[]
+}
+
+model TaxRate {
+  id        String     @id @default(uuid())
+  name      String // e.g., "GST 18%"
+  cgst      Float
+  sgst      Float
+  igst      Float
+  isActive  Boolean    @default(true)
+  materials Material[]
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  date          DateTime @default(now())
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  vehicleId     String?
+  vehicle       Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  // Snapshots for Buyer
+  buyerName      String?
+  buyerAddress   String?
+  buyerGstin     String?
+  buyerState     String?
+  buyerStateCode String?
+
+  // Snapshots for Consignee
+  consigneeName      String?
+  consigneeAddress   String?
+  consigneeGstin     String?
+  consigneeState     String?
+  consigneeStateCode String?
+
+  // Optional Header Fields
+  deliveryNote          String?
+  paymentTerms          String?
+  referenceNo           String?
+  referenceDate         String?
+  buyersOrderNo         String?
+  buyersOrderDate       String?
+  dispatchDocNo         String?
+  dispatchDocDate       String?
+  dispatchedThrough     String?
+  destination           String?
+  billOfLading          String?
+  snapshotVehicleNumber String?
+  termsOfDelivery       String?
+
+  subTotal   Float
+  taxTotal   Float
+  grandTotal Float
+
+  status       String  @default("DRAFT") // DRAFT, FINALIZED, CANCELLED
+  cancelReason String?
+  isDeleted    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+}
+
+model InvoiceItem {
+  id         String   @id @default(uuid())
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+
+  // Snapshot Fields
+  materialName String?
+  hsnCode      String?
+  unit         String?
+  cgstRate     Float?
+  sgstRate     Float?
+  igstRate     Float?
+  cgstAmount   Float?
+  sgstAmount   Float?
+  igstAmount   Float?
+
+  quantity Float
+  rate     Float
+  amount   Float
+
+  taxAmount   Float
+  totalAmount Float
+}
+
+model Payment {
+  id         String   @id @default(uuid())
+  invoiceId  String?
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  amount    Float
+  date      DateTime @default(now())
+  method    String // CASH, BANK, UPI
+  reference String?
+
+  createdAt DateTime @default(now())
+}
+
+model CompanySetting {
+  id                       String   @id @default(uuid())
+  companyName              String
+  logoUrl                  String?
+  address                  String
+  stateName                String?
+  stateCode                String?
+  gstin                    String
+  phone                    String?
+  email                    String?
+  invoicePrefix            String   @default("INV-")
+  bankDetails              String?
+  upiDetails               String?
+  upiId                    String?
+  showQrOnInvoice          Boolean  @default(false)
+  declaration              String?
+  termsAndConditions       String?
+  authSignatoryName        String?
+  authSignatoryDesignation String?
+  signatureImageUrl        String?
+  sealImageUrl             String?
+  updatedAt                DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model Driver {
+  id              String      @id @default(uuid())
+  name            String
+  mobile          String?
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  address         String?
+  transporterName String?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  vehicles        Vehicle[]
+  weighments      Weighment[]
+}
+
+model ImportHistory {
+  id         String   @id @default(uuid())
+  date       DateTime @default(now())
+  fileName   String
+  importType String
+  uploadedBy String
+  totalRows  Int
+  created    Int
+  updated    Int
+  skipped    Int
+  failed     Int
+  status     String
+}
+
+model Transporter {
+  id         String      @id @default(uuid())
+  name       String
+  mobile     String?
+  address    String?
+  gstin      String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  vehicles   Vehicle[]
+  weighments Weighment[]
+}
+
+model Weighment {
+  id            String  @id @default(uuid())
+  vehicleId     String
+  vehicle       Vehicle @relation(fields: [vehicleId], references: [id])
+  vehicleNumber String
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+
+  driverId String?
+  driver   Driver? @relation(fields: [driverId], references: [id])
+
+  transporterId String?
+  transporter   Transporter? @relation(fields: [transporterId], references: [id])
+
+  slipNumber    String? @unique
+  firstWeightSource String? // DEVICE, MANUAL
+  secondWeightSource String? // DEVICE, MANUAL
+
+  firstWeight     Float?
+  firstWeightDate DateTime?
+
+  secondWeight     Float?
+  secondWeightDate DateTime?
+
+  netWeight Float?
+  unit      String @default("KG")
+  loadType  String? // LOAD, EMPTY, RETURN, OTHER
+
+  status String @default("OPEN") // OPEN, FIRST_WEIGHT_RECORDED, WAITING_FOR_SECOND_WEIGHT, COMPLETED, CANCELLED
+
+  operatorId String?
+  operator   User?   @relation(fields: [operatorId], references: [id])
+
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+}
+
+model WeighbridgeSetting {
+  id             String   @id @default(uuid())
+  connectionType String   @default("SERIAL") // SERIAL, USB, TCP_IP, API, NONE
+  port           String? // COM1, etc.
+  baudRate       Int? // 9600, etc.
+  ipAddress      String?
+  ipPort         Int?
+  apiUrl         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

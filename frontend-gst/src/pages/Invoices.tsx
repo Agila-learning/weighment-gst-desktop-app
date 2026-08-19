@@ -1,0 +1,362 @@
+import { useState, useEffect } from 'react';
+import { FileClock, Search, Download, Edit2, FileText, XCircle, Copy, Trash2, Printer, FolderOpen, Share2 } from 'lucide-react';
+import apiClient from '../api/client';
+import { useNavigate } from 'react-router-dom';
+
+const Invoices = () => {
+  const navigate = useNavigate();
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  
+  // Filters
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  // Summary Stats
+  const [summary, setSummary] = useState({ totalInvoices: 0, todaySales: 0, totalSales: 0, pendingAmount: 0 });
+
+  const fetchInvoices = async (page = 1) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', '10');
+      if (search) params.append('search', search);
+      if (status) params.append('status', status);
+      if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+      
+      const res = await apiClient.get(`/invoices?${params.toString()}`);
+      const data = res.data.data;
+      
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        const customPath = localStorage.getItem('pdfStoragePath');
+        const enriched = await Promise.all(data.map(async (inv: any) => {
+          if (inv.status === 'FINALIZED') {
+            const result = await ipcRenderer.invoke('check-pdf-exists', { invoiceNumber: inv.invoiceNumber, customPath });
+            return { ...inv, pdfExists: result.exists, pdfPath: result.path };
+          }
+          return inv;
+        }));
+        setInvoices(enriched);
+      } else {
+        setInvoices(data);
+      }
+      setMeta(res.data.meta);
+      
+      // Calculate summary metrics on the client (for simplicity on this dataset)
+      const allRes = await apiClient.get('/invoices'); // Get all for summary
+      const all = allRes.data.data;
+      const today = new Date().toISOString().split('T')[0];
+      setSummary({
+        totalInvoices: all.length,
+        todaySales: all.filter((i: any) => i.date?.startsWith(today) && i.status === 'FINALIZED').reduce((sum: number, i: any) => sum + i.grandTotal, 0),
+        totalSales: all.filter((i: any) => i.status === 'FINALIZED').reduce((sum: number, i: any) => sum + i.grandTotal, 0),
+        pendingAmount: 0 // Placeholder if you had payments
+      });
+      
+    } catch (err) {
+      console.error('Error fetching invoices', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices(1);
+  }, [search, status, startDate, endDate]);
+
+  const handleExportCSV = () => {
+    if (invoices.length === 0) return;
+    
+    const headers = ['Invoice No', 'Date', 'Customer', 'Vehicle', 'Status', 'Taxable Amount', 'Tax Amount', 'Grand Total'];
+    const rows = invoices.map(i => [
+      i.invoiceNumber,
+      i.date ? i.date.split('T')[0] : '',
+      i.customer?.name || i.buyerName,
+      i.vehicle?.vehicleNumber || i.snapshotVehicleNumber,
+      i.status,
+      i.subTotal,
+      i.taxTotal,
+      i.grandTotal
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(e => e.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `invoices_export_${new Date().getTime()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCancelInvoice = async (id: string) => {
+    const reason = prompt('Please enter a reason for cancelling this invoice:');
+    if (!reason) return;
+    try {
+      await apiClient.put(`/invoices/${id}/cancel`, { cancelReason: reason });
+      fetchInvoices(meta.page);
+    } catch (err) {
+      alert('Error cancelling invoice');
+    }
+  };
+
+  const handleDeleteDraft = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this draft invoice?')) return;
+    try {
+      await apiClient.delete(`/invoices/${id}`);
+      fetchInvoices(meta.page);
+    } catch (err) {
+      alert('Error deleting draft');
+    }
+  };
+
+  const formatCurrency = (val: number) => `₹ ${val.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+  const handleGeneratePdf = async (inv: any) => {
+    const ipcRenderer = (window as any).ipcRenderer;
+    if (!ipcRenderer) {
+      window.open(`http://localhost:3000/api/invoices/${inv.id}/pdf`, '_blank');
+      return;
+    }
+
+    try {
+      const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'arraybuffer' });
+      const buffer = pdfRes.data;
+
+      const customPath = localStorage.getItem('pdfStoragePath');
+      const saveResult = await ipcRenderer.invoke('save-pdf', { 
+        buffer, 
+        invoiceNumber: inv.invoiceNumber, 
+        customPath,
+        forceReplace: true
+      });
+
+      if (saveResult.success) {
+        alert('PDF generated and saved successfully to:\n' + saveResult.path);
+        fetchInvoices(meta.page); // Refresh status
+      } else {
+        alert('Failed to save PDF locally: ' + saveResult.error);
+      }
+    } catch (err) {
+      alert('Error generating PDF');
+      console.error(err);
+    }
+  };
+
+  const handlePrint = (inv: any) => {
+    const ipcRenderer = (window as any).ipcRenderer;
+    if (ipcRenderer && inv.pdfExists) {
+      const printer = localStorage.getItem('defaultPrinter');
+      ipcRenderer.invoke('print-pdf', { filePath: inv.pdfPath, printerName: printer }).then((res: any) => {
+        if (!res.success && res.error) alert('Print error: ' + res.error);
+      });
+    } else {
+      const printWindow = window.open(`http://localhost:3000/api/invoices/${inv.id}/pdf`);
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+    }
+  };
+
+
+
+  const handleShareLocal = (path: string) => {
+    const ipcRenderer = (window as any).ipcRenderer;
+    if (ipcRenderer) {
+      ipcRenderer.invoke('open-folder', path);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Invoice Register</h1>
+        <p className="text-gray-500">Manage, view, and track all your generated invoices</p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="text-sm font-medium text-gray-500 mb-1">Total Invoices</div>
+          <div className="text-2xl font-bold text-gray-900">{summary.totalInvoices}</div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="text-sm font-medium text-gray-500 mb-1">Today's Sales</div>
+          <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.todaySales)}</div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="text-sm font-medium text-gray-500 mb-1">Total Sales</div>
+          <div className="text-2xl font-bold text-blue-600">{formatCurrency(summary.totalSales)}</div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="text-sm font-medium text-gray-500 mb-1">Pending Amount</div>
+          <div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.pendingAmount)}</div>
+        </div>
+      </div>
+
+      {/* Filters and Actions */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Search invoice or customer..." 
+              className="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none text-sm"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          </div>
+          <select 
+            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={status}
+            onChange={e => setStatus(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="FINALIZED">Finalized</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <div className="flex items-center gap-2">
+            <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <span className="text-gray-500">-</span>
+            <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+            <Download size={16} /> Export CSV
+          </button>
+          <button onClick={() => navigate('/billing')} className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors text-sm font-medium" style={{ backgroundColor: 'var(--color-primary)' }}>
+            + Create Invoice
+          </button>
+        </div>
+      </div>
+
+      {/* Invoices Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 font-medium">Invoice No</th>
+                <th className="px-6 py-4 font-medium">Date</th>
+                <th className="px-6 py-4 font-medium">Customer</th>
+                <th className="px-6 py-4 font-medium text-right">Taxable</th>
+                <th className="px-6 py-4 font-medium text-right">GST</th>
+                <th className="px-6 py-4 font-medium text-right">Total</th>
+                <th className="px-6 py-4 font-medium text-center">Status</th>
+                <th className="px-6 py-4 font-medium text-center">PDF</th>
+                <th className="px-6 py-4 font-medium text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <FileClock size={32} className="text-gray-300 mb-2" />
+                      <p>No invoices found matching your criteria</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-blue-600">{inv.invoiceNumber}</td>
+                    <td className="px-6 py-4">{inv.date ? inv.date.split('T')[0] : '-'}</td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900">{inv.buyerName || inv.customer?.name}</div>
+                      <div className="text-xs text-gray-500">{inv.buyerGstin || inv.customer?.gstin}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.subTotal)}</td>
+                    <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.taxTotal)}</td>
+                    <td className="px-6 py-4 text-right font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        inv.status === 'FINALIZED' ? 'bg-green-100 text-green-700' : 
+                        inv.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {inv.status === 'FINALIZED' ? (
+                        inv.pdfExists ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200" title={inv.pdfPath}>Available</span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">Not Found</span>
+                        )
+                      ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {inv.status === 'FINALIZED' && (
+                          <>
+                            <button title="Generate / Download PDF" onClick={() => handleGeneratePdf(inv)} className="text-gray-400 hover:text-blue-600"><Download size={16} /></button>
+                            {inv.pdfExists && (
+                              <>
+                                <button title="Open PDF" onClick={() => (window as any).ipcRenderer?.invoke('open-pdf', inv.pdfPath)} className="text-gray-400 hover:text-indigo-600"><FileText size={16} /></button>
+                                <button title="Open Folder" onClick={() => (window as any).ipcRenderer?.invoke('open-folder', inv.pdfPath)} className="text-gray-400 hover:text-indigo-500"><FolderOpen size={16} /></button>
+                                <button title="Print" onClick={() => handlePrint(inv)} className="text-gray-400 hover:text-gray-700"><Printer size={16} /></button>
+                                <button title="Share Local File" onClick={() => handleShareLocal(inv.pdfPath)} className="text-gray-400 hover:text-green-500"><Share2 size={16} /></button>
+                              </>
+                            )}
+                            <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
+                          </>
+                        )}
+                        {inv.status === 'DRAFT' && (
+                          <>
+                            <button title="Edit Draft" onClick={() => navigate(`/billing?editId=${inv.id}`)} className="text-gray-400 hover:text-blue-600"><Edit2 size={16} /></button>
+                            <button title="Delete Draft" onClick={() => handleDeleteDraft(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                          </>
+                        )}
+                        <button title="Duplicate" onClick={() => navigate(`/billing?duplicateId=${inv.id}`)} className="text-gray-400 hover:text-green-600"><Copy size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {meta.totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <span className="text-sm text-gray-500">Showing page {meta.page} of {meta.totalPages}</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => fetchInvoices(meta.page - 1)} 
+                disabled={meta.page === 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button 
+                onClick={() => fetchInvoices(meta.page + 1)} 
+                disabled={meta.page === meta.totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Invoices;

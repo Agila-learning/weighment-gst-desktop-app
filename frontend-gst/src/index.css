@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+}
+
+@layer base {
+  :root {
+    --color-primary: #2563eb; /* blue-600 */
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: var(--color-slate-800);
+    background-color: var(--color-slate-50);
+  }
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotateX(5deg) rotateY(-5deg); }
+  50% { transform: translateY(-10px) rotateX(2deg) rotateY(-2deg); }
+  100% { transform: translateY(0px) rotateX(5deg) rotateY(-5deg); }
+}
+
+@keyframes fadeInLine {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes subtleBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes pdfConvert {
+  0%, 70% { opacity: 0; pointer-events: none; }
+  75%, 95% { opacity: 1; pointer-events: auto; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+@keyframes slideInRight {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+.animate-fade-in-1 {
+  animation: fadeInLine 0.5s ease forwards 0.5s;
+}
+.animate-fade-in-2 {
+  animation: fadeInLine 0.5s ease forwards 1s;
+}
+.animate-fade-in-3 {
+  animation: fadeInLine 0.5s ease forwards 1.5s;
+}
+.animate-fade-in-4 {
+  animation: fadeInLine 0.5s ease forwards 2.5s;
+}
+.animate-fade-in-5 {
+  animation: fadeInLine 0.5s ease forwards 3.5s;
+}
+.animate-bounce-subtle {
+  animation: subtleBounce 0.5s ease forwards 4s;
+}
+.animate-pdf-convert {
+  animation: pdfConvert 8s ease infinite;
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.6s ease-out forwards;
+}
