@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
 import type { ConnectionType } from '../services/WeighbridgeDeviceService';
@@ -7,7 +7,7 @@ import type { DeviceConfiguration } from '../services/hardware/IWeighbridgeDevic
 
 export default function Settings() {
   const { connect, disconnect, status, config, rawIncomingData, currentWeight, stable, connectionLogs } = useWeighbridgeStore();
-  const { isOnline, syncStatus, lastSyncTime, pendingRecords, syncedRecords, failedRecords, triggerSync } = useSyncStore();
+  const { isOnline, syncStatus, lastSyncTime, pendingRecords, syncedRecords, failedRecords, syncErrors, triggerSync, clearSyncErrors } = useSyncStore();
   const [activeTab, setActiveTab] = useState<'SETUP' | 'DIAGNOSTICS' | 'SYNC' | 'DATABASE'>('SETUP');
 
   const [selectedType, setSelectedType] = useState<ConnectionType>(config?.connectionType || 'SIMULATED');
@@ -15,20 +15,56 @@ export default function Settings() {
   // Serial state
   const [comPort, setComPort] = useState(config?.comPort || 'COM1');
   const [baudRate, setBaudRate] = useState(config?.baudRate || 9600);
+  const [dataBits, setDataBits] = useState(config?.dataBits || 8);
+  const [parity, setParity] = useState(config?.parity || 'None');
+  const [stopBits, setStopBits] = useState(config?.stopBits || 1);
+  const [readInterval, setReadInterval] = useState(config?.readInterval || 100);
+  const [connectionTimeout, setConnectionTimeout] = useState(config?.connectionTimeout || 3000);
   
   // TCP state
   const [ipAddress, setIpAddress] = useState(config?.ipAddress || '192.168.1.100');
   const [port, setPort] = useState(config?.port || 5000);
+
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('autoBackup') === 'true');
+
+  useEffect(() => {
+    if (autoBackupEnabled) {
+      // Trigger auto backup silently once on load if enabled
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        ipcRenderer.invoke('auto-backup-db').catch(console.error);
+      }
+    }
+  }, [autoBackupEnabled]);
 
   const handleConnect = () => {
     const newConfig: DeviceConfiguration = {
       connectionType: selectedType,
       comPort: selectedType === 'SERIAL' ? comPort : undefined,
       baudRate: selectedType === 'SERIAL' ? baudRate : undefined,
+      dataBits: selectedType === 'SERIAL' ? dataBits : undefined,
+      parity: selectedType === 'SERIAL' ? parity : undefined,
+      stopBits: selectedType === 'SERIAL' ? stopBits : undefined,
       ipAddress: selectedType === 'TCP' ? ipAddress : undefined,
       port: selectedType === 'TCP' ? port : undefined,
+      readInterval,
+      connectionTimeout,
     };
     connect(newConfig);
+  };
+
+  const handleResetSettings = () => {
+    if (confirm('Are you sure you want to reset to default device settings?')) {
+      setComPort('COM1');
+      setBaudRate(9600);
+      setDataBits(8);
+      setParity('None');
+      setStopBits(1);
+      setReadInterval(100);
+      setConnectionTimeout(3000);
+      setIpAddress('192.168.1.100');
+      setPort(5000);
+    }
   };
 
   const handleBackup = async () => {
@@ -151,11 +187,29 @@ export default function Settings() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Data Bits</label>
-                      <select disabled className="w-full p-2.5 border border-slate-200 bg-slate-50 rounded-lg text-slate-500"><option>8</option></select>
+                      <select value={dataBits} onChange={(e) => setDataBits(Number(e.target.value))} className="w-full p-2.5 border border-slate-300 rounded-lg">
+                        <option value={7}>7</option>
+                        <option value={8}>8</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Parity</label>
-                      <select disabled className="w-full p-2.5 border border-slate-200 bg-slate-50 rounded-lg text-slate-500"><option>None</option></select>
+                      <select value={parity} onChange={(e) => setParity(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-lg">
+                        <option value="None">None</option>
+                        <option value="Odd">Odd</option>
+                        <option value="Even">Even</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Stop Bits</label>
+                      <select value={stopBits} onChange={(e) => setStopBits(Number(e.target.value))} className="w-full p-2.5 border border-slate-300 rounded-lg">
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Connection Timeout (ms)</label>
+                      <input type="number" value={connectionTimeout} onChange={(e) => setConnectionTimeout(Number(e.target.value))} className="w-full p-2.5 border border-slate-300 rounded-lg" />
                     </div>
                   </div>
                 </div>
@@ -214,14 +268,22 @@ export default function Settings() {
               </div>
 
               <div className="flex space-x-3">
+                <button onClick={handleResetSettings} className="px-4 py-2.5 bg-slate-200 text-slate-700 hover:bg-slate-300 rounded-lg font-semibold transition-colors">
+                  Reset Settings
+                </button>
                 {status === 'CONNECTED' ? (
                   <button onClick={disconnect} className="px-6 py-2.5 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-lg font-semibold transition-colors">
                     Disconnect
                   </button>
                 ) : (
-                  <button onClick={handleConnect} className="px-6 py-2.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg font-semibold transition-colors flex items-center shadow-sm">
-                    <Save size={18} className="mr-2" /> Connect & Save
-                  </button>
+                  <>
+                    <button onClick={handleConnect} className="px-6 py-2.5 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-lg font-semibold transition-colors">
+                      Test Connection
+                    </button>
+                    <button onClick={handleConnect} className="px-6 py-2.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg font-semibold transition-colors flex items-center shadow-sm">
+                      <Save size={18} className="mr-2" /> Save Configuration
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -327,6 +389,31 @@ export default function Settings() {
             </div>
           </div>
 
+          {syncErrors.length > 0 && (
+            <div className="mb-8 border border-red-200 rounded-xl overflow-hidden">
+              <div className="bg-red-50 p-4 border-b border-red-200 flex justify-between items-center">
+                <h3 className="font-bold text-red-800 flex items-center"><AlertCircle size={18} className="mr-2" /> Conflict Resolution Required</h3>
+                <button onClick={clearSyncErrors} className="text-sm text-red-700 hover:text-red-900 font-medium">Clear All</button>
+              </div>
+              <div className="bg-white p-4 max-h-60 overflow-y-auto space-y-3">
+                {syncErrors.map((err, idx) => (
+                  <div key={idx} className="flex justify-between items-start bg-red-50 p-3 rounded-lg border border-red-100">
+                    <div>
+                      <span className="font-bold text-red-900 mr-2">Slip #{err.slipNumber}</span>
+                      <span className="text-red-700 text-sm">{err.error}</span>
+                    </div>
+                    <button 
+                      onClick={() => triggerSync()} 
+                      className="px-3 py-1 bg-white border border-red-200 text-red-700 text-xs font-bold rounded shadow-sm hover:bg-red-50"
+                    >
+                      Retry Sync
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-auto bg-slate-50 p-6 rounded-xl border border-slate-200 flex justify-between items-center">
             <div>
               <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Last Synchronization</p>
@@ -353,18 +440,34 @@ export default function Settings() {
           </div>
 
           <div className="grid grid-cols-2 gap-8">
-            <div className="border border-slate-200 rounded-xl p-6 bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Backup Database</h3>
-              <p className="text-sm text-slate-600 mb-6">Create a safe copy of your current local database. It is highly recommended to do this daily to avoid data loss.</p>
+            <div className="border border-slate-200 rounded-xl p-6 bg-slate-50 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Backup Database</h3>
+                <p className="text-sm text-slate-600 mb-6">Create a safe copy of your current local database. It is highly recommended to do this daily to avoid data loss.</p>
+                
+                <div className="flex items-center gap-2 mb-6">
+                  <input 
+                    type="checkbox" 
+                    id="autoBackup" 
+                    className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" 
+                    checked={autoBackupEnabled} 
+                    onChange={e => {
+                      setAutoBackupEnabled(e.target.checked);
+                      localStorage.setItem('autoBackup', String(e.target.checked));
+                    }} 
+                  />
+                  <label htmlFor="autoBackup" className="text-sm font-medium text-slate-700">Enable Daily Auto-Backup on Launch</label>
+                </div>
+              </div>
               <button 
                 onClick={handleBackup}
                 className="w-full flex justify-center items-center px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold transition-colors"
               >
-                <Save className="mr-2" size={20} /> Generate Backup (.db)
+                <Save className="mr-2" size={20} /> Generate Manual Backup (.db)
               </button>
             </div>
 
-            <div className="border border-red-200 rounded-xl p-6 bg-red-50">
+            <div className="border border-red-200 rounded-xl p-6 bg-red-50 flex flex-col justify-between">
               <h3 className="text-lg font-bold text-red-800 mb-2">Restore Database</h3>
               <p className="text-sm text-red-700 mb-6">Restore the local database from a previous backup file. <strong>Warning:</strong> This will overwrite all current local data and restart the application.</p>
               <button 

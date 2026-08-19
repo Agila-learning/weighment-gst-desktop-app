@@ -10,9 +10,11 @@ interface SyncState {
   pendingRecords: number;
   syncedRecords: number;
   failedRecords: number;
+  syncErrors: { id: string, slipNumber: string, error: string }[];
   init: () => void;
   triggerSync: () => Promise<void>;
   updatePendingCount: () => Promise<void>;
+  clearSyncErrors: () => void;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -22,6 +24,9 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   pendingRecords: 0,
   syncedRecords: 0,
   failedRecords: 0,
+  syncErrors: [],
+  
+  clearSyncErrors: () => set({ syncErrors: [] }),
 
   init: () => {
     window.addEventListener('online', () => {
@@ -150,9 +155,19 @@ async function syncWeighments() {
         // Mark as synced
         await ipcRenderer.invoke('db-query', "UPDATE weighments SET syncStatus = 'SYNCED' WHERE id = ?", [record.id]);
         synced++;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to sync weighment', record.id, err);
         failed++;
+        
+        // Track error for UI conflict resolution
+        const errorMessage = err.response?.data?.message || err.message || 'Unknown network error';
+        
+        useSyncStore.setState((state) => ({
+          syncErrors: [
+            ...state.syncErrors.filter(e => e.id !== record.id),
+            { id: record.id, slipNumber: record.slipNumber, error: errorMessage }
+          ]
+        }));
       }
     }
     

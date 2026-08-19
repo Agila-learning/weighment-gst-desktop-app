@@ -114,7 +114,7 @@ router.post('/', async (req, res) => {
       consigneeName, consigneeAddress, consigneeGstin, consigneeState, consigneeStateCode,
       deliveryNote, paymentTerms, referenceNo, referenceDate, buyersOrderNo, buyersOrderDate,
       dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
-      snapshotVehicleNumber, termsOfDelivery
+      snapshotVehicleNumber, termsOfDelivery, weighmentReference
     } = req.body;
     
     const { invoiceItems, subTotal, taxTotal, grandTotal } = await prepareInvoiceData(items);
@@ -132,7 +132,7 @@ router.post('/', async (req, res) => {
         consigneeName, consigneeAddress, consigneeGstin, consigneeState, consigneeStateCode,
         deliveryNote, paymentTerms, referenceNo, referenceDate, buyersOrderNo, buyersOrderDate,
         dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
-        snapshotVehicleNumber, termsOfDelivery,
+        snapshotVehicleNumber, termsOfDelivery, weighmentReference,
         subTotal, taxTotal, grandTotal,
         status: status || 'DRAFT',
         items: { create: invoiceItems }
@@ -159,7 +159,7 @@ router.put('/:id', async (req, res) => {
       consigneeName, consigneeAddress, consigneeGstin, consigneeState, consigneeStateCode,
       deliveryNote, paymentTerms, referenceNo, referenceDate, buyersOrderNo, buyersOrderDate,
       dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
-      snapshotVehicleNumber, termsOfDelivery
+      snapshotVehicleNumber, termsOfDelivery, weighmentReference
     } = req.body;
     
     const { invoiceItems, subTotal, taxTotal, grandTotal } = await prepareInvoiceData(items);
@@ -175,7 +175,7 @@ router.put('/:id', async (req, res) => {
           consigneeName, consigneeAddress, consigneeGstin, consigneeState, consigneeStateCode,
           deliveryNote, paymentTerms, referenceNo, referenceDate, buyersOrderNo, buyersOrderDate,
           dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
-          snapshotVehicleNumber, termsOfDelivery,
+          snapshotVehicleNumber, termsOfDelivery, weighmentReference,
           subTotal, taxTotal, grandTotal,
           status: status || existing.status,
           items: { create: invoiceItems }

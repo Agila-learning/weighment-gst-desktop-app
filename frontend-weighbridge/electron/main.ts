@@ -74,6 +74,8 @@ app.whenReady().then(() => {
     }
   });
 
+
+
   ipcMain.handle('backup-db', async () => {
     try {
       const dbPath = path.join(app.getPath('userData'), 'weighbridge_offline.db');
@@ -86,6 +88,24 @@ app.whenReady().then(() => {
       if (canceled || !filePath) return { success: false, error: 'Cancelled' };
       
       fs.copyFileSync(dbPath, filePath);
+      return { success: true, filePath };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('auto-backup-db', async () => {
+    try {
+      const dbPath = path.join(app.getPath('userData'), 'weighbridge_offline.db');
+      
+      const backupDir = path.join(app.getPath('documents'), 'Weighbridge_AutoBackups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+
+      const filePath = path.join(backupDir, `auto_backup_${new Date().toISOString().split('T')[0]}.db`);
+      fs.copyFileSync(dbPath, filePath);
+      
       return { success: true, filePath };
     } catch (err: any) {
       return { success: false, error: err.message };

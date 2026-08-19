@@ -104,6 +104,7 @@ const Billing = () => {
     deliveryNote: '', paymentTerms: '', referenceNo: '', referenceDate: '', buyersOrderNo: '', buyersOrderDate: '',
     dispatchDocNo: '', dispatchDocDate: '', dispatchedThrough: '', destination: '', billOfLading: '', termsOfDelivery: ''
   });
+  const [weighmentReference, setWeighmentReference] = useState('');
   
   const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '' }]);
   const [isSaving, setIsSaving] = useState(false);
@@ -170,6 +171,7 @@ const Billing = () => {
           billOfLading: inv.billOfLading || '',
           termsOfDelivery: inv.termsOfDelivery || ''
         });
+        setWeighmentReference(inv.weighmentReference || '');
         
         if (inv.items && inv.items.length > 0) {
           setLineItems(inv.items.map((item: any) => ({
@@ -249,7 +251,14 @@ const Billing = () => {
       const res = await apiClient.get(`/weighments?status=COMPLETED&vehicleNumber=${vehicleObj?.vehicleNumber}&limit=1`);
       
       if (res.data.data && res.data.data.length > 0) {
-        const weighment = res.data.data[0];
+        // Find the first unlinked weighment
+        const weighment = res.data.data.find((w: any) => !w.invoiceReference);
+        
+        if (!weighment) {
+          const linkedWeighment = res.data.data[0];
+          alert(`THIS WEIGHMENT IS ALREADY LINKED\nSlip No: ${linkedWeighment.slipNumber}\nInvoice: ${linkedWeighment.invoiceReference}`);
+          return;
+        }
         
         // Auto fill fields
         if (weighment.customerId) setSelectedCustomer(weighment.customerId);
@@ -281,6 +290,7 @@ const Billing = () => {
           referenceDate: weighment.completedAt ? weighment.completedAt.split('T')[0] : prev.referenceDate,
           dispatchedThrough: vehicleObj?.vehicleNumber || prev.dispatchedThrough
         }));
+        setWeighmentReference(weighment.slipNumber);
         
         alert(`Successfully fetched weighment ${weighment.slipNumber} (Net: ${weighment.netWeight} KG)`);
       } else {
@@ -397,6 +407,7 @@ const Billing = () => {
         consigneeState: consigneeDetails.stateName,
         consigneeStateCode: consigneeDetails.stateCode,
         ...headerDetails,
+        weighmentReference,
         snapshotVehicleNumber: vehicleObj ? vehicleObj.vehicleNumber : undefined,
         items: validItems.map(i => ({ 
           materialId: i.materialId, 
@@ -664,10 +675,14 @@ const Billing = () => {
                 {/* Header Information */}
                 <div>
                   <h3 className="font-semibold text-gray-800 border-b pb-2 mb-4">Header Information</h3>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 text-sm bg-white">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500">Delivery Note</label>
-                      <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={headerDetails.deliveryNote} onChange={e => setHeaderDetails({...headerDetails, deliveryNote: e.target.value})} />
+                      <label className="block text-gray-700 mb-1">Weighment Reference</label>
+                      <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:border-blue-500 outline-none font-mono" value={weighmentReference} readOnly placeholder="Fetched automatically" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Delivery Note</label>
+                      <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:border-blue-500 outline-none" value={headerDetails.deliveryNote} onChange={e => setHeaderDetails(p => ({...p, deliveryNote: e.target.value}))} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500">Payment Terms</label>

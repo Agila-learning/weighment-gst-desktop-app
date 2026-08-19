@@ -130,6 +130,7 @@ model Invoice {
   billOfLading          String?
   snapshotVehicleNumber String?
   termsOfDelivery       String?
+  weighmentReference    String?
 
   subTotal   Float
   taxTotal   Float

@@ -96,7 +96,11 @@ function initDatabase() {
 		"ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
 		"ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
 		"ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT",
-		"ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT"
+		"ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT",
+		"ALTER TABLE weighments ADD COLUMN invoiceReference TEXT",
+		"ALTER TABLE weighments ADD COLUMN cancellationReason TEXT",
+		"ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT",
+		"ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0"
 	]) try {
 		dbInstance.exec(query);
 	} catch (e) {}
@@ -196,6 +200,24 @@ app.whenReady().then(() => {
 				success: false,
 				error: "Cancelled"
 			};
+			fs.copyFileSync(dbPath, filePath);
+			return {
+				success: true,
+				filePath
+			};
+		} catch (err) {
+			return {
+				success: false,
+				error: err.message
+			};
+		}
+	});
+	ipcMain.handle("auto-backup-db", async () => {
+		try {
+			const dbPath = path.join(app.getPath("userData"), "weighbridge_offline.db");
+			const backupDir = path.join(app.getPath("documents"), "Weighbridge_AutoBackups");
+			if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+			const filePath = path.join(backupDir, `auto_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`);
 			fs.copyFileSync(dbPath, filePath);
 			return {
 				success: true,

@@ -20,7 +20,11 @@ export class DefaultRegexParser implements IWeighbridgeParser {
     if (!match) return null;
 
     const weight = parseFloat(match[0]);
-    if (isNaN(weight)) return null;
+    
+    // Strict Validation Rule: Reject invalid, zero, negative, or absurdly large weights (>200,000 KG)
+    if (isNaN(weight) || weight <= 0 || weight > 200000) {
+      return null;
+    }
 
     // Detect unit
     let unit = 'KG';
@@ -29,9 +33,8 @@ export class DefaultRegexParser implements IWeighbridgeParser {
     }
 
     // Detect stability flag if provided by common vendor formats
-    // E.g., ST = Stable, US = Unstable
-    let isStable = true; // Assume stable if no flag exists, but rely on software checks later
-    if (rawData.includes('US') || rawData.includes('UN')) {
+    let isStable = true;
+    if (rawData.includes('US') || rawData.includes('UN') || rawData.includes('ERR')) {
       isStable = false;
     }
 

@@ -93,21 +93,25 @@ export function initDatabase() {
     );
   `);
 
-  // Safe alter tables for backwards compatibility with existing DB
-  const alters = [
-    "ALTER TABLE weighments ADD COLUMN loadType TEXT",
-    "ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
-    "ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
-    "ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT",
-    "ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT",
-  ];
-  for (const query of alters) {
-    try {
-      dbInstance.exec(query);
-    } catch (e) {
-      // Ignore "duplicate column name" errors
+    // Safe alter tables for backwards compatibility with existing DB
+    const alters = [
+      "ALTER TABLE weighments ADD COLUMN loadType TEXT",
+      "ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
+      "ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
+      "ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT",
+      "ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT",
+      "ALTER TABLE weighments ADD COLUMN invoiceReference TEXT",
+      "ALTER TABLE weighments ADD COLUMN cancellationReason TEXT",
+      "ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT",
+      "ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0",
+    ];
+    for (const query of alters) {
+      try {
+        dbInstance.exec(query);
+      } catch (e) {
+        // Ignore "duplicate column name" errors
+      }
     }
-  }
 
   return dbInstance;
 }

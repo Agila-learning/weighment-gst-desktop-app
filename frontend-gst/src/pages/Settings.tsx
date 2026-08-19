@@ -11,6 +11,8 @@ const Settings = () => {
   
   const [printers, setPrinters] = useState<any[]>([]);
   const [defaultPrinter, setDefaultPrinter] = useState('');
+  const [invoiceTemplate, setInvoiceTemplate] = useState('standard');
+  const [copiesToPrint, setCopiesToPrint] = useState(3);
 
   // Use global ipcRenderer if available (Electron context)
   const ipcRenderer = (window as any).ipcRenderer;
@@ -23,6 +25,12 @@ const Settings = () => {
     
     const storedPrinter = localStorage.getItem('defaultPrinter');
     if (storedPrinter) setDefaultPrinter(storedPrinter);
+
+    const storedTemplate = localStorage.getItem('invoiceTemplate');
+    if (storedTemplate) setInvoiceTemplate(storedTemplate);
+
+    const storedCopies = localStorage.getItem('copiesToPrint');
+    if (storedCopies) setCopiesToPrint(parseInt(storedCopies, 10));
 
     if (ipcRenderer) {
       ipcRenderer.invoke('get-printers').then((list: any[]) => {
@@ -329,22 +337,58 @@ const Settings = () => {
             </div>
 
             <div className="pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-1">Default Printer</h3>
-              <p className="text-sm text-gray-500 mb-3">Select a default printer for silent PDF printing.</p>
+              <h3 className="text-sm font-medium text-gray-700 mb-1">Print Configuration</h3>
+              <p className="text-sm text-gray-500 mb-3">Configure printer settings and templates.</p>
               
-              <select 
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-gray-50"
-                value={defaultPrinter}
-                onChange={(e) => {
-                  setDefaultPrinter(e.target.value);
-                  localStorage.setItem('defaultPrinter', e.target.value);
-                }}
-              >
-                <option value="">-- Let system decide --</option>
-                {printers.map((p, idx) => (
-                  <option key={idx} value={p.name}>{p.displayName || p.name}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Printer</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-gray-50"
+                    value={defaultPrinter}
+                    onChange={(e) => {
+                      setDefaultPrinter(e.target.value);
+                      localStorage.setItem('defaultPrinter', e.target.value);
+                    }}
+                  >
+                    <option value="">-- Let system decide --</option>
+                    {printers.map((p, idx) => (
+                      <option key={idx} value={p.name}>{p.displayName || p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Copies</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-gray-50"
+                    value={copiesToPrint}
+                    onChange={(e) => {
+                      setCopiesToPrint(parseInt(e.target.value, 10));
+                      localStorage.setItem('copiesToPrint', e.target.value);
+                    }}
+                  >
+                    <option value="1">1 (Original)</option>
+                    <option value="2">2 (Original + Duplicate)</option>
+                    <option value="3">3 (Original + Duplicate + Triplicate)</option>
+                    <option value="4">4 Copies</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Template Layout</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-gray-50"
+                    value={invoiceTemplate}
+                    onChange={(e) => {
+                      setInvoiceTemplate(e.target.value);
+                      localStorage.setItem('invoiceTemplate', e.target.value);
+                    }}
+                  >
+                    <option value="standard">Standard B2B Transport (A4)</option>
+                    <option value="compact">Compact Material Transport (A5)</option>
+                    <option value="detailed">Detailed HSN & Tax Breakdown (A4)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>

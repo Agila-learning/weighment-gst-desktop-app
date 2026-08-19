@@ -7,6 +7,8 @@ export interface DeviceConfiguration {
   stopBits?: number;
   ipAddress?: string;
   port?: number;
+  readInterval?: number;
+  connectionTimeout?: number;
 }
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'ERROR';

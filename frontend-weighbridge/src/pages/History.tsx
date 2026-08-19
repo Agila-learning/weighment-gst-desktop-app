@@ -28,6 +28,8 @@ export default function History() {
   const [viewDetails, setViewDetails] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelPrompt, setShowCancelPrompt] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [showCorrectionPrompt, setShowCorrectionPrompt] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -126,8 +128,8 @@ export default function History() {
       const ipcRenderer = (window as any).ipcRenderer;
       if (!ipcRenderer) return;
 
-      const q = "UPDATE weighments SET status = 'CANCELLED', syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
-      const res = await ipcRenderer.invoke('db-query', q, [new Date().toISOString(), selectedWeighment.id]);
+      const q = "UPDATE weighments SET status = 'CANCELLED', cancellationReason = ?, syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
+      const res = await ipcRenderer.invoke('db-query', q, [cancelReason, new Date().toISOString(), selectedWeighment.id]);
 
       if (!res.success) {
         throw new Error(res.error);
@@ -147,6 +149,50 @@ export default function History() {
       fetchHistory();
     } catch (err: any) {
       alert(err.message || "Failed to cancel weighment");
+    }
+  };
+
+  const handleRequestCorrection = async () => {
+    if (!correctionReason.trim()) {
+      alert("Correction reason is required.");
+      return;
+    }
+    try {
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (!ipcRenderer) return;
+
+      // Duplicate the record with a new ID, setting it as a correction
+      const newId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const insertQ = `
+        INSERT INTO weighments (
+          id, slipNumber, vehicleId, vehicleNumber, customerId, customerName, materialId, materialName, driverId, driverName, transporterId, transporterName, 
+          firstWeight, secondWeight, netWeight, status, syncStatus, date, createdAt, updatedAt, loadType, firstWeightDate, secondWeightDate, firstWeightSource, secondWeightSource,
+          originalWeighmentId, isCorrection
+        )
+        SELECT 
+          ?, slipNumber, vehicleId, vehicleNumber, customerId, customerName, materialId, materialName, driverId, driverName, transporterId, transporterName, 
+          firstWeight, secondWeight, netWeight, 'COMPLETED', 'PENDING_SYNC', date, ?, ?, loadType, firstWeightDate, secondWeightDate, firstWeightSource, secondWeightSource,
+          id, 1
+        FROM weighments WHERE id = ?
+      `;
+      const insertRes = await ipcRenderer.invoke('db-query', insertQ, [newId, now, now, selectedWeighment.id]);
+      
+      if (!insertRes.success) throw new Error(insertRes.error);
+
+      // Mark original as CORRECTED
+      const updateQ = "UPDATE weighments SET status = 'CORRECTED', cancellationReason = ?, syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
+      await ipcRenderer.invoke('db-query', updateQ, [correctionReason, now, selectedWeighment.id]);
+
+      await logAudit('CORRECT', 'WEIGHMENT', selectedWeighment.id, `Corrected weighment. Reason: ${correctionReason}`);
+
+      alert("Correction version created successfully. Original retained.");
+      setShowCorrectionPrompt(false);
+      setViewDetails(false);
+      setSelectedWeighment(null);
+      fetchHistory();
+    } catch (err: any) {
+      alert(err.message || "Failed to create correction");
     }
   };
 
@@ -247,6 +293,7 @@ export default function History() {
                   <th className="px-4 py-3">Load Type</th>
                   <th className="px-4 py-3 text-right">Gross</th>
                   <th className="px-4 py-3 text-right">Net (KG)</th>
+                  <th className="px-4 py-3 text-center">Invoice Ref</th>
                   <th className="px-4 py-3 text-center">Status</th>
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
@@ -263,10 +310,11 @@ export default function History() {
                     <td className="px-4 py-3">{row.loadType || '-'}</td>
                     <td className="px-4 py-3 text-right font-mono">{row.firstWeight || '-'}</td>
                     <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{row.netWeight || '-'}</td>
+                    <td className="px-4 py-3 text-center text-blue-600 font-medium">{row.invoiceReference || '-'}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                         row.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                        row.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                        row.status === 'CANCELLED' || row.status === 'CORRECTED' ? 'bg-red-100 text-red-700' :
                         'bg-amber-100 text-amber-700'
                       }`}>
                         {row.status.replace(/_/g, ' ')}
@@ -353,6 +401,23 @@ export default function History() {
                     <button onClick={handleCancelWeighment} disabled={!cancelReason.trim()} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">Confirm Cancellation</button>
                   </div>
                 </div>
+              ) : showCorrectionPrompt ? (
+                <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl">
+                  <h3 className="text-lg font-bold text-amber-800 mb-2 flex items-center">Request Correction</h3>
+                  <p className="text-amber-700 mb-4">You are about to create a correction version of this weighment. The original record will be retained for audit purposes.</p>
+                  <label className="block text-sm font-medium text-amber-900 mb-1">Reason for Correction *</label>
+                  <textarea 
+                    value={correctionReason}
+                    onChange={e => setCorrectionReason(e.target.value)}
+                    className="w-full border border-amber-300 rounded-lg p-2 mb-4 focus:ring-amber-500"
+                    rows={3}
+                    placeholder="e.g., Incorrect vehicle selected, wrong material..."
+                  />
+                  <div className="flex space-x-3 justify-end">
+                    <button onClick={() => setShowCorrectionPrompt(false)} className="px-4 py-2 border border-slate-300 bg-white rounded-lg hover:bg-slate-50">Back</button>
+                    <button onClick={handleRequestCorrection} disabled={!correctionReason.trim()} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">Create Correction</button>
+                  </div>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-8">
                   <div>
@@ -387,11 +452,17 @@ export default function History() {
                     <div className="space-y-2 text-sm grid grid-cols-2">
                       <p><span className="text-slate-500 w-24 inline-block">Status:</span> <span className="font-bold">{selectedWeighment.status}</span></p>
                       <p><span className="text-slate-500 w-24 inline-block">Operator:</span> <span className="font-medium">{selectedWeighment.operator?.name || 'System'}</span></p>
-                      {selectedWeighment.status === 'CANCELLED' && (
+                      {selectedWeighment.invoiceReference && (
+                        <p className="col-span-2"><span className="text-slate-500 w-32 inline-block">GST Invoice:</span> <span className="font-bold text-blue-600">{selectedWeighment.invoiceReference}</span></p>
+                      )}
+                      {(selectedWeighment.status === 'CANCELLED' || selectedWeighment.status === 'CORRECTED') && (
                         <>
-                          <p><span className="text-slate-500 w-24 inline-block">Cancelled By:</span> <span className="font-bold text-red-600">{selectedWeighment.cancelledBy}</span></p>
+                          <p><span className="text-slate-500 w-24 inline-block">Action By:</span> <span className="font-bold text-red-600">{selectedWeighment.cancelledBy || 'Admin'}</span></p>
                           <p className="col-span-2"><span className="text-slate-500 w-24 inline-block">Reason:</span> <span className="font-medium text-red-600">{selectedWeighment.cancellationReason}</span></p>
                         </>
+                      )}
+                      {selectedWeighment.isCorrection === 1 && (
+                        <p className="col-span-2"><span className="text-slate-500 w-32 inline-block">Corrects ID:</span> <span className="font-medium text-amber-600">{selectedWeighment.originalWeighmentId}</span></p>
                       )}
                     </div>
                   </div>
@@ -401,8 +472,13 @@ export default function History() {
 
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between">
               <div>
-                {selectedWeighment.status !== 'CANCELLED' && (
-                  <button onClick={() => setShowCancelPrompt(true)} className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 font-medium">Cancel Weighment</button>
+                {(selectedWeighment.status === 'COMPLETED' || selectedWeighment.status === 'PENDING') && (
+                  <div className="flex space-x-2">
+                    <button onClick={() => setShowCancelPrompt(true)} className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 font-medium">Cancel Weighment</button>
+                    {selectedWeighment.status === 'COMPLETED' && (
+                      <button onClick={() => setShowCorrectionPrompt(true)} className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 font-medium">Request Correction</button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex space-x-3">
