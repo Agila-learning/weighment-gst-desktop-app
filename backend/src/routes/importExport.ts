@@ -248,6 +248,14 @@ router.post('/commit/:type', async (req, res) => {
         const vehicleNumber = record['Vehicle Number'];
         const existing = vehicleNumber ? await prisma.vehicle.findUnique({ where: { vehicleNumber } }) : null;
         
+        let transporterId = null;
+        const transporterName = record['Transporter Name'];
+        if (transporterName) {
+           let transp = await prisma.transporter.findFirst({ where: { name: transporterName } });
+           if (!transp) transp = await prisma.transporter.create({ data: { name: transporterName } });
+           transporterId = transp.id;
+        }
+        
         if (existing) {
           if (mode === 'UPDATE' || mode === 'ADD_UPDATE') {
             await prisma.vehicle.update({
@@ -255,7 +263,7 @@ router.post('/commit/:type', async (req, res) => {
               data: {
                 vehicleType: record['Vehicle Type'],
                 capacityWeight: Number(record['Capacity']) || 0,
-                transporterInfo: record['Transporter Name']
+                transporterId
               }
             });
             updated++;
@@ -269,7 +277,7 @@ router.post('/commit/:type', async (req, res) => {
                 vehicleNumber,
                 vehicleType: record['Vehicle Type'],
                 capacityWeight: Number(record['Capacity']) || 0,
-                transporterInfo: record['Transporter Name']
+                transporterId
               }
             });
             created++;
@@ -367,12 +375,12 @@ router.get('/export/:type', async (req, res) => {
         'Status': m.isActive ? 'Active' : 'Inactive'
       }));
     } else if (type === 'vehicles') {
-      const vehicles = await prisma.vehicle.findMany();
+      const vehicles = await prisma.vehicle.findMany({ include: { transporter: true } });
       data = vehicles.map(v => ({
         'Vehicle Number': v.vehicleNumber,
         'Vehicle Type': v.vehicleType,
         'Capacity': v.capacityWeight,
-        'Transporter': v.transporterInfo,
+        'Transporter': v.transporter?.name || '',
         'Status': v.isActive ? 'Active' : 'Inactive'
       }));
     } else if (type === 'drivers') {

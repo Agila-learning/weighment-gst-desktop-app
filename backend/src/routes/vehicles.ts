@@ -22,14 +22,14 @@ router.get('/', async (req, res) => {
 // Create vehicle
 router.post('/', async (req, res) => {
   try {
-    const { vehicleNumber, vehicleType, transporterInfo, state, capacityWeight } = req.body;
+    const { vehicleNumber, vehicleType, transporterId, state, capacityWeight } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle number is required." });
     
     const vehicle = await prisma.vehicle.create({
       data: {
         vehicleNumber,
         vehicleType: vehicleType || null,
-        transporterInfo: transporterInfo || null,
+        transporterId: transporterId || null,
         state: state || null,
         capacityWeight: capacityWeight ? Number(capacityWeight) : null
       }
@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
 // Update vehicle
 router.put('/:id', async (req, res) => {
   try {
-    const { vehicleNumber, vehicleType, transporterInfo, state, capacityWeight } = req.body;
+    const { vehicleNumber, vehicleType, transporterId, state, capacityWeight } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle number is required." });
 
     const vehicle = await prisma.vehicle.update({
@@ -54,7 +54,7 @@ router.put('/:id', async (req, res) => {
       data: {
         vehicleNumber,
         vehicleType: vehicleType || null,
-        transporterInfo: transporterInfo || null,
+        transporterId: transporterId || null,
         state: state || null,
         capacityWeight: capacityWeight ? Number(capacityWeight) : null
       }
