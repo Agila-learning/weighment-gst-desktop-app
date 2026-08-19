@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Clock } from 'lucide-react';
-import apiClient from '../api/client';
+import apiClient, { API_BASE_URL } from '../api/client';
 
 const Customers = () => {
   const [search, setSearch] = useState('');
@@ -300,7 +300,7 @@ const Customers = () => {
                           <td className="px-4 py-3 text-right text-green-600">₹{(inv.amountPaid || 0).toFixed(2)}</td>
                           <td className="px-4 py-3 text-right font-bold text-red-600">₹{(inv.balance || 0).toFixed(2)}</td>
                           <td className="px-4 py-3 text-center">
-                            <a href={`http://localhost:3000/api/invoices/${inv.id}/pdf`} target="_blank" className="text-blue-600 hover:text-blue-800 hover:underline">View PDF</a>
+                            <a href={`${API_BASE_URL}/invoices/${inv.id}/pdf`} target="_blank" className="text-blue-600 hover:text-blue-800 hover:underline">View PDF</a>
                           </td>
                         </tr>
                       ))}

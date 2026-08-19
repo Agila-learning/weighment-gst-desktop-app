@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Save, Settings, Printer, Scale, AlertTriangle, Truck, User, Package, FileText } from 'lucide-react';
+import { Search, Save, Settings, Printer, Scale, AlertTriangle, Truck, User, Package } from 'lucide-react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,14 +8,13 @@ import { logAudit } from '../utils/audit';
 export default function Weighment() {
   const { currentWeight, status: hwStatus, connectionType, stable } = useWeighbridgeStore();
   
-  const [vehicleNo, setVehicleNo] = useState('');
+  const [, setVehicleNo] = useState('');
   const [vehicleSearchTerm, setVehicleSearchTerm] = useState('');
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
-
+  const [, setSearchError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);

@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, RefreshCw, Activity } from 'lucide-react';
+import { Search, RefreshCw, Activity } from 'lucide-react';
 
 export default function AuditLog() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit] = useState(50);
-  const [total, setTotal] = useState(0);
+  const [page] = useState(1);
 
   useEffect(() => {
     fetchLogs();
@@ -35,14 +33,12 @@ export default function AuditLog() {
         countQuery += whereClause;
       }
 
-      query += " ORDER BY createdAt DESC LIMIT ? OFFSET ?";
+      query += " ORDER BY createdAt DESC";
       
-      const countRes = await ipcRenderer.invoke('db-query', countQuery, params);
-      const res = await ipcRenderer.invoke('db-query', query, [...params, limit, (page - 1) * limit]);
+      const res = await ipcRenderer.invoke('db-query', query, params);
       
-      if (res.success && countRes.success) {
+      if (res.success) {
         setLogs(res.data);
-        setTotal(countRes.data[0].count);
       }
     } catch (err) {
       console.error("Failed to fetch audit logs", err);

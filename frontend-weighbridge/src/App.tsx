@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, Outlet } fro
 import { 
   Truck, Scale, History as HistoryIcon, Settings as SettingsIcon, 
   LayoutDashboard, Users, UserSquare, Package, UserCircle,
-  FileSpreadsheet, PlusCircle, ClipboardList
+  FileSpreadsheet, ClipboardList
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';

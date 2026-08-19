@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FolderOpen, Printer, Share2, FileText } from 'lucide-react';
-import apiClient from '../api/client';
+import apiClient, { API_BASE_URL } from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const STATE_MAPPINGS: Record<string, string> = {
@@ -432,7 +432,7 @@ const Billing = () => {
       if (status === 'FINALIZED') {
         if (!ipcRenderer) {
           // Fallback for non-electron env
-          window.open(`http://localhost:3000/api/invoices/${res.data.id}/pdf`, '_blank');
+          window.open(`${API_BASE_URL}/invoices/${res.data.id}/pdf`, '_blank');
           navigate('/invoices');
           return;
         }

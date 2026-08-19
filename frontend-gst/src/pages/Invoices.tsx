@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileClock, Search, Download, Edit2, FileText, XCircle, Copy, Trash2, Printer, FolderOpen, Share2 } from 'lucide-react';
-import apiClient from '../api/client';
+import apiClient, { API_BASE_URL } from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
 const Invoices = () => {
@@ -125,7 +125,7 @@ const Invoices = () => {
   const handleGeneratePdf = async (inv: any) => {
     const ipcRenderer = (window as any).ipcRenderer;
     if (!ipcRenderer) {
-      window.open(`http://localhost:3000/api/invoices/${inv.id}/pdf`, '_blank');
+      window.open(`${API_BASE_URL}/invoices/${inv.id}/pdf`, '_blank');
       return;
     }
 
@@ -161,7 +161,7 @@ const Invoices = () => {
         if (!res.success && res.error) alert('Print error: ' + res.error);
       });
     } else {
-      const printWindow = window.open(`http://localhost:3000/api/invoices/${inv.id}/pdf`);
+      const printWindow = window.open(`${API_BASE_URL}/invoices/${inv.id}/pdf`);
       if (printWindow) {
         printWindow.onload = () => printWindow.print();
       }

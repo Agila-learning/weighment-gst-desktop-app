@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Download, Printer } from 'lucide-react';
-import api from '../../services/api';
 
 type Tab = 'dashboard' | 'daily' | 'vehicles' | 'materials' | 'customers' | 'drivers' | 'transporters';
 

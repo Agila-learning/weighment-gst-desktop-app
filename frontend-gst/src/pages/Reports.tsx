@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, TrendingUp, CreditCard, Filter, Calendar, Users, FileText } from 'lucide-react';
-import apiClient from '../api/client';
-import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { Download, TrendingUp, CreditCard, Filter, Calendar, FileText } from 'lucide-react';
+import apiClient, { API_BASE_URL } from '../api/client';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Reports = () => {
@@ -114,11 +114,17 @@ const Reports = () => {
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.count}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-center items-start">
-           <h3 className="font-semibold text-gray-700 mb-2">Export Sales Data</h3>
-           <a href={`http://localhost:3000/api/reports/export-sales?startDate=${startDate}&endDate=${endDate}`} target="_blank" className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-             <Download size={18} /> Download Excel
-           </a>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center"><Download size={20} className="mr-2 text-blue-600" /> Export Data</h3>
+          <p className="text-sm text-gray-500 mb-4">Download comprehensive Excel reports for the selected date range. Useful for accounting and GST filing.</p>
+          <div className="space-y-3">
+            <a href={`${API_BASE_URL}/reports/export-sales?startDate=${startDate}&endDate=${endDate}`} target="_blank" className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+              <FileText size={18} /> Export Detailed Sales Register (Excel)
+            </a>
+            <button className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+              <Download size={18} /> Export GSTR-1 Format (Beta)
+            </button>
+          </div>
         </div>
       </div>
       

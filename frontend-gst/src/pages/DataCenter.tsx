@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
-import apiClient from '../api/client';
+import apiClient, { API_BASE_URL } from '../api/client';
 
 const DataCenter = () => {
   const [activeTab, setActiveTab] = useState<'IMPORT' | 'EXPORT'>('IMPORT');
@@ -19,7 +19,7 @@ const DataCenter = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = async (type: string) => {
-    window.open(`http://localhost:3000/api/data/template/${type}`, '_blank');
+    window.open(`${API_BASE_URL}/data/template/${type}`, '_blank');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
@@ -80,7 +80,7 @@ const DataCenter = () => {
     if (exportStartDate) params.append('startDate', exportStartDate);
     if (exportEndDate) params.append('endDate', exportEndDate);
     
-    window.open(`http://localhost:3000/api/data/export/${type}?${params.toString()}`, '_blank');
+    window.open(`${API_BASE_URL}/data/export/${type}?${params.toString()}`, '_blank');
   };
 
   const renderImportCard = (title: string, desc: string, type: string) => (
