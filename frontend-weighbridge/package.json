@@ -8,7 +8,25 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.forgeindiaconnect.weighbridge",
+    "productName": "Weighbridge Desktop",
+    "directories": {
+      "output": "dist-electron/release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
   },
   "dependencies": {
     "axios": "^1.19.0",
@@ -34,6 +52,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^6.0.4",
     "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

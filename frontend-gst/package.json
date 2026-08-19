@@ -8,7 +8,25 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.forgeindiaconnect.gstbilling",
+    "productName": "GST Billing System",
+    "directories": {
+      "output": "dist-electron/release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -30,6 +48,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
