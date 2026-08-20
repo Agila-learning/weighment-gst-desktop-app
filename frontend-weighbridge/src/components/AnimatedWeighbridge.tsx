@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 
 const VEHICLES = [
-  { id: 'TIPPER', name: 'TIPPER TRUCK', targetWeight: 18500, src: '/assets/tipper.png', flip: false },
-  { id: 'LORRY', name: 'LORRY', targetWeight: 24600, src: '/assets/lorry.png', flip: false },
-  { id: 'TRACTOR', name: 'TRACTOR', targetWeight: 12400, src: '/assets/tractor.png', flip: true },
-  { id: 'TANKER', name: 'TANKER', targetWeight: 31200, src: '/assets/tanker.png', flip: true },
-  { id: 'MINI', name: 'MINI TRUCK', targetWeight: 7200, src: '/assets/mini.png', flip: true },
-  { id: 'TRAILER', name: 'HEAVY TRAILER', targetWeight: 42500, src: '/assets/trailer.png', flip: true },
+  { id: 'TIPPER', name: 'TIPPER TRUCK', targetWeight: 18500, src: './assets/tipper.png', flip: false },
+  { id: 'LORRY', name: 'LORRY', targetWeight: 24600, src: './assets/lorry.png', flip: false },
+  { id: 'TRACTOR', name: 'TRACTOR', targetWeight: 12400, src: './assets/tractor.png', flip: true },
+  { id: 'TANKER', name: 'TANKER', targetWeight: 31200, src: './assets/tanker.png', flip: true },
+  { id: 'MINI', name: 'MINI TRUCK', targetWeight: 7200, src: './assets/mini.png', flip: true },
+  { id: 'TRAILER', name: 'HEAVY TRAILER', targetWeight: 42500, src: './assets/trailer.png', flip: true },
 ];
 
 type Phase = 'RESET' | 'APPROACHING' | 'CHECKPOINT' | 'BARRIER_OPENING' | 'ENTERING' | 'WEIGHING' | 'STABLE' | 'EXITING';
@@ -166,9 +166,12 @@ export default function AnimatedWeighbridge() {
   };
 
   return (
-    <div className="hidden lg:flex w-[55%] bg-slate-100 items-center justify-center relative overflow-hidden border-r border-slate-200 flex-col bg-cover bg-center"
-         style={{ backgroundImage: `url('/assets/weighbridge_bg.jpg')` }}>
+    <div className="hidden lg:flex w-[55%] bg-slate-100 items-center justify-center relative overflow-hidden border-r border-slate-200 flex-col bg-cover bg-center">
       
+      <div className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
+           style={{ backgroundImage: `url('./assets/weighbridge_bg.jpg')` }}>
+      </div>
+
       <style>{`
         @keyframes suspension {
           0% { transform: translateY(0); }
