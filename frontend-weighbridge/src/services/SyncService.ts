@@ -89,8 +89,8 @@ async function syncMasterData() {
   for (const endpoint of endpoints) {
     try {
       const res = await apiClient.get(`/${endpoint}`);
-      const data = res.data.data;
-      if (!data) continue;
+      const data = Array.isArray(res.data) ? res.data : res.data?.data;
+      if (!data || !Array.isArray(data)) continue;
 
       const queries = data.map((item: any) => {
         let q = '';

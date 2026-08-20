@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Link, useLocation, Navigate, Outlet } from '
 import { 
   Truck, Scale, History as HistoryIcon, Settings as SettingsIcon, 
   LayoutDashboard, Users, UserSquare, Package, UserCircle,
-  FileSpreadsheet, ClipboardList
+  FileSpreadsheet, ClipboardList, RefreshCw
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -164,7 +164,7 @@ function Sidebar() {
 }
 
 function Layout() {
-  const { init, isOnline, pendingRecords } = useSyncStore();
+  const { init, isOnline, pendingRecords, triggerSync, syncStatus } = useSyncStore();
   const { isAuthenticated, checkAuth } = useAuthStore();
 
   useEffect(() => {
@@ -215,6 +215,14 @@ function Layout() {
             </div>
           </div>
           <div className="flex items-center space-x-3">
+             <button
+                onClick={() => triggerSync()}
+                disabled={syncStatus === 'SYNCING' || !isOnline}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                <RefreshCw size={14} className={syncStatus === 'SYNCING' ? 'animate-spin' : ''} />
+                {syncStatus === 'SYNCING' ? 'SYNCING...' : 'SYNC NOW'}
+             </button>
              <span className="text-xs font-bold text-slate-400">ADMIN</span>
              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">A</div>
           </div>
