@@ -11,12 +11,31 @@ export default function Dashboard() {
     completed: 0,
     totalLoad: 0
   });
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const response = await api.get('/weighment-reports/dashboard');
         setStats(response.data);
+        
+        const ipcRenderer = (window as any).ipcRenderer;
+        if (ipcRenderer) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const res = await ipcRenderer.invoke('db-query', `
+            SELECT w.*, c.name as customerName, m.name as materialName
+            FROM weighments w
+            LEFT JOIN customers c ON w.customerId = c.id
+            LEFT JOIN materials m ON w.materialId = m.id
+            WHERE w.date >= ?
+            ORDER BY w.updatedAt DESC LIMIT 5
+          `, [today.toISOString()]);
+          
+          if (res.success) {
+            setRecentTransactions(res.data);
+          }
+        }
       } catch (error) {
         console.error('Error fetching dashboard stats', error);
       }
@@ -82,6 +101,54 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      
+      <div className="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-slate-700">Today's Recent Activity</h2>
+          <Link to="/history" className="text-sm font-medium text-primary-600 hover:text-primary-700">View All History &rarr;</Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 font-medium">Time</th>
+                <th className="px-6 py-3 font-medium">Vehicle</th>
+                <th className="px-6 py-3 font-medium">Customer</th>
+                <th className="px-6 py-3 font-medium">Material</th>
+                <th className="px-6 py-3 font-medium text-right">Net Weight</th>
+                <th className="px-6 py-3 font-medium text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {recentTransactions.map(tx => (
+                <tr key={tx.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-3 whitespace-nowrap text-slate-600">
+                    {new Date(tx.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap font-bold text-slate-800">{tx.vehicleNumber}</td>
+                  <td className="px-6 py-3 whitespace-nowrap text-slate-600">{tx.customerName || '-'}</td>
+                  <td className="px-6 py-3 whitespace-nowrap text-slate-600">{tx.materialName || '-'}</td>
+                  <td className="px-6 py-3 whitespace-nowrap text-right font-mono font-bold text-cyan-600">
+                    {tx.netWeight ? `${tx.netWeight} KG` : '-'}
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap text-center">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                      tx.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {tx.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {recentTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No transactions recorded today.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -96,4 +96,72 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Get Vehicle History
+router.get('/:vehicleNumber/history', async (req, res) => {
+  try {
+    const { vehicleNumber } = req.params;
+    const { fromDate, toDate, customerId, materialId, status, loadType } = req.query;
+
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { vehicleNumber },
+      include: { driver: true, transporter: true }
+    });
+
+    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+
+    let whereClause: any = { vehicleNumber };
+
+    if (fromDate || toDate) {
+      whereClause.date = {};
+      if (fromDate) whereClause.date.gte = new Date(fromDate as string);
+      if (toDate) {
+        const to = new Date(toDate as string);
+        to.setHours(23, 59, 59, 999);
+        whereClause.date.lte = to;
+      }
+    }
+    if (customerId) whereClause.customerId = customerId;
+    if (materialId) whereClause.materialId = materialId;
+    if (status) whereClause.status = status;
+    if (loadType) whereClause.loadType = loadType;
+
+    const weighments = await prisma.weighment.findMany({
+      where: whereClause,
+      include: { customer: true, material: true, driver: true, transporter: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Calculate Summary
+    const totalWeighments = weighments.length;
+    const completedWeighments = weighments.filter(w => w.status === 'COMPLETED').length;
+    const cancelledWeighments = weighments.filter(w => w.status === 'CANCELLED').length;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayWeighments = weighments.filter(w => w.status === 'COMPLETED' && new Date(w.createdAt) >= today);
+    const todaysLoads = todayWeighments.length;
+    const todaysTotalWeight = todayWeighments.reduce((sum, w) => sum + (w.netWeight || 0), 0);
+    const totalHistoricalWeight = weighments.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + (w.netWeight || 0), 0);
+
+    const lastWeighment = weighments[0] || null;
+
+    res.json({
+      vehicle,
+      summary: {
+        totalWeighments,
+        completedWeighments,
+        cancelledWeighments,
+        todaysLoads,
+        todaysTotalWeight,
+        totalHistoricalWeight,
+        lastWeighment
+      },
+      history: weighments
+    });
+  } catch (error) {
+    console.error('Error fetching vehicle history:', error);
+    res.status(500).json({ message: 'Error fetching vehicle history' });
+  }
+});
+
 export default router;

@@ -57,6 +57,20 @@ router.post('/', async (req, res) => {
       }
     });
     
+    // Update Ledger
+    await prisma.customerTransaction.create({
+      data: {
+        customerId,
+        date: date ? new Date(date) : new Date(),
+        type: 'PAYMENT',
+        referenceId: payment.id,
+        referenceNumber: reference || payment.id.slice(-6),
+        debit: 0,
+        credit: Number(amount),
+        paymentMethod: method
+      }
+    });
+    
     // Optionally update customer balance (not strictly necessary if we calculate on fly, but good practice if using balance field)
     await prisma.customer.update({
       where: { id: customerId },
@@ -77,6 +91,20 @@ router.delete('/:id', async (req, res) => {
     
     await prisma.payment.delete({ where: { id: req.params.id } });
     
+    // Update Ledger (Reverse Payment)
+    await prisma.customerTransaction.create({
+      data: {
+        customerId: payment.customerId,
+        date: new Date(),
+        type: 'ADJUSTMENT',
+        referenceId: payment.id,
+        referenceNumber: `DEL-${payment.reference || payment.id.slice(-6)}`,
+        debit: payment.amount,
+        credit: 0,
+        remarks: 'Payment Deleted'
+      }
+    });
+
     // Reverse customer balance
     await prisma.customer.update({
       where: { id: payment.customerId },

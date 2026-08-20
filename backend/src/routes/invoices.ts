@@ -99,7 +99,11 @@ const prepareInvoiceData = async (items: any[]) => {
       rate: item.rate,
       amount,
       taxAmount,
-      totalAmount: amount + taxAmount
+      totalAmount: amount + taxAmount,
+      pricingType: item.pricingType || null,
+      quantityUnit: item.quantityUnit || null,
+      quantitySource: item.quantitySource || 'MANUAL',
+      weighmentReference: item.weighmentReference || null
     });
   }
   return { invoiceItems, subTotal, taxTotal, grandTotal: subTotal + taxTotal };
@@ -140,6 +144,24 @@ router.post('/', async (req, res) => {
       include: { items: true, customer: true }
     });
     
+    if (invoice.status === 'FINALIZED') {
+      await prisma.customerTransaction.create({
+        data: {
+          customerId: invoice.customerId,
+          date: invoice.date,
+          type: 'INVOICE',
+          referenceId: invoice.id,
+          referenceNumber: invoice.invoiceNumber,
+          debit: invoice.grandTotal,
+          credit: 0
+        }
+      });
+      await prisma.customer.update({
+        where: { id: invoice.customerId },
+        data: { balance: { increment: invoice.grandTotal } }
+      });
+    }
+
     res.status(201).json(invoice);
   } catch (error) {
     res.status(500).json({ message: 'Error creating invoice' });
@@ -188,6 +210,24 @@ router.put('/:id', async (req, res) => {
       include: { items: true, customer: true }
     });
     
+    if (existing.status !== 'FINALIZED' && invoice?.status === 'FINALIZED') {
+      await prisma.customerTransaction.create({
+        data: {
+          customerId: invoice.customerId,
+          date: invoice.date,
+          type: 'INVOICE',
+          referenceId: invoice.id,
+          referenceNumber: invoice.invoiceNumber,
+          debit: invoice.grandTotal,
+          credit: 0
+        }
+      });
+      await prisma.customer.update({
+        where: { id: invoice.customerId },
+        data: { balance: { increment: invoice.grandTotal } }
+      });
+    }
+    
     res.json(invoice);
   } catch (error) {
     res.status(500).json({ message: 'Error updating invoice' });
@@ -200,10 +240,32 @@ router.put('/:id/cancel', async (req, res) => {
     const { cancelReason } = req.body;
     if (!cancelReason) return res.status(400).json({ message: 'Cancel reason is required' });
     
+    const existing = await prisma.invoice.findUnique({ where: { id: req.params.id } });
+    
     const invoice = await prisma.invoice.update({
       where: { id: req.params.id },
       data: { status: 'CANCELLED', cancelReason }
     });
+    
+    if (existing?.status === 'FINALIZED') {
+      await prisma.customerTransaction.create({
+        data: {
+          customerId: invoice.customerId,
+          date: new Date(),
+          type: 'ADJUSTMENT',
+          referenceId: invoice.id,
+          referenceNumber: `CAN-${invoice.invoiceNumber}`,
+          debit: 0,
+          credit: invoice.grandTotal,
+          remarks: 'Invoice Cancelled'
+        }
+      });
+      await prisma.customer.update({
+        where: { id: invoice.customerId },
+        data: { balance: { decrement: invoice.grandTotal } }
+      });
+    }
+    
     res.json(invoice);
   } catch (error) {
     res.status(500).json({ message: 'Error cancelling invoice' });

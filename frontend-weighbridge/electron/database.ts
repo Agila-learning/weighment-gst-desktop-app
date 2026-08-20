@@ -91,6 +91,15 @@ export function initDatabase() {
       localHash TEXT,
       applicationAccess TEXT
     );
+    CREATE TABLE IF NOT EXISTS customer_material_prices (
+      id TEXT PRIMARY KEY,
+      customerId TEXT NOT NULL,
+      materialId TEXT NOT NULL,
+      pricingType TEXT,
+      billingUnit TEXT,
+      rate REAL,
+      isActive INTEGER DEFAULT 1
+    );
   `);
 
     // Safe alter tables for backwards compatibility with existing DB
@@ -104,6 +113,21 @@ export function initDatabase() {
       "ALTER TABLE weighments ADD COLUMN cancellationReason TEXT",
       "ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT",
       "ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0",
+      
+      // Advanced Enhancements Additions
+      "ALTER TABLE weighments ADD COLUMN pricingType TEXT",
+      "ALTER TABLE weighments ADD COLUMN rate REAL",
+      "ALTER TABLE weighments ADD COLUMN billingUnit TEXT",
+      "ALTER TABLE weighments ADD COLUMN calculatedQuantity REAL",
+      "ALTER TABLE weighments ADD COLUMN calculatedAmount REAL",
+      "ALTER TABLE weighments ADD COLUMN pricingSnapshot TEXT",
+      
+      "ALTER TABLE materials ADD COLUMN pricingType TEXT",
+      "ALTER TABLE materials ADD COLUMN billingUnit TEXT",
+      "ALTER TABLE materials ADD COLUMN defaultRate REAL",
+      
+      "ALTER TABLE customers ADD COLUMN mobile1 TEXT",
+      "ALTER TABLE customers ADD COLUMN mobile2 TEXT",
     ];
     for (const query of alters) {
       try {

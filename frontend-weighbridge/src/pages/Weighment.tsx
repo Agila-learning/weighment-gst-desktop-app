@@ -24,6 +24,7 @@ export default function Weighment() {
   const [selectedDriver, setSelectedDriver] = useState('');
   const [selectedTransporter, setSelectedTransporter] = useState('');
   const [transporters, setTransporters] = useState<any[]>([]);
+  const [customerPrices, setCustomerPrices] = useState<any[]>([]);
   const [loadType, setLoadType] = useState('LOAD');
   
   // Pending Weighment State
@@ -40,33 +41,36 @@ export default function Weighment() {
 
   const { syncStatus } = useSyncStore();
 
-  useEffect(() => {
-    fetchMasters();
-  }, [syncStatus]); // Re-fetch when syncStatus changes (e.g., finishes syncing)
-
-  // Dropdown ref for clicking outside
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   const fetchMasters = async () => {
     const ipcRenderer = (window as any).ipcRenderer;
     if (!ipcRenderer) return;
     try {
-      const [cRes, mRes, dRes, vRes, tRes] = await Promise.all([
+      const [cRes, mRes, dRes, vRes, tRes, cpRes] = await Promise.all([
           ipcRenderer.invoke('db-query', 'SELECT * FROM customers'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM materials'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM drivers'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM vehicles'),
-          ipcRenderer.invoke('db-query', 'SELECT * FROM transporters')
+          ipcRenderer.invoke('db-query', 'SELECT * FROM transporters'),
+          ipcRenderer.invoke('db-query', 'SELECT * FROM customer_material_prices')
         ]);
         if (cRes.success) setCustomers(cRes.data);
         if (mRes.success) setMaterials(mRes.data);
         if (dRes.success) setDrivers(dRes.data);
         if (vRes.success) setVehicles(vRes.data);
         if (tRes.success) setTransporters(tRes.data);
-      } catch (err) {
-        console.error("Failed to load master data", err);
-      }
-    };
+        if (cpRes.success) setCustomerPrices(cpRes.data);
+    } catch (err) {
+      console.error("Failed to load master data", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMasters();
+  }, [syncStatus]);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
     fetchMasters();
     
     const handleClickOutside = (event: MouseEvent) => {
@@ -183,8 +187,35 @@ export default function Weighment() {
         }
         const netW = Math.abs(currentWeight - pendingWeighment.firstWeight);
         
-        const q = "UPDATE weighments SET secondWeight = ?, secondWeightDate = ?, secondWeightSource = ?, netWeight = ?, status = 'COMPLETED', syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
-        const res = await ipcRenderer.invoke('db-query', q, [currentWeight, now, weightSource, netW, now, pendingWeighment.id]);
+        let pricingType = 'PER_UNIT';
+        let billingUnit = 'TON';
+        let rate = 0;
+
+        const customPrice = customerPrices.find(p => p.customerId === pendingWeighment.customerId && p.materialId === pendingWeighment.materialId && p.isActive === 1);
+        const baseMaterial = materials.find(m => m.id === pendingWeighment.materialId);
+
+        if (customPrice) {
+          pricingType = customPrice.pricingType;
+          billingUnit = customPrice.billingUnit;
+          rate = customPrice.rate;
+        } else if (baseMaterial) {
+          pricingType = baseMaterial.pricingType || 'PER_UNIT';
+          billingUnit = baseMaterial.billingUnit || 'TON';
+          rate = baseMaterial.defaultRate || 0;
+        }
+
+        let calculatedQuantity = netW;
+        if (billingUnit === 'TON') calculatedQuantity = netW / 1000;
+        
+        let calculatedAmount = 0;
+        if (pricingType === 'FIXED') {
+          calculatedAmount = rate;
+        } else {
+          calculatedAmount = calculatedQuantity * rate;
+        }
+        
+        const q = "UPDATE weighments SET secondWeight = ?, secondWeightDate = ?, secondWeightSource = ?, netWeight = ?, status = 'COMPLETED', syncStatus = 'PENDING_SYNC', updatedAt = ?, pricingType = ?, rate = ?, calculatedQuantity = ?, calculatedAmount = ? WHERE id = ?";
+        const res = await ipcRenderer.invoke('db-query', q, [currentWeight, now, weightSource, netW, now, pricingType, rate, calculatedQuantity, calculatedAmount, pendingWeighment.id]);
         
         if (!res.success) throw new Error(res.error);
 
@@ -203,7 +234,11 @@ export default function Weighment() {
           secondWeightDate: now,
           netWeight: netW,
           status: 'COMPLETED',
-          updatedAt: now
+          updatedAt: now,
+          pricingType,
+          rate,
+          calculatedQuantity,
+          calculatedAmount
         });
 
         // Reset state
@@ -605,6 +640,16 @@ export default function Weighment() {
                   </tr>
                 </tbody>
               </table>
+
+              {completedWeighment.status === 'COMPLETED' && completedWeighment.rate > 0 && (
+                <div className="border border-black p-4 mb-8 text-sm grid grid-cols-2 gap-y-2 bg-gray-50">
+                  <div className="col-span-2 text-center font-bold border-b border-gray-300 pb-2 mb-2">Pricing Details</div>
+                  <div><span className="font-bold inline-block w-32">Pricing Type:</span> {completedWeighment.pricingType}</div>
+                  <div><span className="font-bold inline-block w-32">Rate (₹):</span> {completedWeighment.rate.toFixed(2)}</div>
+                  <div><span className="font-bold inline-block w-32">Quantity:</span> {completedWeighment.calculatedQuantity?.toFixed(3)}</div>
+                  <div className="text-lg text-right pr-4"><span className="font-bold">Total (₹):</span> {completedWeighment.calculatedAmount?.toFixed(2)}</div>
+                </div>
+              )}
 
               <div className="flex justify-between items-end mt-16 pt-4 text-sm font-bold">
                 <div className="text-center">

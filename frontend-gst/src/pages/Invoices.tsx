@@ -228,7 +228,8 @@ const Invoices = () => {
                             <button title="Preview PDF" onClick={async () => {
                               try {
                                 const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
-                                setPreviewBlobUrl(URL.createObjectURL(pdfRes.data));
+                                const blob = new Blob([pdfRes.data], { type: 'text/html' });
+                                setPreviewBlobUrl(URL.createObjectURL(blob));
                               } catch (err) {
                                 alert('Error generating PDF');
                               }
@@ -289,7 +290,7 @@ const Invoices = () => {
           onDownload={() => {
             const link = document.createElement('a');
             link.href = previewBlobUrl;
-            link.download = `Invoice.pdf`;
+            link.download = `Invoice.html`;
             link.click();
           }}
           onPrint={() => {

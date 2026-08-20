@@ -23,12 +23,14 @@ router.get('/', async (req, res) => {
 // Create customer
 router.post('/', async (req, res) => {
   try {
-    const { name, gstin, phone, email, address, stateName, stateCode } = req.body;
+    const { name, gstin, phone, email, address, stateName, stateCode, mobile1, mobile2 } = req.body;
     
     // Server-side validation
     if (!name || name.length < 3) return res.status(400).json({ message: "Name must be at least 3 characters long." });
     if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) return res.status(400).json({ message: "Invalid GSTIN format." });
     if (phone && !/^(\+91[\s-]?)?\d{10}$/.test(phone)) return res.status(400).json({ message: "Mobile number must be exactly 10 digits (optionally prefixed with +91)." });
+    if (mobile1 && !/^(\+91[\s-]?)?\d{10}$/.test(mobile1)) return res.status(400).json({ message: "Mobile 1 must be exactly 10 digits." });
+    if (mobile2 && !/^(\+91[\s-]?)?\d{10}$/.test(mobile2)) return res.status(400).json({ message: "Mobile 2 must be exactly 10 digits." });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Invalid Email address." });
     if (address && address.length < 5) return res.status(400).json({ message: "Address must be at least 5 characters long." });
 
@@ -38,6 +40,8 @@ router.post('/', async (req, res) => {
         gstin: gstin || null,
         phone: phone || null,
         email: email || null,
+        mobile1: mobile1 || null,
+        mobile2: mobile2 || null,
         address: address || null,
         stateName: stateName || null,
         stateCode: stateCode || null
@@ -56,12 +60,14 @@ router.post('/', async (req, res) => {
 // Update customer
 router.put('/:id', async (req, res) => {
   try {
-    const { name, gstin, phone, email, address, stateName, stateCode } = req.body;
+    const { name, gstin, phone, email, address, stateName, stateCode, mobile1, mobile2 } = req.body;
     
     // Server-side validation
     if (!name || name.length < 3) return res.status(400).json({ message: "Name must be at least 3 characters long." });
     if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) return res.status(400).json({ message: "Invalid GSTIN format." });
     if (phone && !/^(\+91[\s-]?)?\d{10}$/.test(phone)) return res.status(400).json({ message: "Mobile number must be exactly 10 digits (optionally prefixed with +91)." });
+    if (mobile1 && !/^(\+91[\s-]?)?\d{10}$/.test(mobile1)) return res.status(400).json({ message: "Mobile 1 must be exactly 10 digits." });
+    if (mobile2 && !/^(\+91[\s-]?)?\d{10}$/.test(mobile2)) return res.status(400).json({ message: "Mobile 2 must be exactly 10 digits." });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Invalid Email address." });
     if (address && address.length < 5) return res.status(400).json({ message: "Address must be at least 5 characters long." });
 
@@ -72,6 +78,8 @@ router.put('/:id', async (req, res) => {
         gstin: gstin || null,
         phone: phone || null,
         email: email || null,
+        mobile1: mobile1 || null,
+        mobile2: mobile2 || null,
         address: address || null,
         stateName: stateName || null,
         stateCode: stateCode || null
@@ -135,6 +143,60 @@ router.get('/:id/summary', async (req, res) => {
   } catch (error) {
     console.error('Error fetching customer summary:', error);
     res.status(500).json({ message: 'Error fetching summary' });
+  }
+});
+
+// Get Ledger Summary & Transactions
+router.get('/:id/ledger', async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const { fromDate, toDate, type, referenceNumber } = req.query;
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId }
+    });
+
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    let whereClause: any = { customerId };
+
+    if (fromDate || toDate) {
+      whereClause.date = {};
+      if (fromDate) whereClause.date.gte = new Date(fromDate as string);
+      if (toDate) {
+        const to = new Date(toDate as string);
+        to.setHours(23, 59, 59, 999);
+        whereClause.date.lte = to;
+      }
+    }
+    if (type) whereClause.type = type;
+    if (referenceNumber) whereClause.referenceNumber = { contains: referenceNumber as string, mode: 'insensitive' };
+
+    const transactions = await prisma.customerTransaction.findMany({
+      where: whereClause,
+      orderBy: { date: 'asc' }
+    });
+
+    // Summary calculation
+    const allTx = await prisma.customerTransaction.findMany({ where: { customerId }});
+    const totalSales = allTx.filter(tx => tx.type === 'INVOICE').reduce((sum, tx) => sum + tx.debit, 0);
+    const totalPaid = allTx.filter(tx => tx.type === 'PAYMENT').reduce((sum, tx) => sum + tx.credit, 0);
+    const outstanding = totalSales - totalPaid;
+    
+    const numInvoices = await prisma.invoice.count({ where: { customerId, status: 'FINALIZED', isDeleted: false } });
+
+    res.json({
+      summary: {
+        totalSales,
+        totalPaid,
+        outstandingAmount: outstanding, // We can also use customer.balance which should be synced
+        numInvoices
+      },
+      transactions
+    });
+  } catch (error) {
+    console.error('Error fetching ledger:', error);
+    res.status(500).json({ message: 'Error fetching ledger' });
   }
 });
 

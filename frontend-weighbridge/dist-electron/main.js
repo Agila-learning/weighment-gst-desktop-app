@@ -7,7 +7,7 @@ import c from "node:fs";
 //#region electron/database.ts
 var l = e(import.meta.url)("better-sqlite3"), u = null;
 function d() {
-	u = new l(a.join(n.getPath("userData"), "weighbridge_offline.db"), { verbose: console.log }), u.exec("\n    CREATE TABLE IF NOT EXISTS customers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL,\n      gstin TEXT\n    );\n    CREATE TABLE IF NOT EXISTS vehicles (\n      id TEXT PRIMARY KEY,\n      vehicleNumber TEXT NOT NULL,\n      tareWeight REAL\n    );\n    CREATE TABLE IF NOT EXISTS materials (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS drivers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS transporters (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS weighments (\n      id TEXT PRIMARY KEY,\n      slipNumber TEXT,\n      vehicleId TEXT,\n      vehicleNumber TEXT,\n      customerId TEXT,\n      customerName TEXT,\n      materialId TEXT,\n      materialName TEXT,\n      driverId TEXT,\n      driverName TEXT,\n      transporterId TEXT,\n      transporterName TEXT,\n      firstWeight REAL,\n      secondWeight REAL,\n      netWeight REAL,\n      status TEXT,\n      syncStatus TEXT,\n      date TEXT,\n      createdAt TEXT,\n      updatedAt TEXT,\n      loadType TEXT,\n      firstWeightDate TEXT,\n      secondWeightDate TEXT,\n      firstWeightSource TEXT,\n      secondWeightSource TEXT\n    );\n    \n    CREATE TABLE IF NOT EXISTS local_sync_queue (\n      id TEXT PRIMARY KEY,\n      entityType TEXT,\n      entityId TEXT,\n      operation TEXT,\n      payload TEXT,\n      status TEXT,\n      retryCount INTEGER DEFAULT 0,\n      errorMessage TEXT,\n      createdAt TEXT,\n      updatedAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS audit_logs (\n      id TEXT PRIMARY KEY,\n      userId TEXT,\n      action TEXT,\n      entity TEXT,\n      entityId TEXT,\n      details TEXT,\n      createdAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS auth_cache (\n      id TEXT PRIMARY KEY,\n      username TEXT,\n      email TEXT,\n      name TEXT,\n      role TEXT,\n      localHash TEXT,\n      applicationAccess TEXT\n    );\n  ");
+	u = new l(a.join(n.getPath("userData"), "weighbridge_offline.db"), { verbose: console.log }), u.exec("\n    CREATE TABLE IF NOT EXISTS customers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL,\n      gstin TEXT\n    );\n    CREATE TABLE IF NOT EXISTS vehicles (\n      id TEXT PRIMARY KEY,\n      vehicleNumber TEXT NOT NULL,\n      tareWeight REAL\n    );\n    CREATE TABLE IF NOT EXISTS materials (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS drivers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS transporters (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS weighments (\n      id TEXT PRIMARY KEY,\n      slipNumber TEXT,\n      vehicleId TEXT,\n      vehicleNumber TEXT,\n      customerId TEXT,\n      customerName TEXT,\n      materialId TEXT,\n      materialName TEXT,\n      driverId TEXT,\n      driverName TEXT,\n      transporterId TEXT,\n      transporterName TEXT,\n      firstWeight REAL,\n      secondWeight REAL,\n      netWeight REAL,\n      status TEXT,\n      syncStatus TEXT,\n      date TEXT,\n      createdAt TEXT,\n      updatedAt TEXT,\n      loadType TEXT,\n      firstWeightDate TEXT,\n      secondWeightDate TEXT,\n      firstWeightSource TEXT,\n      secondWeightSource TEXT\n    );\n    \n    CREATE TABLE IF NOT EXISTS local_sync_queue (\n      id TEXT PRIMARY KEY,\n      entityType TEXT,\n      entityId TEXT,\n      operation TEXT,\n      payload TEXT,\n      status TEXT,\n      retryCount INTEGER DEFAULT 0,\n      errorMessage TEXT,\n      createdAt TEXT,\n      updatedAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS audit_logs (\n      id TEXT PRIMARY KEY,\n      userId TEXT,\n      action TEXT,\n      entity TEXT,\n      entityId TEXT,\n      details TEXT,\n      createdAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS auth_cache (\n      id TEXT PRIMARY KEY,\n      username TEXT,\n      email TEXT,\n      name TEXT,\n      role TEXT,\n      localHash TEXT,\n      applicationAccess TEXT\n    );\n    CREATE TABLE IF NOT EXISTS customer_material_prices (\n      id TEXT PRIMARY KEY,\n      customerId TEXT NOT NULL,\n      materialId TEXT NOT NULL,\n      pricingType TEXT,\n      billingUnit TEXT,\n      rate REAL,\n      isActive INTEGER DEFAULT 1\n    );\n  ");
 	for (let e of [
 		"ALTER TABLE weighments ADD COLUMN loadType TEXT",
 		"ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
@@ -17,7 +17,18 @@ function d() {
 		"ALTER TABLE weighments ADD COLUMN invoiceReference TEXT",
 		"ALTER TABLE weighments ADD COLUMN cancellationReason TEXT",
 		"ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT",
-		"ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0"
+		"ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0",
+		"ALTER TABLE weighments ADD COLUMN pricingType TEXT",
+		"ALTER TABLE weighments ADD COLUMN rate REAL",
+		"ALTER TABLE weighments ADD COLUMN billingUnit TEXT",
+		"ALTER TABLE weighments ADD COLUMN calculatedQuantity REAL",
+		"ALTER TABLE weighments ADD COLUMN calculatedAmount REAL",
+		"ALTER TABLE weighments ADD COLUMN pricingSnapshot TEXT",
+		"ALTER TABLE materials ADD COLUMN pricingType TEXT",
+		"ALTER TABLE materials ADD COLUMN billingUnit TEXT",
+		"ALTER TABLE materials ADD COLUMN defaultRate REAL",
+		"ALTER TABLE customers ADD COLUMN mobile1 TEXT",
+		"ALTER TABLE customers ADD COLUMN mobile2 TEXT"
 	]) try {
 		u.exec(e);
 	} catch {}

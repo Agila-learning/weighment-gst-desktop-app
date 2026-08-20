@@ -39,6 +39,8 @@ model Customer {
   stateCode  String?
   phone      String?
   email      String?
+  mobile1    String?
+  mobile2    String?
   balance    Float       @default(0.0)
   isActive   Boolean     @default(true)
   createdAt  DateTime    @default(now())
@@ -46,6 +48,8 @@ model Customer {
   invoices   Invoice[]
   payments   Payment[]
   weighments Weighment[]
+  customerMaterialPrices CustomerMaterialPrice[]
+  transactions CustomerTransaction[]
 }
 
 model Material {
@@ -53,6 +57,8 @@ model Material {
   name         String        @unique
   hsnCode      String?
   unit         String        @default("TON") // TON, KG, LOAD, CFT
+  billingUnit  String        @default("TON") // TON, KG, LOAD, CFT
+  pricingType  String        @default("PER_TON") // PER_TON, PER_KG, PER_LOAD, PER_CFT, FIXED_AMOUNT
   defaultRate  Float
   gstRateId    String
   taxRate      TaxRate       @relation(fields: [gstRateId], references: [id])
@@ -61,6 +67,39 @@ model Material {
   updatedAt    DateTime      @updatedAt
   invoiceItems InvoiceItem[]
   weighments   Weighment[]
+  customerMaterialPrices CustomerMaterialPrice[]
+}
+
+model CustomerMaterialPrice {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  materialId   String
+  material     Material @relation(fields: [materialId], references: [id])
+  pricingType  String
+  billingUnit  String
+  rate         Float
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([customerId, materialId])
+}
+
+model CustomerTransaction {
+  id              String   @id @default(uuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  date            DateTime @default(now())
+  type            String   // INVOICE, PAYMENT, CREDIT, DEBIT, ADJUSTMENT
+  referenceId     String?  
+  referenceNumber String?  
+  debit           Float    @default(0.0)
+  credit          Float    @default(0.0)
+  balance         Float    @default(0.0) 
+  paymentMethod   String?
+  remarks         String?
+  createdAt       DateTime @default(now())
 }
 
 model Vehicle {
@@ -171,6 +210,12 @@ model InvoiceItem {
 
   taxAmount   Float
   totalAmount Float
+
+  // Additional Advanced Fields
+  pricingType        String?
+  quantityUnit       String?
+  quantitySource     String? // MANUAL, WEIGHBRIDGE
+  weighmentReference String? // Slip Number
 }
 
 model Payment {
@@ -298,6 +343,14 @@ model Weighment {
   loadType  String? // LOAD, EMPTY, RETURN, OTHER
 
   status String @default("OPEN") // OPEN, FIRST_WEIGHT_RECORDED, WAITING_FOR_SECOND_WEIGHT, COMPLETED, CANCELLED
+
+  // Advanced Pricing Snapshots
+  pricingType        String?
+  rate               Float?
+  billingUnit        String?
+  calculatedQuantity Float?
+  calculatedAmount   Float?
+  pricingSnapshot    String? // JSON string of snapshot context
 
   operatorId String?
   operator   User?   @relation(fields: [operatorId], references: [id])

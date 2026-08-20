@@ -84,7 +84,7 @@ async function syncMasterData() {
   const ipcRenderer = (window as any).ipcRenderer;
   if (!ipcRenderer) return;
 
-  const endpoints = ['customers', 'vehicles', 'materials', 'drivers', 'transporters'];
+  const endpoints = ['customers', 'vehicles', 'materials', 'drivers', 'transporters', 'customer-material-prices'];
   
   for (const endpoint of endpoints) {
     try {
@@ -96,20 +96,23 @@ async function syncMasterData() {
         let q = '';
         let params: any[] = [];
         if (endpoint === 'customers') {
-          q = 'INSERT OR REPLACE INTO customers (id, name, gstin) VALUES (?, ?, ?)';
-          params = [item.id, item.name, item.gstin || null];
+          q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)';
+          params = [item.id, item.name, item.gstin || null, item.mobile1 || null, item.mobile2 || null];
         } else if (endpoint === 'vehicles') {
           q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)';
           params = [item.id, item.vehicleNumber, item.tareWeight || 0];
         } else if (endpoint === 'materials') {
-          q = 'INSERT OR REPLACE INTO materials (id, name) VALUES (?, ?)';
-          params = [item.id, item.name];
+          q = 'INSERT OR REPLACE INTO materials (id, name, pricingType, billingUnit, defaultRate) VALUES (?, ?, ?, ?, ?)';
+          params = [item.id, item.name, item.pricingType || 'PER_TON', item.billingUnit || 'TON', item.defaultRate || 0];
         } else if (endpoint === 'drivers') {
           q = 'INSERT OR REPLACE INTO drivers (id, name) VALUES (?, ?)';
           params = [item.id, item.name];
         } else if (endpoint === 'transporters') {
           q = 'INSERT OR REPLACE INTO transporters (id, name) VALUES (?, ?)';
           params = [item.id, item.name];
+        } else if (endpoint === 'customer-material-prices') {
+          q = 'INSERT OR REPLACE INTO customer_material_prices (id, customerId, materialId, pricingType, billingUnit, rate, isActive) VALUES (?, ?, ?, ?, ?, ?, ?)';
+          params = [item.id, item.customerId, item.materialId, item.pricingType, item.billingUnit, item.rate, item.isActive ? 1 : 0];
         }
         return { query: q, params };
       });
@@ -147,7 +150,14 @@ async function syncWeighments() {
           secondWeight: record.secondWeight,
           netWeight: record.netWeight,
           status: record.status,
-          date: record.date
+          date: record.date,
+          
+          pricingType: record.pricingType,
+          rate: record.rate,
+          billingUnit: record.billingUnit,
+          calculatedQuantity: record.calculatedQuantity,
+          calculatedAmount: record.calculatedAmount,
+          pricingSnapshot: record.pricingSnapshot
         };
         
         await apiClient.post('/weighments', payload);

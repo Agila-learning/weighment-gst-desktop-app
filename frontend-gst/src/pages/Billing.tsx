@@ -91,6 +91,7 @@ const Billing = () => {
   
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customerSummary, setCustomerSummary] = useState<any>(null);
+  const [customerPrices, setCustomerPrices] = useState<any[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   
@@ -107,7 +108,7 @@ const Billing = () => {
   });
   const [weighmentReference, setWeighmentReference] = useState('');
   
-  const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '' }]);
+  const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
@@ -190,7 +191,11 @@ const Billing = () => {
             igstRate: item.igstRate,
             materialName: item.materialName,
             hsnCode: item.hsnCode,
-            unit: item.unit
+            unit: item.unit,
+            pricingType: item.pricingType || 'PER_UNIT',
+            quantityUnit: item.quantityUnit || item.unit,
+            quantitySource: item.quantitySource || 'MANUAL',
+            weighmentReference: item.weighmentReference || ''
           })));
         }
       }).catch(console.error);
@@ -234,6 +239,9 @@ const Billing = () => {
   useEffect(() => {
     if (!selectedCustomer) {
       setCustomerSummary(null);
+      setCustomerPrices([]);
+    } else {
+      apiClient.get(`/customer-material-prices/customer/${selectedCustomer}`).then(res => setCustomerPrices(res.data)).catch(console.error);
     }
   }, [selectedCustomer]);
 
@@ -282,7 +290,11 @@ const Billing = () => {
             igstRate: 0, 
             materialName: material?.name || '', 
             hsnCode: material?.hsnCode || '', 
-            unit: 'KG' 
+            unit: material?.unit || 'TON',
+            pricingType: material?.pricingType || 'PER_UNIT',
+            quantityUnit: material?.billingUnit || 'TON',
+            quantitySource: 'WEIGHBRIDGE',
+            weighmentReference: weighment.slipNumber
           }]);
         }
         
@@ -347,7 +359,7 @@ const Billing = () => {
   }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode]);
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '' }]);
+    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -363,9 +375,20 @@ const Billing = () => {
           if (field === 'materialId') {
             const material = materials.find(m => m.id === value);
             if (material) {
-              newItem.rate = material.defaultRate;
+              const customPrice = customerPrices.find(p => p.materialId === value && p.isActive);
+              newItem.rate = customPrice ? customPrice.rate : material.defaultRate;
+              newItem.pricingType = customPrice ? customPrice.pricingType : (material.pricingType || 'PER_UNIT');
+              newItem.quantityUnit = customPrice ? customPrice.billingUnit : (material.billingUnit || 'TON');
+              newItem.unit = material.unit || 'TON';
             }
           }
+          
+          if (newItem.pricingType === 'FIXED') {
+            newItem.amount = newItem.rate; // Quantity doesn't affect amount
+          } else {
+            newItem.amount = newItem.quantity * newItem.rate;
+          }
+          
           return newItem;
         }
         return item;
@@ -421,7 +444,11 @@ const Billing = () => {
           igstRate: i.igstRate,
           materialName: i.materialName,
           hsnCode: i.hsnCode,
-          unit: i.unit
+          unit: i.unit,
+          pricingType: i.pricingType,
+          quantityUnit: i.quantityUnit,
+          quantitySource: i.quantitySource,
+          weighmentReference: i.weighmentReference
         }))
       };
 
@@ -532,7 +559,7 @@ const Billing = () => {
             </button>
             <button onClick={() => {
               setSuccessData(null);
-              setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '' }]);
+              setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
             }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               <FileCheck size={18} /> Create New
             </button>
@@ -807,10 +834,31 @@ const Billing = () => {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <input type="number" min="0.1" step="0.1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', Number(e.target.value))} />
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <input type="number" min="0.1" step="0.1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', Number(e.target.value))} readOnly={item.quantitySource === 'WEIGHBRIDGE'} />
+                              <span className="text-xs text-gray-500 font-medium">{item.quantityUnit}</span>
+                            </div>
+                            <div className="text-[10px]">
+                              {item.quantitySource === 'WEIGHBRIDGE' ? (
+                                <span className="text-blue-600 font-bold bg-blue-50 px-1 rounded">FROM SLIP: {item.weighmentReference}</span>
+                              ) : (
+                                <select className="border border-gray-200 rounded px-1 outline-none text-gray-500 bg-white" value={item.quantitySource} onChange={e => handleLineItemChange(item.id, 'quantitySource', e.target.value)}>
+                                  <option value="MANUAL">Manual</option>
+                                  <option value="WEIGHBRIDGE">Slip</option>
+                                </select>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
-                          <input type="number" min="0" step="1" className="w-24 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.rate} onChange={e => handleLineItemChange(item.id, 'rate', Number(e.target.value))} />
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-500">₹</span>
+                              <input type="number" min="0" step="1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.rate} onChange={e => handleLineItemChange(item.id, 'rate', Number(e.target.value))} />
+                            </div>
+                            <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1 rounded self-start">{item.pricingType}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500">
                           {item.igstRate > 0 ? (

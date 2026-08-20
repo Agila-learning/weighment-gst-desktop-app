@@ -20,6 +20,7 @@ import transportersRoutes from './routes/transporters';
 import weighmentsRoutes from './routes/weighments';
 import weighmentReportsRouter from './routes/weighment-reports';
 import weighmentExportsRouter from './routes/weighment-exports';
+import customerPricesRouter from './routes/customerPrices';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -47,6 +48,7 @@ app.use('/api/transporters', transportersRoutes);
 app.use('/api/weighments', weighmentsRoutes);
 app.use('/api/weighment-reports', weighmentReportsRouter);
 app.use('/api/weighment-exports', weighmentExportsRouter);
+app.use('/api/customer-material-prices', customerPricesRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

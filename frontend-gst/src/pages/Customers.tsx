@@ -9,7 +9,7 @@ const Customers = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const [showModal, setShowModal] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', email: '', address: '', stateName: '', stateCode: '' });
+  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   
@@ -19,6 +19,12 @@ const Customers = () => {
   const [historySummary, setHistorySummary] = useState<any>(null);
   const [historyInvoices, setHistoryInvoices] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Ledger Modal
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [ledgerCustomer, setLedgerCustomer] = useState<any>(null);
+  const [ledgerData, setLedgerData] = useState<any>({ summary: {}, transactions: [] });
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -40,6 +46,8 @@ const Customers = () => {
     if (newCustomer.name.length < 3) return "Name must be at least 3 characters long.";
     if (newCustomer.gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(newCustomer.gstin)) return "Invalid GSTIN format. Example: 29ABCDE1234F1Z5";
     if (newCustomer.phone && !/^\d{10}$/.test(newCustomer.phone)) return "Mobile number must be exactly 10 digits.";
+    if (newCustomer.mobile1 && !/^\d{10}$/.test(newCustomer.mobile1)) return "Mobile 1 must be exactly 10 digits.";
+    if (newCustomer.mobile2 && !/^\d{10}$/.test(newCustomer.mobile2)) return "Mobile 2 must be exactly 10 digits.";
     if (newCustomer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newCustomer.email)) return "Invalid Email address.";
     if (newCustomer.address && newCustomer.address.length < 5) return "Address must be at least 5 characters long.";
     return null;
@@ -65,7 +73,7 @@ const Customers = () => {
         await apiClient.post('/customers', payload);
       }
       setShowModal(false);
-      setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', email: '', address: '', stateName: '', stateCode: '' });
+      setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
       setIsEditing(false);
       fetchCustomers();
     } catch (err: any) {
@@ -93,6 +101,8 @@ const Customers = () => {
       gstin: customer.gstin || '',
       countryCode: parsedCountryCode,
       phone: parsedPhone,
+      mobile1: customer.mobile1 || '',
+      mobile2: customer.mobile2 || '',
       email: customer.email || '',
       address: customer.address || '',
       stateName: customer.stateName || '',
@@ -104,7 +114,7 @@ const Customers = () => {
   };
   
   const openAddModal = () => {
-    setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', email: '', address: '', stateName: '', stateCode: '' });
+    setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -133,6 +143,20 @@ const Customers = () => {
       console.error('Error fetching history', err);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+  
+  const openLedgerModal = async (customer: any) => {
+    setLedgerCustomer(customer);
+    setShowLedgerModal(true);
+    setLedgerLoading(true);
+    try {
+      const response = await apiClient.get(`/customers/${customer.id}/ledger`);
+      setLedgerData(response.data);
+    } catch (err) {
+      console.error('Error fetching ledger', err);
+    } finally {
+      setLedgerLoading(false);
     }
   };
   
@@ -218,6 +242,16 @@ const Customers = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email ID</label>
                   <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newCustomer.email} onChange={e => setNewCustomer({...newCustomer, email: e.target.value})} placeholder="contact@company.com" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 1</label>
+                  <input type="text" maxLength={10} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newCustomer.mobile1} onChange={e => { const val = e.target.value.replace(/\D/g, ''); setNewCustomer({...newCustomer, mobile1: val}); }} placeholder="9876543210" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 2</label>
+                  <input type="text" maxLength={10} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newCustomer.mobile2} onChange={e => { const val = e.target.value.replace(/\D/g, ''); setNewCustomer({...newCustomer, mobile2: val}); }} placeholder="9876543210" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -316,6 +350,81 @@ const Customers = () => {
         </div>
       )}
 
+      {showLedgerModal && ledgerCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{ledgerCustomer.name} - Ledger</h2>
+                <p className="text-gray-500 text-sm">Financial Transactions</p>
+              </div>
+              <button onClick={() => setShowLedgerModal(false)} className="text-gray-500 hover:text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">Close</button>
+            </div>
+            
+            {ledgerLoading ? (
+              <div className="p-12 text-center text-gray-500">Loading ledger...</div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+                    <div className="text-xs text-blue-600 font-medium uppercase mb-1">Total Sales (Invoices)</div>
+                    <div className="text-2xl font-bold text-blue-900">₹{(ledgerData.summary.totalSales || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
+                    <div className="text-xs text-green-600 font-medium uppercase mb-1">Total Paid</div>
+                    <div className="text-2xl font-bold text-green-900">₹{(ledgerData.summary.totalPaid || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-100 text-center">
+                    <div className="text-xs text-red-600 font-medium uppercase mb-1">Outstanding Amount</div>
+                    <div className="text-2xl font-bold text-red-700">₹{(ledgerData.summary.outstandingAmount || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 text-center">
+                    <div className="text-xs text-purple-600 font-medium uppercase mb-1">Number of Invoices</div>
+                    <div className="text-2xl font-bold text-purple-900">{ledgerData.summary.numInvoices || 0}</div>
+                  </div>
+                </div>
+                
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Reference No</th>
+                        <th className="px-4 py-3 text-right">Debit (Sales)</th>
+                        <th className="px-4 py-3 text-right">Credit (Paid)</th>
+                        <th className="px-4 py-3">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {ledgerData.transactions.map((tx: any) => (
+                        <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-gray-600">{new Date(tx.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                              tx.type === 'INVOICE' ? 'bg-blue-100 text-blue-700' :
+                              tx.type === 'PAYMENT' ? 'bg-green-100 text-green-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>{tx.type}</span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-700">{tx.referenceNumber || '-'}</td>
+                          <td className="px-4 py-3 text-right font-medium text-red-600">{tx.debit > 0 ? `₹${tx.debit.toFixed(2)}` : '-'}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">{tx.credit > 0 ? `₹${tx.credit.toFixed(2)}` : '-'}</td>
+                          <td className="px-4 py-3 text-gray-500">{tx.remarks || tx.paymentMethod || '-'}</td>
+                        </tr>
+                      ))}
+                      {ledgerData.transactions.length === 0 && (
+                        <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No transactions found in ledger.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <div className="relative w-64">
@@ -364,6 +473,7 @@ const Customers = () => {
                       <td className="px-6 py-4">{customer.email || '-'}</td>
                       <td className="px-6 py-4">{customer.address || '-'}</td>
                       <td className="px-6 py-4 text-right">
+                        <button onClick={() => openLedgerModal(customer)} className="text-green-600 hover:text-green-800 font-medium mr-4">Ledger</button>
                         <button onClick={() => openHistoryModal(customer)} className="text-purple-600 hover:text-purple-800 font-medium mr-4">History</button>
                         <button onClick={() => openEditModal(customer)} className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>
                         <button onClick={() => handleDelete(customer.id)} className="text-red-500 hover:text-red-700 font-medium ml-4">Remove</button>

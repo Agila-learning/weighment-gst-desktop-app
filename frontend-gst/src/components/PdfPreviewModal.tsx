@@ -30,11 +30,18 @@ export default function PdfPreviewModal({
           <h2 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h2>
           <div className="flex items-center space-x-3">
             <button
+              onClick={onDownload}
+              disabled={isLoading || !blobUrl}
+              className="flex items-center px-4 py-2 bg-white text-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm disabled:opacity-50 text-sm font-medium"
+            >
+              <Download size={16} className="mr-2" /> Download
+            </button>
+            <button
               onClick={onPrint}
               disabled={isLoading || !blobUrl}
               className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 text-sm font-medium"
             >
-              <Printer size={16} className="mr-2" /> Print / Save PDF
+              <Printer size={16} className="mr-2" /> Print PDF
             </button>
             <div className="w-px h-6 bg-slate-300 mx-1"></div>
             <button

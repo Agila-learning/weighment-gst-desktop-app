@@ -251,4 +251,48 @@ router.get('/active/:vehicleId', async (req, res) => {
   }
 });
 
+// Sync Offline Weighments
+router.post('/', async (req, res) => {
+  try {
+    const { 
+      id, vehicleId, vehicleNumber, slipNumber, customerId, materialId, driverId, transporterId, 
+      firstWeight, secondWeight, netWeight, status, date,
+      pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount, pricingSnapshot
+    } = req.body;
+
+    const weighment = await prisma.weighment.upsert({
+      where: { id: id || '' }, // if no id, it will fail and fallback to create, or use slipNumber
+      update: {
+        vehicleId, vehicleNumber, slipNumber, customerId, materialId, driverId, transporterId,
+        firstWeight, secondWeight, netWeight, status,
+        pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount, pricingSnapshot
+      },
+      create: {
+        id,
+        vehicleId, vehicleNumber, slipNumber, customerId, materialId, driverId, transporterId,
+        firstWeight, secondWeight, netWeight, status,
+        createdAt: new Date(date || new Date()),
+        pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount, pricingSnapshot
+      }
+    });
+
+    res.status(200).json(weighment);
+  } catch (error: any) {
+    // If upsert by ID fails, fallback to slipNumber for uniqueness
+    if (error.code === 'P2025' || error.code === 'P2002') {
+       try {
+         const weighment = await prisma.weighment.upsert({
+           where: { slipNumber: req.body.slipNumber },
+           update: req.body,
+           create: { ...req.body, createdAt: new Date(req.body.date || new Date()) }
+         });
+         return res.status(200).json(weighment);
+       } catch (fallbackError) {
+         return res.status(500).json({ message: 'Error syncing weighment' });
+       }
+    }
+    res.status(500).json({ message: 'Error syncing weighment' });
+  }
+});
+
 export default router;
