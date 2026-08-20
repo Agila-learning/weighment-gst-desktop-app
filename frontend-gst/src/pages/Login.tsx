@@ -136,10 +136,10 @@ const Login = () => {
           
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/icon.png" alt="Forge GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">GST BILLING</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Forge GST Billing</h1>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
             <p className="text-gray-500">Sign in to continue to your billing workspace.</p>

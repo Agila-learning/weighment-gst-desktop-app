@@ -64,13 +64,16 @@ function Sidebar() {
 
   return (
     <div className={`bg-slate-900 h-screen text-slate-100 flex flex-col transition-all duration-300 ${isMinimized ? 'w-20' : 'w-64'}`}>
-      <div className="p-6 flex items-center justify-between">
-        {!isMinimized && (
-          <div>
-            <h1 className="text-2xl font-bold text-primary-400">Weighbridge</h1>
-            <p className="text-xs text-slate-400 mt-1">Desktop Application</p>
-          </div>
-        )}
+      <div className="p-6 flex items-center justify-between border-b border-slate-800 mb-6">
+        <div className="flex items-center space-x-3">
+          <img src="/icon.png" alt="Logo" className="w-8 h-8 object-contain rounded" />
+          {!isMinimized && (
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight leading-none">FORGE</h1>
+              <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mt-0.5">Weighbridge</p>
+            </div>
+          )}
+        </div>
         <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white">
           {isMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>

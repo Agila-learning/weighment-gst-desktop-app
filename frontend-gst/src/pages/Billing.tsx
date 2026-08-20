@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FolderOpen, Printer, Share2, FileText } from 'lucide-react';
+import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FolderOpen, Printer, FileText } from 'lucide-react';
 import apiClient, { API_BASE_URL } from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -441,18 +441,26 @@ const Billing = () => {
         const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'arraybuffer' });
         const buffer = pdfRes.data;
 
-        const customPath = localStorage.getItem('pdfStoragePath');
-        const saveResult = await ipcRenderer.invoke('save-pdf', { 
+        // Prompt native save dialog immediately
+        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
           buffer, 
-          invoiceNumber: res.data.invoiceNumber, 
-          customPath 
+          defaultFilename: `INV-${res.data.invoiceNumber}.pdf` 
         });
 
         if (saveResult.success) {
           setSuccessData({
+            invoiceId: res.data.id,
             invoiceNumber: res.data.invoiceNumber,
             grandTotal: res.data.grandTotal,
-            path: saveResult.path
+            path: saveResult.path,
+            buffer // Store buffer temporarily for re-download if needed
+          });
+        } else if (saveResult.canceled) {
+          setSuccessData({
+            invoiceId: res.data.id,
+            invoiceNumber: res.data.invoiceNumber,
+            grandTotal: res.data.grandTotal,
+            buffer
           });
         } else {
           alert('Failed to save PDF locally: ' + saveResult.error);
@@ -486,31 +494,63 @@ const Billing = () => {
               <span className="text-gray-500 font-medium">Grand Total:</span>
               <span className="font-bold text-gray-900">₹{successData.grandTotal.toFixed(2)}</span>
             </div>
-            <div className="border-t border-gray-200 pt-3">
-              <span className="block text-gray-500 font-medium text-xs mb-1 uppercase">PDF Location:</span>
-              <span className="font-mono text-sm text-gray-700 break-all">{successData.path}</span>
-            </div>
+            {successData.path && (
+              <div className="border-t border-gray-200 pt-3">
+                <span className="block text-gray-500 font-medium text-xs mb-1 uppercase">Saved PDF Location:</span>
+                <span className="font-mono text-sm text-gray-700 break-all">{successData.path}</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <button onClick={() => ipcRenderer.invoke('open-pdf', successData.path)} className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-              <FileText size={18} /> Open PDF
+            <button 
+              onClick={async () => {
+                const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
+                  buffer: successData.buffer, 
+                  defaultFilename: `INV-${successData.invoiceNumber}.pdf` 
+                });
+                if (saveResult.success) {
+                  setSuccessData({ ...successData, path: saveResult.path });
+                } else if (!saveResult.canceled) {
+                  alert('Unable to save the PDF to the selected location.');
+                }
+              }} 
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              <FileText size={18} /> Download PDF
             </button>
-            <button onClick={() => ipcRenderer.invoke('open-folder', successData.path)} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-              <FolderOpen size={18} /> Open Folder
+            <button 
+              onClick={() => {
+                if (successData.path) {
+                  ipcRenderer.invoke('open-pdf', successData.path);
+                } else {
+                  // Fallback if not saved locally yet
+                  window.open(`${API_BASE_URL}/invoices/${successData.invoiceId}/pdf`, '_blank');
+                }
+              }} 
+              className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              <FolderOpen size={18} /> View Invoice
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => {
-              const printer = localStorage.getItem('defaultPrinter');
-              ipcRenderer.invoke('print-pdf', { filePath: successData.path, printerName: printer }).then((res: any) => {
-                if (!res.success && res.error) alert('Print error: ' + res.error);
-              });
+              if (successData.path) {
+                const printer = localStorage.getItem('defaultPrinter');
+                ipcRenderer.invoke('print-pdf', { filePath: successData.path, printerName: printer }).then((res: any) => {
+                  if (!res.success && res.error) alert('Print error: ' + res.error);
+                });
+              } else {
+                window.open(`${API_BASE_URL}/invoices/${successData.invoiceId}/pdf`);
+              }
             }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               <Printer size={18} /> Print
             </button>
-            <button onClick={() => ipcRenderer.invoke('open-folder', successData.path)} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-              <Share2 size={18} /> Share
+            <button onClick={() => {
+              setSuccessData(null);
+              setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '' }]);
+            }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+              <FileCheck size={18} /> Create New
             </button>
           </div>
           

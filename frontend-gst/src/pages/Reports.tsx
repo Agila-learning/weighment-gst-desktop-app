@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, TrendingUp, CreditCard, Filter, Calendar, FileText } from 'lucide-react';
+import { Download, TrendingUp, CreditCard, Filter, Calendar, FileText, Search, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import apiClient, { API_BASE_URL } from '../api/client';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -7,37 +7,64 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const Reports = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   
   // Date Filters
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
+  // Initial Fetch
   useEffect(() => {
-    apiClient.get('/invoices').then(res => {
-      // Handle potential pagination
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.get('/invoices');
       const data = res.data.data || res.data;
       const finalized = data.filter((i: any) => i.status === 'FINALIZED');
       setInvoices(finalized);
-    }).catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    if (!startDate || !endDate) {
-      setFilteredData(invoices);
-      return;
+      applyFilters(finalized);
+      setHasSearched(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-    
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    
-    const filtered = invoices.filter(inv => {
-      const invDate = new Date(inv.date);
-      return invDate >= start && invDate <= end;
-    });
-    setFilteredData(filtered);
-  }, [invoices, startDate, endDate]);
+  };
+
+  const applyFilters = (dataToFilter = invoices) => {
+    setIsLoading(true);
+    setTimeout(() => {
+      if (!startDate || !endDate) {
+        setFilteredData(dataToFilter);
+      } else {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        const filtered = dataToFilter.filter(inv => {
+          const invDate = new Date(inv.date);
+          return invDate >= start && invDate <= end;
+        });
+        setFilteredData(filtered);
+      }
+      setHasSearched(true);
+      setIsLoading(false);
+    }, 300); // Simulate network delay for UX
+  };
+
+  const resetFilters = () => {
+    setStartDate(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+    setEndDate(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+    setHasSearched(false);
+    setTimeout(() => {
+      applyFilters(invoices);
+    }, 0);
+  };
 
   const stats = useMemo(() => {
     return {
@@ -55,120 +82,162 @@ const Reports = () => {
       acc[name].sales += inv.subTotal;
       acc[name].tax += inv.taxTotal;
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
     
     return Object.values(grouped).sort((a: any, b: any) => b.sales - a.sales).slice(0, 10); // Top 10
   }, [filteredData]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 pb-12">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-500">Analyze your business performance</p>
+          <p className="text-gray-500 text-sm mt-1">Analyze your business performance</p>
         </div>
-        <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-          <Calendar size={18} className="text-gray-500 ml-2" />
-          <input 
-            type="date" 
-            className="border-none outline-none text-sm text-gray-700 bg-transparent"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-          />
-          <span className="text-gray-400">to</span>
-          <input 
-            type="date" 
-            className="border-none outline-none text-sm text-gray-700 bg-transparent mr-2"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-          />
-          <button 
-            onClick={() => { setStartDate(''); setEndDate(''); }}
-            className="p-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200"
-            title="Clear filters"
+        <div className="flex items-center gap-3">
+          <a 
+            href={`${API_BASE_URL}/reports/export-sales?startDate=${startDate}&endDate=${endDate}`} 
+            target="_blank" 
+            className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
           >
-            <Filter size={16} />
-          </button>
+            <Download size={16} /> Export (Excel)
+          </a>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 text-blue-600 mb-2">
-            <TrendingUp size={24} />
-            <h3 className="font-semibold text-gray-700">Total Sales</h3>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">₹ {stats.totalSales.toFixed(2)}</p>
+      {/* Filter Section */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 text-gray-700 font-medium">
+          <Filter size={18} />
+          <h2>Report Filters</h2>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 text-green-600 mb-2">
-            <CreditCard size={24} />
-            <h3 className="font-semibold text-gray-700">GST Collected</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Date From</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="date" 
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm outline-none transition-all"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+            </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">₹ {stats.totalTax.toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 text-purple-600 mb-2">
-            <FileText size={24} />
-            <h3 className="font-semibold text-gray-700">Invoices Generated</h3>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Date To</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="date" 
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm outline-none transition-all"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.count}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center"><Download size={20} className="mr-2 text-blue-600" /> Export Data</h3>
-          <p className="text-sm text-gray-500 mb-4">Download comprehensive Excel reports for the selected date range. Useful for accounting and GST filing.</p>
-          <div className="space-y-3">
-            <a href={`${API_BASE_URL}/reports/export-sales?startDate=${startDate}&endDate=${endDate}`} target="_blank" className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-              <FileText size={18} /> Export Detailed Sales Register (Excel)
-            </a>
-            <button className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-              <Download size={18} /> Export GSTR-1 Format (Beta)
+          
+          <div className="lg:col-span-2 flex items-center justify-end gap-3 h-[42px]">
+            <button 
+              onClick={resetFilters}
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 bg-white text-gray-600 border border-gray-300 px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm disabled:opacity-50"
+            >
+              <RefreshCw size={16} /> Reset
+            </button>
+            <button 
+              onClick={() => applyFilters(invoices)}
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              Apply Filters
             </button>
           </div>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">Top Customers by Revenue</h2>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={customerChartData} margin={{ top: 10, right: 30, left: 20, bottom: 30 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} angle={-15} textAnchor="end" height={60} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val}`} />
-                <Tooltip 
-                  cursor={{ fill: '#f3f4f6' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
-                />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="sales" name="Taxable Value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                <Bar dataKey="tax" name="GST" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Key Insights</h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="text-sm text-blue-800 font-medium mb-1">Average Invoice Value</div>
-              <div className="text-2xl font-bold text-blue-900">₹ {stats.avgValue.toFixed(2)}</div>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-gray-200">
+          <Loader2 size={40} className="text-blue-500 animate-spin mb-4" />
+          <p className="text-gray-500 font-medium">Generating Report Data...</p>
+        </div>
+      ) : hasSearched && filteredData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-gray-200">
+          <AlertCircle size={48} className="text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-1">No Records Found</h3>
+          <p className="text-gray-500">There are no invoices matching the selected filters.</p>
+        </div>
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col h-[140px]">
+              <div className="flex items-center gap-3 text-blue-600 mb-4">
+                <div className="bg-blue-50 p-2 rounded-lg">
+                  <TrendingUp size={20} />
+                </div>
+                <h3 className="font-semibold text-gray-600 text-sm uppercase tracking-wide">Total Sales</h3>
+              </div>
+              <p className="text-3xl font-bold text-gray-900 mt-auto truncate">₹ {stats.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
             </div>
             
-            <div className="p-4 bg-green-50 rounded-lg border border-green-100">
-              <div className="text-sm text-green-800 font-medium mb-1">Total GST Liability</div>
-              <div className="text-2xl font-bold text-green-900">₹ {stats.totalTax.toFixed(2)}</div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col h-[140px]">
+              <div className="flex items-center gap-3 text-green-600 mb-4">
+                <div className="bg-green-50 p-2 rounded-lg">
+                  <CreditCard size={20} />
+                </div>
+                <h3 className="font-semibold text-gray-600 text-sm uppercase tracking-wide">GST Collected</h3>
+              </div>
+              <p className="text-3xl font-bold text-gray-900 mt-auto truncate">₹ {stats.totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
             </div>
             
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-              <div className="text-sm text-purple-800 font-medium mb-1">Active Customers (Period)</div>
-              <div className="text-2xl font-bold text-purple-900">{customerChartData.length}</div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col h-[140px]">
+              <div className="flex items-center gap-3 text-purple-600 mb-4">
+                <div className="bg-purple-50 p-2 rounded-lg">
+                  <FileText size={20} />
+                </div>
+                <h3 className="font-semibold text-gray-600 text-sm uppercase tracking-wide">Total Invoices</h3>
+              </div>
+              <p className="text-3xl font-bold text-gray-900 mt-auto">{stats.count}</p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col h-[140px]">
+              <div className="flex items-center gap-3 text-amber-600 mb-4">
+                <div className="bg-amber-50 p-2 rounded-lg">
+                  <TrendingUp size={20} />
+                </div>
+                <h3 className="font-semibold text-gray-600 text-sm uppercase tracking-wide">Avg Value</h3>
+              </div>
+              <p className="text-3xl font-bold text-gray-900 mt-auto truncate">₹ {stats.avgValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
             </div>
           </div>
-        </div>
-      </div>
+          
+          {/* Charts Area */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-6">Top Customers by Revenue</h2>
+            <div className="h-96 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={customerChartData} margin={{ top: 10, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} angle={-25} textAnchor="end" height={80} interval={0} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
+                  <Tooltip 
+                    cursor={{ fill: '#f3f4f6' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
+                    formatter={(value: any) => `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar dataKey="sales" name="Taxable Value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  <Bar dataKey="tax" name="GST" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

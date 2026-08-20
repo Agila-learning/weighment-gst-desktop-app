@@ -59,7 +59,10 @@ const Sidebar = () => {
   return (
     <aside className={`bg-blue-900 text-white flex flex-col shadow-lg transition-all duration-300 ${isMinimized ? 'w-20' : 'w-64'}`}>
       <div className="p-6 flex items-center justify-between">
-        {!isMinimized && <h1 className="text-2xl font-bold tracking-wider">GST BILLING</h1>}
+        <div className="flex items-center justify-center p-2">
+          <img src="/icon.png" alt="Logo" className="w-8 h-8 object-contain rounded mr-3" />
+          {!isMinimized && <h1 className="text-xl font-bold tracking-tight">FORGE GST</h1>}
+        </div>
         <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-white/10 rounded">
           {isMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>

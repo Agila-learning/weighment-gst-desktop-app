@@ -56,12 +56,12 @@ const Login = () => {
           
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-600/20">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-white"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/icon.png" alt="Forge Weighbridge" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">WEIGHBRIDGE</h1>
-                <span className="text-sm font-semibold text-blue-600 tracking-widest uppercase">Management System</span>
+                <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">FORGE WEIGHBRIDGE</h1>
+                <span className="text-sm font-semibold text-emerald-600 tracking-widest uppercase">Management System</span>
               </div>
             </div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6">Smart Weighing • Accurate Results • Reliable Operations</p>

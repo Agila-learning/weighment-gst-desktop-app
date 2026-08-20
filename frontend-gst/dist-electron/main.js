@@ -42,6 +42,29 @@ t.on("window-all-closed", () => {
 				error: e.message
 			};
 		}
+	}), r.handle("save-pdf-dialog", async (e, { buffer: t, defaultFilename: r }) => {
+		try {
+			let { canceled: e, filePath: i } = await n.showSaveDialog(l, {
+				title: "Save Invoice PDF",
+				defaultPath: r || "invoice.pdf",
+				filters: [{
+					name: "PDF Documents",
+					extensions: ["pdf"]
+				}]
+			});
+			return e || !i ? {
+				success: !1,
+				canceled: !0
+			} : (s.writeFileSync(i, Buffer.from(t)), {
+				success: !0,
+				path: i
+			});
+		} catch (e) {
+			return console.error("Error in save-pdf-dialog:", e), {
+				success: !1,
+				error: e.message
+			};
+		}
 	}), r.handle("check-pdf-exists", async (e, { invoiceNumber: n, customPath: r }) => {
 		if (!n) return { exists: !1 };
 		let i = r;

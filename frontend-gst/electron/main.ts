@@ -83,6 +83,26 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('save-pdf-dialog', async (event, { buffer, defaultFilename }) => {
+    try {
+      const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+        title: 'Save Invoice PDF',
+        defaultPath: defaultFilename || 'invoice.pdf',
+        filters: [{ name: 'PDF Documents', extensions: ['pdf'] }]
+      });
+
+      if (canceled || !filePath) {
+        return { success: false, canceled: true };
+      }
+
+      fs.writeFileSync(filePath, Buffer.from(buffer));
+      return { success: true, path: filePath };
+    } catch (err: any) {
+      console.error('Error in save-pdf-dialog:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   ipcMain.handle('check-pdf-exists', async (event, { invoiceNumber, customPath }) => {
     if (!invoiceNumber) return { exists: false };
     

@@ -133,18 +133,15 @@ const Invoices = () => {
       const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'arraybuffer' });
       const buffer = pdfRes.data;
 
-      const customPath = localStorage.getItem('pdfStoragePath');
-      const saveResult = await ipcRenderer.invoke('save-pdf', { 
+      const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
         buffer, 
-        invoiceNumber: inv.invoiceNumber, 
-        customPath,
-        forceReplace: true
+        defaultFilename: `INV-${inv.invoiceNumber}.pdf` 
       });
 
       if (saveResult.success) {
         alert('PDF generated and saved successfully to:\n' + saveResult.path);
         fetchInvoices(meta.page); // Refresh status
-      } else {
+      } else if (!saveResult.canceled) {
         alert('Failed to save PDF locally: ' + saveResult.error);
       }
     } catch (err) {
