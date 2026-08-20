@@ -374,7 +374,10 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<Buffer> => 
     </html>
   `;
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ 
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
   
   // Navigate to blank to establish base, then set content

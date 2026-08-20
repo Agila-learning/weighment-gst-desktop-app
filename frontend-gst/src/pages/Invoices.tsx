@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2 } from 'lucide-react';
+import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2, FileText } from 'lucide-react';
 import apiClient from '../api/client';
+import PdfPreviewModal from '../components/PdfPreviewModal';
 import { useNavigate } from 'react-router-dom';
 
 const Invoices = () => {
@@ -16,6 +17,8 @@ const Invoices = () => {
   
   // Summary Stats
   const [summary, setSummary] = useState({ totalInvoices: 0, todaySales: 0, totalSales: 0, pendingAmount: 0 });
+
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
   const fetchInvoices = async (page = 1) => {
     try {
@@ -95,8 +98,8 @@ const Invoices = () => {
     }
   };
 
-  const handleDeleteDraft = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this draft invoice?')) return;
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this invoice?')) return;
     try {
       await apiClient.delete(`/invoices/${id}`);
       fetchInvoices(meta.page);
@@ -221,13 +224,27 @@ const Invoices = () => {
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         {inv.status === 'FINALIZED' && (
-                          <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
+                          <>
+                            <button title="Preview PDF" onClick={async () => {
+                              try {
+                                const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
+                                setPreviewBlobUrl(URL.createObjectURL(pdfRes.data));
+                              } catch (err) {
+                                alert('Error generating PDF');
+                              }
+                            }} className="text-gray-400 hover:text-blue-600"><FileText size={16} /></button>
+                            <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
+                            <button title="Delete Invoice" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                          </>
                         )}
                         {inv.status === 'DRAFT' && (
                           <>
                             <button title="Edit Draft" onClick={() => navigate(`/billing?editId=${inv.id}`)} className="text-gray-400 hover:text-blue-600"><Edit2 size={16} /></button>
-                            <button title="Delete Draft" onClick={() => handleDeleteDraft(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                            <button title="Delete Draft" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                           </>
+                        )}
+                        {inv.status === 'CANCELLED' && (
+                          <button title="Delete Invoice" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                         )}
                         <button title="Duplicate" onClick={() => navigate(`/billing?duplicateId=${inv.id}`)} className="text-gray-400 hover:text-green-600"><Copy size={16} /></button>
                       </div>
@@ -262,6 +279,10 @@ const Invoices = () => {
           </div>
         )}
       </div>
+      {/* PDF PREVIEW MODAL */}
+      {previewBlobUrl && (
+        <PdfPreviewModal blobUrl={previewBlobUrl} onClose={() => setPreviewBlobUrl(null)} />
+      )}
     </div>
   );
 };

@@ -433,15 +433,23 @@ const Billing = () => {
       }
       
       if (status === 'FINALIZED') {
-        const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
-        const blobUrl = URL.createObjectURL(pdfRes.data);
-        setPreviewBlobUrl(blobUrl);
+        let pdfBuffer = null;
+        try {
+          const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
+          const blobUrl = URL.createObjectURL(pdfRes.data);
+          setPreviewBlobUrl(blobUrl);
+          pdfBuffer = await pdfRes.data.arrayBuffer();
+        } catch (pdfErr) {
+          console.error("PDF generation failed:", pdfErr);
+          // Show alert but still show success screen
+          alert("Invoice saved successfully, but PDF generation failed.");
+        }
 
         setSuccessData({
           invoiceId: res.data.id,
           invoiceNumber: res.data.invoiceNumber,
           grandTotal: res.data.grandTotal,
-          buffer: await pdfRes.data.arrayBuffer()
+          buffer: pdfBuffer
         });
       } else {
         navigate('/invoices');

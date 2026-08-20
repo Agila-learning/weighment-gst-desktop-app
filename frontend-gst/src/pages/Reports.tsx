@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Download, TrendingUp, CreditCard, Filter, Calendar, FileText, Search, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import apiClient from '../api/client';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 

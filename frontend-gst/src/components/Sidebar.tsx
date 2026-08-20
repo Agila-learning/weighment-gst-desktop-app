@@ -58,12 +58,12 @@ const Sidebar = () => {
 
   return (
     <aside className={`bg-blue-900 text-white flex flex-col shadow-lg transition-all duration-300 ${isMinimized ? 'w-20' : 'w-64'}`}>
-      <div className="p-6 flex items-center justify-between">
-        <div className="flex items-center justify-center p-2">
-          <img src="/icon.png" alt="Logo" className="w-8 h-8 object-contain rounded mr-3" />
-          {!isMinimized && <h1 className="text-xl font-bold tracking-tight">FIC GST</h1>}
+      <div className={`p-4 flex items-center ${isMinimized ? 'flex-col justify-center gap-4' : 'justify-between'}`}>
+        <div className={`flex items-center justify-center ${isMinimized ? '' : 'p-2'}`}>
+          <img src="/icon.png" alt="Logo" className={`w-8 h-8 object-contain rounded ${isMinimized ? '' : 'mr-3'}`} />
+          {!isMinimized && <h1 className="text-xl font-bold tracking-tight truncate">FIC GST</h1>}
         </div>
-        <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-white/10 rounded">
+        <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-white/10 rounded flex-shrink-0">
           {isMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
