@@ -57,9 +57,38 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
       <meta charset="utf-8">
       <title>Invoice ${invoice.invoiceNumber}</title>
       <style>
-        @page { size: A4; margin: 10mm; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; line-height: 1.3; color: #333; margin: 0; padding: 0; }
-        .invoice-box { width: 100%; max-width: 100%; max-height: 275mm; overflow: hidden; border: 1px solid #1e3a8a; border-radius: 4px; display: flex; flex-direction: column; }
+        @page { size: A4; margin: 5mm; }
+        * { box-sizing: border-box; }
+        html { background: #f3f4f6; }
+        body { 
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+          font-size: 10px; 
+          line-height: 1.3; 
+          color: #333; 
+          margin: 0 auto; 
+          padding: 5mm;
+          background: white;
+          max-width: 210mm;
+          min-height: 297mm;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .invoice-box { 
+          width: 100%; 
+          height: 287mm; /* Fit exactly on one page minus margin */
+          overflow: hidden; 
+          border: 1px solid #1e3a8a; 
+          border-radius: 4px; 
+          display: flex; 
+          flex-direction: column; 
+        }
+        .items-container {
+          flex: 1; /* Pushes footer to the bottom */
+          overflow: hidden;
+        }
+        @media print {
+          html, body { background: white; box-shadow: none; margin: 0; padding: 0; max-width: 100%; min-height: auto; }
+          .invoice-box { border-radius: 0; height: auto; max-height: 285mm; }
+        }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
@@ -216,32 +245,34 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
         </div>
         `}
 
-        <table class="items-table" style="border-bottom: 1px solid #1e3a8a;">
-          <thead>
-            <tr>
-              <th style="width: 5%;">Sl No.</th>
-              <th style="width: 35%;">Description of Goods</th>
-              <th style="width: 10%;">HSN/SAC</th>
-              <th style="width: 10%; text-align: right;">Quantity</th>
-              <th style="width: 15%; text-align: right;">Rate</th>
-              <th style="width: 10%; text-align: center;">per</th>
-              <th style="width: 15%; text-align: right; border-right: none;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${invoice.items.map((item, index) => `
-              <tr class="${index === invoice.items.length - 1 ? 'last-row' : ''}">
-                <td class="text-center">${index + 1}</td>
-                <td class="font-bold" style="color: #111827;">${item.materialName || item.material.name}</td>
-                <td style="color: #4b5563;">${item.hsnCode || item.material.hsnCode || '-'}</td>
-                <td class="text-right font-bold" style="color: #111827;">${item.quantity.toFixed(2)}</td>
-                <td class="text-right">₹${item.rate.toFixed(2)}</td>
-                <td class="text-center text-xs" style="color: #6b7280;">${item.unit || item.material.unit || ''}</td>
-                <td class="text-right font-bold" style="color: #111827;">₹${item.amount.toFixed(2)}</td>
+        <div class="items-container">
+          <table class="items-table" style="border-bottom: 1px solid #1e3a8a;">
+            <thead>
+              <tr>
+                <th style="width: 5%;">Sl No.</th>
+                <th style="width: 35%;">Description of Goods</th>
+                <th style="width: 10%;">HSN/SAC</th>
+                <th style="width: 10%; text-align: right;">Quantity</th>
+                <th style="width: 15%; text-align: right;">Rate</th>
+                <th style="width: 10%; text-align: center;">per</th>
+                <th style="width: 15%; text-align: right; border-right: none;">Amount</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${invoice.items.map((item, index) => `
+                <tr class="${index === invoice.items.length - 1 ? 'last-row' : ''}">
+                  <td class="text-center">${index + 1}</td>
+                  <td class="font-bold" style="color: #111827;">${item.materialName || item.material.name}</td>
+                  <td style="color: #4b5563;">${item.hsnCode || item.material.hsnCode || '-'}</td>
+                  <td class="text-right font-bold" style="color: #111827;">${item.quantity.toFixed(2)}</td>
+                  <td class="text-right">₹${item.rate.toFixed(2)}</td>
+                  <td class="text-center text-xs" style="color: #6b7280;">${item.unit || item.material.unit || ''}</td>
+                  <td class="text-right font-bold" style="color: #111827;">₹${item.amount.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
 
         <div class="totals-grid">
           <div class="totals-left">

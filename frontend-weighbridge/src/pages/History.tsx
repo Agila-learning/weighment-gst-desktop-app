@@ -59,8 +59,8 @@ export default function History() {
       let params: any[] = [];
 
       if (debouncedSearch) {
-        conditions.push("(w.vehicleNumber LIKE ? OR w.slipNumber LIKE ?)");
-        params.push(`%${debouncedSearch}%`, `%${debouncedSearch}%`);
+        conditions.push("(w.vehicleNumber LIKE ? OR w.slipNumber LIKE ? OR c.name LIKE ? OR m.name LIKE ?)");
+        params.push(`%${debouncedSearch}%`, `%${debouncedSearch}%`, `%${debouncedSearch}%`, `%${debouncedSearch}%`);
       }
       if (filters.status) {
         conditions.push("w.status = ?");
@@ -69,6 +69,16 @@ export default function History() {
       if (filters.weightSource) {
         conditions.push("(w.firstWeightSource = ? OR w.secondWeightSource = ?)");
         params.push(filters.weightSource, filters.weightSource);
+      }
+      if (filters.fromDate) {
+        conditions.push("w.date >= ?");
+        params.push(new Date(filters.fromDate).toISOString());
+      }
+      if (filters.toDate) {
+        const to = new Date(filters.toDate);
+        to.setHours(23, 59, 59, 999);
+        conditions.push("w.date <= ?");
+        params.push(to.toISOString());
       }
 
       if (conditions.length > 0) {
@@ -374,6 +384,17 @@ export default function History() {
                       >
                         <Eye size={16} className="mr-1.5" /> View
                       </button>
+                      {row.status === 'COMPLETED' && (
+                        <button 
+                          onClick={() => {
+                            setSelectedWeighment(row);
+                            setViewDetails(false); // Make sure details are closed so the direct print modal can show
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors ml-2"
+                        >
+                          <Printer size={16} className="mr-1.5" /> Print
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

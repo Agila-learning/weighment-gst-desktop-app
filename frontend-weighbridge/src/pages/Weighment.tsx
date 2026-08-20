@@ -38,15 +38,20 @@ export default function Weighment() {
   const [showManualConfirm, setShowManualConfirm] = useState(false);
   const [manualReason, setManualReason] = useState('');
 
+  const { syncStatus } = useSyncStore();
+
+  useEffect(() => {
+    fetchMasters();
+  }, [syncStatus]); // Re-fetch when syncStatus changes (e.g., finishes syncing)
+
   // Dropdown ref for clicking outside
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchMasters = async () => {
-      const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
-      try {
-        const [cRes, mRes, dRes, vRes, tRes] = await Promise.all([
+  const fetchMasters = async () => {
+    const ipcRenderer = (window as any).ipcRenderer;
+    if (!ipcRenderer) return;
+    try {
+      const [cRes, mRes, dRes, vRes, tRes] = await Promise.all([
           ipcRenderer.invoke('db-query', 'SELECT * FROM customers'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM materials'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM drivers'),

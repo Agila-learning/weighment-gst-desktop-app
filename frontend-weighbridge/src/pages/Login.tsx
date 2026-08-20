@@ -57,7 +57,7 @@ const Login = () => {
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-2">
               <div className="h-14 w-14 bg-emerald-100/50 rounded-xl flex items-center justify-center p-2 mb-4 ring-1 ring-emerald-200">
-                <img src="/icon.png" alt="FIC Weighbridge" className="w-full h-full object-contain rounded-lg shadow-sm" />
+                <img src="./icon.png" alt="FIC Weighbridge" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">FIC WEIGHBRIDGE</h1>
