@@ -37,8 +37,9 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             }
           `}</style>
           
-          <div className="text-center mb-8 border-b-2 border-slate-800 pb-6">
-            <h1 className="text-3xl font-black text-slate-900 mb-1">ABC INFRASTRUCTURE</h1>
+          <div className="text-center mb-8 border-b-2 border-slate-800 pb-6 flex flex-col items-center">
+            <img src="/icon.png" alt="FIC Logo" className="w-16 h-16 mb-2" />
+            <h1 className="text-3xl font-black text-slate-900 mb-1">FIC WEIGHBRIDGE</h1>
             <p className="text-sm text-slate-600">123 Industrial Estate, Main Road, City - 600001</p>
             <p className="text-sm text-slate-600">Phone: +91 98765 43210</p>
             <div className="mt-4 inline-block px-4 py-1 border-2 border-slate-800 rounded font-bold tracking-widest uppercase">

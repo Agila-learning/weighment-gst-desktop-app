@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Weighbridge Desktop Application",
-  "author": "Forge India Connect",
+  "author": "FIC GST",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, Edit2, FileText, XCircle, Copy, Trash2, Printer, FolderOpen, Share2 } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2 } from 'lucide-react';
+import apiClient from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
 const Invoices = () => {
@@ -30,22 +30,7 @@ const Invoices = () => {
       }
       
       const res = await apiClient.get(`/invoices?${params.toString()}`);
-      const data = res.data.data;
-      
-      const ipcRenderer = (window as any).ipcRenderer;
-      if (ipcRenderer) {
-        const customPath = localStorage.getItem('pdfStoragePath');
-        const enriched = await Promise.all(data.map(async (inv: any) => {
-          if (inv.status === 'FINALIZED') {
-            const result = await ipcRenderer.invoke('check-pdf-exists', { invoiceNumber: inv.invoiceNumber, customPath });
-            return { ...inv, pdfExists: result.exists, pdfPath: result.path };
-          }
-          return inv;
-        }));
-        setInvoices(enriched);
-      } else {
-        setInvoices(data);
-      }
+      setInvoices(res.data.data);
       setMeta(res.data.meta);
       
       // Calculate summary metrics on the client (for simplicity on this dataset)
@@ -71,16 +56,16 @@ const Invoices = () => {
   const handleExportCSV = () => {
     if (invoices.length === 0) return;
     
-    const headers = ['Invoice No', 'Date', 'Customer', 'Vehicle', 'Status', 'Taxable Amount', 'Tax Amount', 'Grand Total'];
+    const headers = ['Invoice No', 'Date', 'Customer', 'Vehicle Number', 'Cost', 'GST Amount', 'Total Amount', 'Status'];
     const rows = invoices.map(i => [
       i.invoiceNumber,
       i.date ? i.date.split('T')[0] : '',
-      i.customer?.name || i.buyerName,
-      i.vehicle?.vehicleNumber || i.snapshotVehicleNumber,
-      i.status,
+      i.customer?.name || i.buyerName || '',
+      i.vehicle?.vehicleNumber || i.snapshotVehicleNumber || '',
       i.subTotal,
       i.taxTotal,
-      i.grandTotal
+      i.grandTotal,
+      i.status
     ]);
     
     const csvContent = [
@@ -100,7 +85,7 @@ const Invoices = () => {
   };
 
   const handleCancelInvoice = async (id: string) => {
-    const reason = prompt('Please enter a reason for cancelling this invoice:');
+    const reason = prompt('Are you sure you want to cancel this invoice?\nPlease enter a reason for cancellation:');
     if (!reason) return;
     try {
       await apiClient.put(`/invoices/${id}/cancel`, { cancelReason: reason });
@@ -111,7 +96,7 @@ const Invoices = () => {
   };
 
   const handleDeleteDraft = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this draft invoice?')) return;
+    if (!confirm('Are you sure you want to permanently delete this draft invoice?')) return;
     try {
       await apiClient.delete(`/invoices/${id}`);
       fetchInvoices(meta.page);
@@ -121,58 +106,6 @@ const Invoices = () => {
   };
 
   const formatCurrency = (val: number) => `₹ ${val.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-
-  const handleGeneratePdf = async (inv: any) => {
-    const ipcRenderer = (window as any).ipcRenderer;
-    if (!ipcRenderer) {
-      window.open(`${API_BASE_URL}/invoices/${inv.id}/pdf`, '_blank');
-      return;
-    }
-
-    try {
-      const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'arraybuffer' });
-      const buffer = pdfRes.data;
-
-      const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-        buffer, 
-        defaultFilename: `INV-${inv.invoiceNumber}.pdf` 
-      });
-
-      if (saveResult.success) {
-        alert('PDF generated and saved successfully to:\n' + saveResult.path);
-        fetchInvoices(meta.page); // Refresh status
-      } else if (!saveResult.canceled) {
-        alert('Failed to save PDF locally: ' + saveResult.error);
-      }
-    } catch (err) {
-      alert('Error generating PDF');
-      console.error(err);
-    }
-  };
-
-  const handlePrint = (inv: any) => {
-    const ipcRenderer = (window as any).ipcRenderer;
-    if (ipcRenderer && inv.pdfExists) {
-      const printer = localStorage.getItem('defaultPrinter');
-      ipcRenderer.invoke('print-pdf', { filePath: inv.pdfPath, printerName: printer }).then((res: any) => {
-        if (!res.success && res.error) alert('Print error: ' + res.error);
-      });
-    } else {
-      const printWindow = window.open(`${API_BASE_URL}/invoices/${inv.id}/pdf`);
-      if (printWindow) {
-        printWindow.onload = () => printWindow.print();
-      }
-    }
-  };
-
-
-
-  const handleShareLocal = (path: string) => {
-    const ipcRenderer = (window as any).ipcRenderer;
-    if (ipcRenderer) {
-      ipcRenderer.invoke('open-folder', path);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -249,18 +182,16 @@ const Invoices = () => {
                 <th className="px-6 py-4 font-medium">Invoice No</th>
                 <th className="px-6 py-4 font-medium">Date</th>
                 <th className="px-6 py-4 font-medium">Customer</th>
-                <th className="px-6 py-4 font-medium text-right">Taxable</th>
+                <th className="px-6 py-4 font-medium text-right">Cost</th>
                 <th className="px-6 py-4 font-medium text-right">GST</th>
-                <th className="px-6 py-4 font-medium text-right">Total</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
-                <th className="px-6 py-4 font-medium text-center">PDF</th>
                 <th className="px-6 py-4 font-medium text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <FileClock size={32} className="text-gray-300 mb-2" />
                       <p>No invoices found matching your criteria</p>
@@ -278,7 +209,6 @@ const Invoices = () => {
                     </td>
                     <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.subTotal)}</td>
                     <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.taxTotal)}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-gray-900">{formatCurrency(inv.grandTotal)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         inv.status === 'FINALIZED' ? 'bg-green-100 text-green-700' : 
@@ -289,29 +219,9 @@ const Invoices = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {inv.status === 'FINALIZED' ? (
-                        inv.pdfExists ? (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200" title={inv.pdfPath}>Available</span>
-                        ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">Not Found</span>
-                        )
-                      ) : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         {inv.status === 'FINALIZED' && (
-                          <>
-                            <button title="Generate / Download PDF" onClick={() => handleGeneratePdf(inv)} className="text-gray-400 hover:text-blue-600"><Download size={16} /></button>
-                            {inv.pdfExists && (
-                              <>
-                                <button title="Open PDF" onClick={() => (window as any).ipcRenderer?.invoke('open-pdf', inv.pdfPath)} className="text-gray-400 hover:text-indigo-600"><FileText size={16} /></button>
-                                <button title="Open Folder" onClick={() => (window as any).ipcRenderer?.invoke('open-folder', inv.pdfPath)} className="text-gray-400 hover:text-indigo-500"><FolderOpen size={16} /></button>
-                                <button title="Print" onClick={() => handlePrint(inv)} className="text-gray-400 hover:text-gray-700"><Printer size={16} /></button>
-                                <button title="Share Local File" onClick={() => handleShareLocal(inv.pdfPath)} className="text-gray-400 hover:text-green-500"><Share2 size={16} /></button>
-                              </>
-                            )}
-                            <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
-                          </>
+                          <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
                         )}
                         {inv.status === 'DRAFT' && (
                           <>

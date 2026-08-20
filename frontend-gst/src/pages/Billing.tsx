@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FolderOpen, Printer, FileText } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FileText, Printer, FileSearch } from 'lucide-react';
+import apiClient from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import PdfPreviewModal from '../components/PdfPreviewModal';
 
 const STATE_MAPPINGS: Record<string, string> = {
   '33': 'Tamil Nadu',
@@ -110,6 +111,8 @@ const Billing = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const ipcRenderer = (window as any).ipcRenderer;
 
@@ -430,42 +433,16 @@ const Billing = () => {
       }
       
       if (status === 'FINALIZED') {
-        if (!ipcRenderer) {
-          // Fallback for non-electron env
-          window.open(`${API_BASE_URL}/invoices/${res.data.id}/pdf`, '_blank');
-          navigate('/invoices');
-          return;
-        }
+        const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
+        const blobUrl = URL.createObjectURL(pdfRes.data);
+        setPreviewBlobUrl(blobUrl);
 
-        // Fetch PDF Buffer from backend
-        const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'arraybuffer' });
-        const buffer = pdfRes.data;
-
-        // Prompt native save dialog immediately
-        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-          buffer, 
-          defaultFilename: `INV-${res.data.invoiceNumber}.pdf` 
+        setSuccessData({
+          invoiceId: res.data.id,
+          invoiceNumber: res.data.invoiceNumber,
+          grandTotal: res.data.grandTotal,
+          buffer: await pdfRes.data.arrayBuffer()
         });
-
-        if (saveResult.success) {
-          setSuccessData({
-            invoiceId: res.data.id,
-            invoiceNumber: res.data.invoiceNumber,
-            grandTotal: res.data.grandTotal,
-            path: saveResult.path,
-            buffer // Store buffer temporarily for re-download if needed
-          });
-        } else if (saveResult.canceled) {
-          setSuccessData({
-            invoiceId: res.data.id,
-            invoiceNumber: res.data.invoiceNumber,
-            grandTotal: res.data.grandTotal,
-            buffer
-          });
-        } else {
-          alert('Failed to save PDF locally: ' + saveResult.error);
-          navigate('/invoices');
-        }
       } else {
         navigate('/invoices');
       }
@@ -504,44 +481,43 @@ const Billing = () => {
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button 
-              onClick={async () => {
-                const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-                  buffer: successData.buffer, 
-                  defaultFilename: `INV-${successData.invoiceNumber}.pdf` 
-                });
-                if (saveResult.success) {
-                  setSuccessData({ ...successData, path: saveResult.path });
-                } else if (!saveResult.canceled) {
-                  alert('Unable to save the PDF to the selected location.');
-                }
-              }} 
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              onClick={() => setIsPreviewOpen(true)} 
+              className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
             >
-              <FileText size={18} /> Download PDF
+              <FileSearch size={18} /> Preview PDF
             </button>
             <button 
-              onClick={() => {
-                if (successData.path) {
-                  ipcRenderer.invoke('open-pdf', successData.path);
+              onClick={async () => {
+                if (ipcRenderer) {
+                  const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
+                    buffer: successData.buffer, 
+                    defaultFilename: `INV-${successData.invoiceNumber}.pdf` 
+                  });
+                  if (!saveResult.success && !saveResult.canceled) {
+                    alert('Unable to save the PDF to the selected location.');
+                  } else if (saveResult.success) {
+                    alert('PDF saved to: ' + saveResult.path);
+                  }
                 } else {
-                  // Fallback if not saved locally yet
-                  window.open(`${API_BASE_URL}/invoices/${successData.invoiceId}/pdf`, '_blank');
+                  const link = document.createElement('a');
+                  link.href = previewBlobUrl as string;
+                  link.download = `INV-${successData.invoiceNumber}.pdf`;
+                  link.click();
                 }
               }} 
               className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
             >
-              <FolderOpen size={18} /> View Invoice
+              <FileText size={18} /> Download
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => {
-              if (successData.path) {
-                const printer = localStorage.getItem('defaultPrinter');
-                ipcRenderer.invoke('print-pdf', { filePath: successData.path, printerName: printer }).then((res: any) => {
-                  if (!res.success && res.error) alert('Print error: ' + res.error);
-                });
-              } else {
-                window.open(`${API_BASE_URL}/invoices/${successData.invoiceId}/pdf`);
+              if (previewBlobUrl) {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = previewBlobUrl;
+                document.body.appendChild(iframe);
+                iframe.contentWindow?.print();
               }
             }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               <Printer size={18} /> Print
@@ -560,6 +536,39 @@ const Billing = () => {
             </button>
           </div>
         </div>
+
+        <PdfPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          blobUrl={previewBlobUrl}
+          isLoading={false}
+          title={`Invoice ${successData.invoiceNumber}`}
+          onDownload={async () => {
+            if (ipcRenderer) {
+              const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
+                buffer: successData.buffer, 
+                defaultFilename: `INV-${successData.invoiceNumber}.pdf` 
+              });
+              if (!saveResult.success && !saveResult.canceled) {
+                alert('Unable to save the PDF to the selected location.');
+              }
+            } else {
+              const link = document.createElement('a');
+              link.href = previewBlobUrl as string;
+              link.download = `INV-${successData.invoiceNumber}.pdf`;
+              link.click();
+            }
+          }}
+          onPrint={() => {
+            if (previewBlobUrl) {
+              const iframe = document.createElement('iframe');
+              iframe.style.display = 'none';
+              iframe.src = previewBlobUrl;
+              document.body.appendChild(iframe);
+              iframe.contentWindow?.print();
+            }
+          }}
+        />
       </div>
     );
   }

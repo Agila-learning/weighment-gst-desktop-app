@@ -56,11 +56,11 @@ const Login = () => {
           
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-2">
-              <div className="w-12 h-12 flex items-center justify-center">
-                <img src="/icon.png" alt="Forge Weighbridge" className="w-full h-full object-contain rounded-lg shadow-sm" />
+              <div className="h-14 w-14 bg-emerald-100/50 rounded-xl flex items-center justify-center p-2 mb-4 ring-1 ring-emerald-200">
+                <img src="/icon.png" alt="FIC Weighbridge" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">FORGE WEIGHBRIDGE</h1>
+                <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">FIC WEIGHBRIDGE</h1>
                 <span className="text-sm font-semibold text-emerald-600 tracking-widest uppercase">Management System</span>
               </div>
             </div>
@@ -155,7 +155,7 @@ const Login = () => {
           <div className="mt-12 text-center text-xs font-semibold text-slate-400 tracking-wider">
             <p>VERSION 1.0.0</p>
             <div className="mt-2 text-[10px] text-slate-400 font-medium">
-              Powered by <span className="font-bold text-slate-600">Forge India Connect</span>
+              Powered by <span className="font-bold text-slate-600">FIC GST</span>
             </div>
           </div>
           

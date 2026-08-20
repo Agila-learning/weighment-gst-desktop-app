@@ -528,8 +528,9 @@ export default function Weighment() {
 
             {/* Actual Slip Content */}
             <div className="slip-content font-sans text-black">
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold uppercase tracking-wider">Company Name</h1>
+              <div className="text-center mb-6 flex flex-col items-center">
+                <img src="/icon.png" alt="FIC Logo" className="w-16 h-16 mb-2 print:block" />
+                <h1 className="text-2xl font-bold uppercase tracking-wider">FIC WEIGHBRIDGE</h1>
                 <p className="text-sm">123 Industrial Area, State, India</p>
                 <h2 className="text-lg font-bold mt-4 border-b-2 border-black inline-block pb-1 uppercase tracking-widest">
                   {completedWeighment.status === 'FIRST_WEIGHT' ? 'First Weight Slip' : 'Final Weighment Slip'}

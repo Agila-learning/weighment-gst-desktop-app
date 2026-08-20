@@ -95,7 +95,43 @@ export default function History() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExportCSV = () => {
+    if (history.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    
+    const headers = ['Slip No', 'Date', 'Time', 'Vehicle', 'Customer', 'Material', 'Load Type', 'Gross', 'Net (KG)', 'Status'];
+    const rows = history.map(row => [
+      row.slipNumber || '',
+      new Date(row.createdAt).toLocaleDateString(),
+      new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      row.vehicleNumber,
+      row.customerName || '',
+      row.materialName || '',
+      row.loadType || '',
+      row.firstWeight || '',
+      row.netWeight || '',
+      row.status
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(e => e.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Weighment_History_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportExcel = async () => {
     try {
       const params = new URLSearchParams({
         ...(debouncedSearch && { vehicleNumber: debouncedSearch }),
@@ -114,7 +150,7 @@ export default function History() {
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      alert("Failed to export Excel. Please try again.");
+      alert("Failed to export Excel. Please use the CSV export as a fallback.");
     }
   };
 
@@ -211,12 +247,20 @@ export default function History() {
     <div className="p-8 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-slate-800">Weighment History</h1>
-        <button 
-          onClick={handleExport}
-          className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
-        >
-          <Download size={18} className="mr-2" /> Export Excel
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium"
+          >
+            <Download size={18} className="mr-2" /> Export CSV
+          </button>
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
+          >
+            <Download size={18} className="mr-2" /> Export Excel
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col flex-1 min-h-0 overflow-hidden">

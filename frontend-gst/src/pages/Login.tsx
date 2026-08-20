@@ -136,10 +136,10 @@ const Login = () => {
           
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-6">
-              <div className="w-12 h-12 flex items-center justify-center">
-                <img src="/icon.png" alt="Forge GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
+              <div className="h-16 w-16 bg-indigo-100 rounded-xl flex items-center justify-center p-2 mb-4">
+                <img src="/icon.png" alt="FIC GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Forge GST Billing</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">FIC GST</h1>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
             <p className="text-gray-500">Sign in to continue to your billing workspace.</p>
@@ -223,7 +223,7 @@ const Login = () => {
           <div className="mt-12 text-center text-sm text-gray-400">
             <p>Version 1.0.0</p>
             <div className="mt-2 text-xs text-gray-400 font-medium">
-              Powered by <span className="font-semibold text-gray-600">Forge India Connect</span>
+              Powered by <span className="font-semibold text-gray-600">FIC GST</span>
             </div>
           </div>
           

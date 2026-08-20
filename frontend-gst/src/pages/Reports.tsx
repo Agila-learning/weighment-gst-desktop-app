@@ -87,6 +87,60 @@ const Reports = () => {
     return Object.values(grouped).sort((a: any, b: any) => b.sales - a.sales).slice(0, 10); // Top 10
   }, [filteredData]);
 
+  const handleExportCSV = () => {
+    if (filteredData.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    
+    const headers = ['Invoice No', 'Date', 'Customer', 'Taxable Amount', 'GST Amount', 'Total Amount', 'Status'];
+    const rows = filteredData.map(i => [
+      i.invoiceNumber,
+      i.date ? i.date.split('T')[0] : '',
+      i.customer?.name || i.buyerName || '',
+      i.subTotal,
+      i.taxTotal,
+      i.grandTotal,
+      i.status
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(e => e.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales_report_${startDate}_to_${endDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.get(`/reports/export-sales?startDate=${startDate}&endDate=${endDate}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `sales_report_${startDate}_to_${endDate}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      console.error('Excel export failed', error);
+      alert('Failed to generate Excel report. Please use the CSV export as a fallback.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Section */}
@@ -96,13 +150,20 @@ const Reports = () => {
           <p className="text-gray-500 text-sm mt-1">Analyze your business performance</p>
         </div>
         <div className="flex items-center gap-3">
-          <a 
-            href={`${API_BASE_URL}/reports/export-sales?startDate=${startDate}&endDate=${endDate}`} 
-            target="_blank" 
-            className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
-          >
-            <Download size={16} /> Export (Excel)
-          </a>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleExportCSV}
+              className="flex items-center justify-center gap-2 bg-gray-50 text-gray-700 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm"
+            >
+              <Download size={16} /> Export (CSV)
+            </button>
+            <button 
+              onClick={handleExportExcel}
+              className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
+            >
+              <Download size={16} /> Export (Excel)
+            </button>
+          </div>
         </div>
       </div>
 

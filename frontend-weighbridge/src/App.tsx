@@ -69,7 +69,7 @@ function Sidebar() {
           <img src="/icon.png" alt="Logo" className="w-8 h-8 object-contain rounded" />
           {!isMinimized && (
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight leading-none">FORGE</h1>
+              <h1 className="text-xl font-bold text-white tracking-tight leading-none">FIC</h1>
               <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mt-0.5">Weighbridge</p>
             </div>
           )}
