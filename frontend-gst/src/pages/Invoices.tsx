@@ -281,7 +281,26 @@ const Invoices = () => {
       </div>
       {/* PDF PREVIEW MODAL */}
       {previewBlobUrl && (
-        <PdfPreviewModal blobUrl={previewBlobUrl} onClose={() => setPreviewBlobUrl(null)} />
+        <PdfPreviewModal 
+          isOpen={true}
+          isLoading={false}
+          blobUrl={previewBlobUrl} 
+          onClose={() => setPreviewBlobUrl(null)} 
+          onDownload={() => {
+            const link = document.createElement('a');
+            link.href = previewBlobUrl;
+            link.download = `Invoice.pdf`;
+            link.click();
+          }}
+          onPrint={() => {
+            const printWindow = window.open(previewBlobUrl);
+            if (printWindow) {
+              printWindow.onload = () => {
+                printWindow.print();
+              };
+            }
+          }}
+        />
       )}
     </div>
   );

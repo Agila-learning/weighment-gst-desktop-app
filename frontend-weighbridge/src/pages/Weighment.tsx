@@ -384,7 +384,6 @@ export default function Weighment() {
               </div>
           </div>
         </div>
-        </div>
 
       </div>
 
