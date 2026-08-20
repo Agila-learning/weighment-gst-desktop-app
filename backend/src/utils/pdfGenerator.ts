@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import prisma from '../prisma';
 import { numberToWords } from './numberToWords';
 
-export const generateInvoicePDF = async (invoiceId: string): Promise<Buffer> => {
+export const generateInvoicePDF = async (invoiceId: string): Promise<string> => {
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
     include: { customer: true, items: { include: { material: true } }, vehicle: true }
@@ -374,36 +374,5 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<Buffer> => 
     </html>
   `;
 
-  const browser = await puppeteer.launch({ 
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-  const page = await browser.newPage();
-  
-  // Navigate to blank to establish base, then set content
-  await page.setContent(htmlContent, { waitUntil: 'load' });
-  
-  // Wait for all images to explicitly load to prevent missing logos
-  await page.evaluate(async () => {
-    const images = Array.from(document.images);
-    await Promise.all(
-      images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-      })
-    );
-  });
-
-  const pdfBuffer = await page.pdf({ 
-    format: 'A4', 
-    printBackground: true,
-    margin: { top: '10px', bottom: '10px', left: '10px', right: '10px' } 
-  });
-  
-  await browser.close();
-  
-  return Buffer.from(pdfBuffer);
+  return htmlContent;
 };

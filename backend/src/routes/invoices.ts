@@ -226,17 +226,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Download PDF Invoice
+// Download HTML Invoice (formerly PDF)
 router.get('/:id/pdf', async (req, res) => {
   try {
-    const pdfBuffer = await generateInvoicePDF(req.params.id);
+    const htmlContent = await generateInvoicePDF(req.params.id);
     res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename=invoice-${req.params.id}.pdf`
+      'Content-Type': 'text/html',
     });
-    res.send(pdfBuffer);
-  } catch (error) {
-    res.status(500).json({ message: 'Error generating PDF' });
+    res.send(htmlContent);
+  } catch (error: any) {
+    console.error('PDF GENERATION ERROR:', error);
+    res.status(500).json({ message: 'Error generating PDF: ' + (error.message || String(error)) });
   }
 });
 

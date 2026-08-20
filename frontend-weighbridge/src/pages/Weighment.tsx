@@ -294,7 +294,28 @@ export default function Weighment() {
                     </div>
                   ))
                 ) : (
-                  <div className="px-4 py-3 text-slate-500 text-sm text-center">No vehicle found. Please add to master first.</div>
+                  <div className="px-4 py-4 text-slate-500 text-sm text-center">
+                    <p className="mb-2">No vehicle found.</p>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const newId = 'V' + Date.now();
+                          const q = 'INSERT INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)';
+                          const res = await (window as any).ipcRenderer.invoke('db-query', q, [newId, vehicleSearchTerm, 0]);
+                          if (res.success) {
+                            const newV = { id: newId, vehicleNumber: vehicleSearchTerm, tareWeight: 0 };
+                            setVehicles([...vehicles, newV]);
+                            handleVehicleSelect(newV);
+                          }
+                        } catch (e) {
+                          alert('Failed to quick add vehicle');
+                        }
+                      }}
+                      className="w-full py-2 bg-primary-50 text-primary-600 font-bold rounded-lg border border-primary-100 hover:bg-primary-100 transition-colors"
+                    >
+                      + Quick Add "{vehicleSearchTerm}"
+                    </button>
+                  </div>
                 )}
               </div>
             )}
