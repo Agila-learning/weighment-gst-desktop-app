@@ -66,7 +66,7 @@ function Sidebar() {
     <div className={`bg-slate-900 h-screen text-slate-100 flex flex-col transition-all duration-300 ${isMinimized ? 'w-20' : 'w-64'}`}>
       <div className={`p-4 flex items-center border-b border-slate-800 mb-6 ${isMinimized ? 'flex-col justify-center gap-4' : 'justify-between'}`}>
         <div className={`flex items-center ${isMinimized ? '' : 'space-x-3'}`}>
-          <img src="/icon.png" alt="Logo" className={`w-8 h-8 object-contain rounded ${isMinimized ? '' : ''}`} />
+          <img src="./icon.png" alt="Logo" className={`w-8 h-8 object-contain rounded ${isMinimized ? '' : ''}`} />
           {!isMinimized && (
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight leading-none">FIC</h1>

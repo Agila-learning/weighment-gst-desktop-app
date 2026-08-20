@@ -90,8 +90,7 @@ export default function Drivers() {
           </div>
           <button
             onClick={() => { setCurrentDriver(null); setShowModal(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition-colors"
-            style={{ backgroundColor: 'var(--color-primary)' }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition-colors bg-primary-600 hover:bg-primary-700"
           >
             <Plus size={20} /> Add Driver
           </button>
@@ -238,7 +237,7 @@ export default function Drivers() {
               
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">Cancel</button>
-                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm" style={{ backgroundColor: 'var(--color-primary)' }}>Save Driver</button>
+                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm bg-primary-600 hover:bg-primary-700">Save Driver</button>
               </div>
             </form>
           </div>

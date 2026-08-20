@@ -144,7 +144,7 @@ const Dashboard = () => {
             <h2 className="text-lg font-semibold text-gray-800">Quick Actions</h2>
           </div>
           <div className="flex flex-col gap-4">
-            <Link to="/billing" className="bg-blue-600 text-white px-6 py-4 rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--color-primary)' }}>
+            <Link to="/billing" className="bg-blue-600 text-white px-6 py-4 rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700">
               <FileText size={20} /> Create New Invoice
             </Link>
             <Link to="/reports" className="bg-gray-50 text-gray-700 border border-gray-200 px-6 py-4 rounded-xl font-medium hover:bg-gray-100 transition-colors shadow-sm flex items-center justify-center gap-2">

@@ -170,7 +170,7 @@ const Invoices = () => {
           <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
             <Download size={16} /> Export CSV
           </button>
-          <button onClick={() => navigate('/billing')} className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors text-sm font-medium" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <button onClick={() => navigate('/billing')} className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors text-sm font-medium bg-primary-600 hover:bg-primary-700">
             + Create Invoice
           </button>
         </div>

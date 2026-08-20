@@ -332,7 +332,6 @@ export default function Weighment() {
                 {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
                 <User size={16} className="text-slate-400" /> Driver
@@ -363,7 +362,7 @@ export default function Weighment() {
             </div>
           </div>
           
-          <div className="mt-4">
+          <div className="mt-6">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
                 <Package size={16} className="text-slate-400" /> Load Type *
               </label>

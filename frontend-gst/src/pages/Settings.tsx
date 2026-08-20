@@ -263,7 +263,7 @@ const Settings = () => {
             </div>
 
             <div className="pt-4">
-              <button type="submit" className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 w-full justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
+              <button type="submit" className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 w-full justify-center bg-primary-600 hover:bg-primary-700">
                 <Save size={18} /> Save Company Details
               </button>
             </div>
@@ -420,7 +420,7 @@ const Settings = () => {
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowTaxModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity font-medium shadow-sm" style={{ backgroundColor: 'var(--color-primary)' }}>Add Tax</button>
+                <button type="submit" className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity font-medium shadow-sm bg-primary-600 hover:bg-primary-700">Add Tax</button>
               </div>
             </form>
           </div>

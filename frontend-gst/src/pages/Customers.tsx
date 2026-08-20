@@ -160,7 +160,7 @@ const Customers = () => {
               <LayoutGrid size={18} />
             </button>
           </div>
-          <button onClick={openAddModal} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 shadow-md" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <button onClick={openAddModal} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 shadow-md bg-primary-600 hover:bg-primary-700">
             <Plus size={20} />
             <span>Add Customer</span>
           </button>
@@ -236,7 +236,7 @@ const Customers = () => {
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity font-medium shadow-sm" style={{ backgroundColor: 'var(--color-primary)' }}>Save Customer</button>
+                <button type="submit" className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity font-medium shadow-sm bg-primary-600 hover:bg-primary-700">Save Customer</button>
               </div>
             </form>
           </div>
