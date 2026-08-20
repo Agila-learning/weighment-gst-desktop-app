@@ -17,7 +17,7 @@
     "appId": "com.forgeindiaconnect.weighbridge",
     "productName": "Weighbridge Desktop",
     "directories": {
-      "output": "dist-electron/release"
+      "output": "release"
     },
     "win": {
       "icon": "build/icon.ico",
