@@ -99,7 +99,7 @@ router.get('/material-analysis', async (req, res) => {
         };
       }
       materialStats[matId].quantity += item.quantity;
-      materialStats[matId].revenue += item.total;
+      materialStats[matId].revenue += item.totalAmount;
     });
     
     // Convert to array and sort by revenue descending

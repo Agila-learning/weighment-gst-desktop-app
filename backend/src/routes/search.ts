@@ -25,14 +25,14 @@ router.get('/', async (req, res) => {
             { phone: { contains: searchTerm, mode: 'insensitive' } },
             { gstin: { contains: searchTerm, mode: 'insensitive' } }
           ],
-          isDeleted: false
+          isActive: true
         },
         take: 5
       }),
       prisma.vehicle.findMany({
         where: {
           vehicleNumber: { contains: searchTerm, mode: 'insensitive' },
-          isDeleted: false
+          isActive: true
         },
         take: 5
       }),
