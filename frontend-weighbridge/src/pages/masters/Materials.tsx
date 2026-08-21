@@ -1,15 +1,18 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
-import { Search, LayoutList, LayoutGrid } from 'lucide-react';
+import { Search, LayoutList, LayoutGrid, Plus, Edit2 } from 'lucide-react';
 import api from '../../services/api';
 
 export default function Materials() {
   const [materials, setMaterials] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  // GST fields are hidden for weighbridge operator but might be required by backend
-  // In a real app we'd fetch a default tax rate or let backend handle it, or it's just not created here
+  
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     fetchMaterials();
@@ -22,31 +25,167 @@ export default function Materials() {
     } catch (err) {}
   };
 
+  const validateForm = () => {
+    if (newMaterial.name.length < 2) return "Name must be at least 2 characters.";
+    return null;
+  };
+
+  const handleAddOrEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof validateForm === 'function') {
+        const error = validateForm();
+        if (error) {
+          setErrorMsg(error);
+          return;
+        }
+    }
+    setErrorMsg('');
+    
+    try {
+      const ipcRenderer = (window as any).ipcRenderer;
+      let serverSaved = false;
+      let serverErrorMsg = '';
+
+      let payload: any = { ...newMaterial };
+      const idToEdit = newMaterial.id;
+      const isEditingFlag = isEditing;
+        
+      // 1. Attempt Server API Call First
+      try {
+        if (isEditingFlag && idToEdit) {
+          await api.put(`/materials/${idToEdit}`, payload);
+        } else {
+          const res = await api.post('/materials', payload);
+          if (res.data && res.data.id) payload.id = res.data.id;
+        }
+        serverSaved = true;
+      } catch (err: any) {
+        console.warn("Server API Error:", err);
+        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
+        if (!payload.id) {
+           payload.id = uuidv4();
+        }
+      }
+
+      // 2. Attempt Local SQLite (Offline Mode)
+      if (ipcRenderer) {
+          let q = '';
+          let params: any[] = [];
+          q = 'INSERT OR REPLACE INTO materials (id, name, pricingType, billingUnit, defaultRate) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.pricingType || 'PER_TON', payload.billingUnit || 'TON', payload.defaultRate || 0];
+          await ipcRenderer.invoke('db-query', q, params);
+      } else if (!serverSaved) {
+          setErrorMsg(serverErrorMsg || "Could not save to server.");
+          return;
+      }
+
+      // Success
+      setShowModal(false);
+      setIsEditing(false);
+      fetchMaterials();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unexpected error occurred.');
+    }
+  };
+
+  const openAddModal = () => {
+    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+    setIsEditing(false);
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (m: any) => {
+    setNewMaterial({
+      id: m.id,
+      name: m.name || '',
+      unit: m.unit || 'TON',
+      hsnCode: m.hsnCode || '',
+      pricingType: m.pricingType || 'PER_TON',
+      billingUnit: m.billingUnit || 'TON',
+      defaultRate: m.defaultRate || 0
+    });
+    setIsEditing(true);
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
   const filtered = materials.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">Material Master</h1>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Materials</h1>
+          <p className="text-gray-500">Manage materials and products</p>
+        </div>
         <div className="flex gap-3">
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+          <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
             <button 
               onClick={() => setViewMode('list')} 
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
               title="List View"
             >
               <LayoutList size={18} />
             </button>
             <button 
               onClick={() => setViewMode('grid')} 
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
               title="Grid View"
             >
               <LayoutGrid size={18} />
             </button>
           </div>
+          <button onClick={openAddModal} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 shadow-md bg-primary-600 hover:bg-primary-700">
+            <Plus size={20} />
+            <span>Add Material</span>
+          </button>
         </div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-bold text-gray-900">
+                {isEditing ? 'Edit Material' : 'Add New Material'}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              {errorMsg && (
+                <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
+                  {errorMsg}
+                </div>
+              )}
+              
+              <form onSubmit={handleAddOrEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Material Name *</label>
+                  <input required type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.name} onChange={e => setNewMaterial({...newMaterial, name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.unit} onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}>
+                    <option value="TON">TON</option>
+                    <option value="KG">KG</option>
+                    <option value="NOS">NOS</option>
+                  </select>
+                </div>
+                
+                <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+                  <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" className="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-sm transition-colors">
+                    Save Material
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="p-4 border-b border-slate-200 bg-slate-50">
@@ -61,20 +200,25 @@ export default function Materials() {
               <thead className="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">HSN Code</th>
                   <th className="px-4 py-3">Unit</th>
-                  <th className="px-4 py-3">Tax Rate</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filtered.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-bold text-slate-700">{row.name}</td>
-                    <td className="px-4 py-3 font-mono text-slate-600">{row.hsnCode || '-'}</td>
                     <td className="px-4 py-3">{row.unit || 'TON'}</td>
-                    <td className="px-4 py-3">{row.taxRate?.name || '-'}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => openEditModal(row)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                        <Edit2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500">No materials found.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -91,16 +235,9 @@ export default function Materials() {
                       {row.unit || 'TON'}
                     </p>
                   </div>
-                  <div className="space-y-2 text-sm text-slate-600">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">HSN Code:</span>
-                      <span className="font-medium text-slate-700">{row.hsnCode || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Tax Rate:</span>
-                      <span className="font-medium text-slate-700">{row.taxRate?.name || 'N/A'}</span>
-                    </div>
-                  </div>
+                  <button onClick={() => openEditModal(row)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Edit2 size={16} />
+                  </button>
                 </div>
               ))
             )}

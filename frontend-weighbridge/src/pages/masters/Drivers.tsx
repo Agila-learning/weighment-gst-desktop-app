@@ -7,6 +7,7 @@ import api from '../../services/api';
 export default function Drivers() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,6 +40,67 @@ export default function Drivers() {
     setIsModalOpen(true);
   };
 
+  
+  const handleAddOrEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof validateForm === 'function') {
+        const error = validateForm();
+        if (error) {
+          setErrorMsg(error);
+          return;
+        }
+    }
+    setErrorMsg('');
+    
+    try {
+      const ipcRenderer = (window as any).ipcRenderer;
+      let serverSaved = false;
+      let serverErrorMsg = '';
+
+      let payload: any = {};
+      payload = { name, mobile, licenseNumber, licenseExpiry: licenseExpiry ? new Date(licenseExpiry).toISOString() : null, transporterName };
+        const idToEdit = editingDriver ? editingDriver.id : null;
+        const isEditingFlag = !!editingDriver;
+        
+      // 1. Attempt Server API Call First (since user prioritizes Postgresql)
+      try {
+        if (isEditingFlag && idToEdit) {
+          await api.put(`/drivers/${idToEdit}`, payload);
+        } else {
+          const res = await api.post('/drivers', payload);
+          if (res.data && res.data.id) payload.id = res.data.id;
+        }
+        serverSaved = true;
+      } catch (err: any) {
+        console.warn("Server API Error:", err);
+        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
+        if (!payload.id) {
+           payload.id = uuidv4();
+        }
+      }
+
+      // 2. Attempt Local SQLite (Offline Mode)
+      if (ipcRenderer) {
+          let q = '';
+          let params: any[] = [];
+          q = 'INSERT OR REPLACE INTO drivers (id, name) VALUES (?, ?)'; params = [payload.id, payload.name];
+          await ipcRenderer.invoke('db-query', q, params);
+      } else if (!serverSaved) {
+          // Web Mode (no Electron) and Server Failed!
+          setErrorMsg(serverErrorMsg || "Could not save to server.");
+          return;
+      }
+
+      // Success
+      if (typeof setShowModal === 'function') setShowModal(false);
+      if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
+      if (typeof setIsEditing === 'function') setIsEditing(false);
+      fetchDrivers();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unexpected error occurred.');
+    }
+  };
+
   const openEditModal = (c: any) => {
     setEditingDriver(c);
     setName(c.name);
@@ -49,26 +111,7 @@ export default function Drivers() {
     setIsModalOpen(true);
   };
 
-  const handleSave = async () => {
-    try {
-      const payload = { 
-        name, 
-        mobile,
-        licenseNumber,
-        licenseExpiry: licenseExpiry ? new Date(licenseExpiry).toISOString() : null,
-        transporterName 
-      };
-      if (editingDriver) {
-        await api.put(`/drivers/${editingDriver.id}`, payload);
-      } else {
-        await api.post('/drivers', payload);
-      }
-      setIsModalOpen(false);
-      fetchDrivers();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error saving driver');
-    }
-  };
+  
 
   const filtered = drivers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -213,7 +256,7 @@ export default function Drivers() {
             </div>
             <div className="mt-8 flex justify-end space-x-3">
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50">Cancel</button>
-              <button onClick={handleSave} disabled={!name} className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50">Save</button>
+              <button onClick={handleAddOrEdit} disabled={!name} className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50">Save</button>
             </div>
           </div>
         </div>

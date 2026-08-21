@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Truck, Info, Clock, CheckCircle, Scale } from 'lucide-react';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 
 const Vehicles = () => {
   const [search, setSearch] = useState('');
@@ -41,50 +41,69 @@ const Vehicles = () => {
     }
   };
 
+  
+  
+  
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const error = null;
-    if (error) {
-      setErrorMsg(error);
-      return;
+    if (typeof validateForm === 'function') {
+        const error = validateForm();
+        if (error) {
+          setErrorMsg(error);
+          return;
+        }
     }
     setErrorMsg('');
+    
     try {
       const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
+      let serverSaved = false;
+      let serverErrorMsg = '';
 
-      const payload = { ...newVehicle };
-      
-      // Attempt to push to central server if online
+      let payload: any = {};
+      payload = { ...newVehicle };
+        const idToEdit = newVehicle.id;
+        const isEditingFlag = isEditing;
+        
+      // 1. Attempt Server API Call First (since user prioritizes Postgresql)
       try {
-        if (isEditing && newVehicle.id) {
-          await apiClient.put(`/vehicles/${newVehicle.id}`, payload);
+        if (isEditingFlag && idToEdit) {
+          await api.put(`/vehicles/${idToEdit}`, payload);
         } else {
-          const res = await apiClient.post('/vehicles', payload);
+          const res = await api.post('/vehicles', payload);
           if (res.data && res.data.id) payload.id = res.data.id;
         }
-      } catch (err) {
-        console.warn("Offline or API error, generating local UUID", err);
+        serverSaved = true;
+      } catch (err: any) {
+        console.warn("Server API Error:", err);
+        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
         if (!payload.id) {
            payload.id = uuidv4();
         }
       }
 
-      // Insert or Update locally
-      let q = '';
-      let params: any[] = [];
-      q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)'; params = [payload.id, payload.vehicleNumber, (payload as any).tareWeight || 0];
+      // 2. Attempt Local SQLite (Offline Mode)
+      if (ipcRenderer) {
+          let q = '';
+          let params: any[] = [];
+          q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)'; params = [payload.id, payload.vehicleNumber, payload.tareWeight || 0];
+          await ipcRenderer.invoke('db-query', q, params);
+      } else if (!serverSaved) {
+          // Web Mode (no Electron) and Server Failed!
+          setErrorMsg(serverErrorMsg || "Could not save to server.");
+          return;
+      }
 
-      await ipcRenderer.invoke('db-query', q, params);
-      
-      setShowModal(false);
-      setIsEditing(false);
+      // Success
+      if (typeof setShowModal === 'function') setShowModal(false);
+      if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
+      if (typeof setIsEditing === 'function') setIsEditing(false);
       fetchVehicles();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error saving');
+      setErrorMsg(err.message || 'Unexpected error occurred.');
     }
   };
-  
+
   const openEditModal = (vehicle: any) => {
     setNewVehicle({
       id: vehicle.id,
@@ -105,11 +124,11 @@ const Vehicles = () => {
     setDetailsLoading(true);
     try {
       // First get summary
-      const summaryRes = await apiClient.get(`/vehicles/${vehicle.vehicleNumber}/summary`);
+      const summaryRes = await api.get(`/vehicles/${vehicle.vehicleNumber}/summary`);
       setDetailsSummary(summaryRes.data.summary);
       
       // Get paginated history (first page, limit 50)
-      const historyRes = await apiClient.get(`/weighments?vehicleNumber=${vehicle.vehicleNumber}&limit=50`);
+      const historyRes = await api.get(`/weighments?vehicleNumber=${vehicle.vehicleNumber}&limit=50`);
       setDetailsHistory(historyRes.data.data || []);
     } catch (err) {
       console.error('Error fetching vehicle details', err);
@@ -128,7 +147,7 @@ const Vehicles = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to deactivate or remove this vehicle?')) {
       try {
-        await apiClient.delete(`/vehicles/${id}`);
+        await api.delete(`/vehicles/${id}`);
         fetchVehicles();
       } catch (err) {
         console.error('Error deleting vehicle', err);

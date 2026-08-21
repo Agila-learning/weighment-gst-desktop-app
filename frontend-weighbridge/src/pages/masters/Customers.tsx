@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info } from 'lucide-react';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 import { getStateFromGstin, getStateFromName } from '../../utils/indianStates';
 
@@ -60,50 +60,69 @@ const Customers = () => {
     return null;
   };
 
+  
+  
+  
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const error = validateForm();
-    if (error) {
-      setErrorMsg(error);
-      return;
+    if (typeof validateForm === 'function') {
+        const error = validateForm();
+        if (error) {
+          setErrorMsg(error);
+          return;
+        }
     }
     setErrorMsg('');
+    
     try {
       const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
+      let serverSaved = false;
+      let serverErrorMsg = '';
 
-      const payload = { ...newCustomer };
-      
-      // Attempt to push to central server if online
+      let payload: any = {};
+      payload = { ...newCustomer };
+        const idToEdit = newCustomer.id;
+        const isEditingFlag = isEditing;
+        
+      // 1. Attempt Server API Call First (since user prioritizes Postgresql)
       try {
-        if (isEditing && newCustomer.id) {
-          await apiClient.put(`/customers/${newCustomer.id}`, payload);
+        if (isEditingFlag && idToEdit) {
+          await api.put(`/customers/${idToEdit}`, payload);
         } else {
-          const res = await apiClient.post('/customers', payload);
+          const res = await api.post('/customers', payload);
           if (res.data && res.data.id) payload.id = res.data.id;
         }
-      } catch (err) {
-        console.warn("Offline or API error, generating local UUID", err);
+        serverSaved = true;
+      } catch (err: any) {
+        console.warn("Server API Error:", err);
+        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
         if (!payload.id) {
            payload.id = uuidv4();
         }
       }
 
-      // Insert or Update locally
-      let q = '';
-      let params: any[] = [];
-      q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.gstin || null, payload.mobile1 || null, payload.mobile2 || null];
+      // 2. Attempt Local SQLite (Offline Mode)
+      if (ipcRenderer) {
+          let q = '';
+          let params: any[] = [];
+          q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.gstin || null, payload.mobile1 || null, payload.mobile2 || null];
+          await ipcRenderer.invoke('db-query', q, params);
+      } else if (!serverSaved) {
+          // Web Mode (no Electron) and Server Failed!
+          setErrorMsg(serverErrorMsg || "Could not save to server.");
+          return;
+      }
 
-      await ipcRenderer.invoke('db-query', q, params);
-      
-      setShowModal(false);
-      setIsEditing(false);
+      // Success
+      if (typeof setShowModal === 'function') setShowModal(false);
+      if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
+      if (typeof setIsEditing === 'function') setIsEditing(false);
       fetchCustomers();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error saving');
+      setErrorMsg(err.message || 'Unexpected error occurred.');
     }
   };
-  
+
   const openEditModal = (customer: any) => {
     let parsedPhone = customer.phone || '';
     let parsedCountryCode = '+91';
@@ -145,7 +164,7 @@ const Customers = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to deactivate or remove this customer?')) {
       try {
-        await apiClient.delete(`/customers/${id}`);
+        await api.delete(`/customers/${id}`);
         fetchCustomers();
       } catch (err) {
         console.error('Error deleting customer', err);
@@ -160,16 +179,16 @@ const Customers = () => {
     setDetailsLoading(true);
     try {
       // Fetch Invoices
-      const invRes = await apiClient.get(`/invoices/customer/${customer.id}/history`);
+      const invRes = await api.get(`/invoices/customer/${customer.id}/history`);
       setInvoices(invRes.data.invoices || []);
       setInvoiceSummary(invRes.data.summary);
       
       // Fetch Ledger
-      const ledgRes = await apiClient.get(`/customers/${customer.id}/ledger`);
+      const ledgRes = await api.get(`/customers/${customer.id}/ledger`);
       setLedgerData(ledgRes.data);
       
       // Fetch Weighments
-      const weighRes = await apiClient.get(`/customers/${customer.id}/weighments?limit=100`);
+      const weighRes = await api.get(`/customers/${customer.id}/weighments?limit=100`);
       setWeighmentsData(weighRes.data.data || []);
       setWeighmentsMeta(weighRes.data.meta);
     } catch (err) {
