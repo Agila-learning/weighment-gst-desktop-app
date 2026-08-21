@@ -11,7 +11,7 @@ router.get('/sales', async (req, res) => {
   console.log('Received request for /api/reports/sales');
   try {
     const invoices = await prisma.invoice.findMany({
-      where: { status: 'FINALIZED' }
+      where: { status: 'FINALIZED', isDeleted: false }
     });
     const totalSales = invoices.reduce((acc: number, inv: any) => acc + inv.grandTotal, 0);
     const totalTax = invoices.reduce((acc: number, inv: any) => acc + inv.taxTotal, 0);
@@ -25,18 +25,16 @@ router.get('/sales', async (req, res) => {
 router.get('/export-sales', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    let dateFilter = {};
+    let whereClause: any = { isDeleted: false };
     if (startDate && endDate) {
-      dateFilter = {
-        date: {
-          gte: new Date(startDate as string),
-          lte: new Date(endDate as string)
-        }
+      whereClause.date = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
       };
     }
     
     const invoices = await prisma.invoice.findMany({ 
-      where: dateFilter,
+      where: whereClause,
       include: { customer: true } 
     });
     const data = invoices.map((i: any) => ({

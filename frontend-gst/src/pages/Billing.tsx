@@ -108,7 +108,7 @@ const Billing = () => {
   });
   const [weighmentReference, setWeighmentReference] = useState('');
   
-  const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
+  const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
@@ -291,7 +291,7 @@ const Billing = () => {
             materialName: material?.name || '', 
             hsnCode: material?.hsnCode || '', 
             unit: material?.unit || 'TON',
-            pricingType: material?.pricingType || 'PER_UNIT',
+            pricingType: material?.pricingType || 'PER_TON',
             quantityUnit: material?.billingUnit || 'TON',
             quantitySource: 'WEIGHBRIDGE',
             weighmentReference: weighment.slipNumber
@@ -336,7 +336,16 @@ const Billing = () => {
         sgst = material.taxRate?.sgst || (totalTaxRate / 2);
       }
       
-      const amount = item.quantity * item.rate;
+      let calculationQuantity = item.quantity;
+      if (item.pricingType === 'PER_TON' && (item.quantityUnit === 'KG' || item.unit === 'KG')) {
+        calculationQuantity = item.quantity / 1000;
+      } else if (item.pricingType === 'PER_KG' && (item.quantityUnit === 'TON' || item.unit === 'TON')) {
+        calculationQuantity = item.quantity * 1000;
+      } else if (item.pricingType === 'FIXED_AMOUNT' || item.pricingType === 'MANUAL') {
+        calculationQuantity = 1;
+      }
+      
+      const amount = calculationQuantity * item.rate;
       const taxAmount = (amount * totalTaxRate) / 100;
       
       return {
@@ -359,7 +368,7 @@ const Billing = () => {
   }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode]);
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
+    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -463,9 +472,10 @@ const Billing = () => {
         let pdfBuffer = null;
         try {
           const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
-          const blobUrl = URL.createObjectURL(pdfRes.data);
+          const blob = new Blob([pdfRes.data], { type: 'text/html' });
+          const blobUrl = URL.createObjectURL(blob);
           setPreviewBlobUrl(blobUrl);
-          pdfBuffer = await pdfRes.data.arrayBuffer();
+          pdfBuffer = await blob.arrayBuffer();
         } catch (pdfErr) {
           console.error("PDF generation failed:", pdfErr);
           // Show alert but still show success screen
@@ -559,7 +569,7 @@ const Billing = () => {
             </button>
             <button onClick={() => {
               setSuccessData(null);
-              setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_UNIT', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
+              setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
             }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               <FileCheck size={18} /> Create New
             </button>
@@ -857,7 +867,12 @@ const Billing = () => {
                               <span className="text-gray-500">₹</span>
                               <input type="number" min="0" step="1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.rate} onChange={e => handleLineItemChange(item.id, 'rate', Number(e.target.value))} />
                             </div>
-                            <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1 rounded self-start">{item.pricingType}</span>
+                            <select className="text-[10px] font-medium text-gray-600 bg-gray-100 px-1 py-0.5 rounded self-start border-none outline-none cursor-pointer" value={item.pricingType || 'PER_TON'} onChange={e => handleLineItemChange(item.id, 'pricingType', e.target.value)}>
+                              <option value="PER_TON">Per TON</option>
+                              <option value="PER_KG">Per KG</option>
+                              <option value="PER_LOAD">Per Load</option>
+                              <option value="MANUAL">Manual / Fixed</option>
+                            </select>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500">

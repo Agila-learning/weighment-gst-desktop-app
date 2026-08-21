@@ -200,4 +200,59 @@ router.get('/:id/ledger', async (req, res) => {
   }
 });
 
+// Get Customer Weighments
+router.get('/:id/weighments', async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const { fromDate, toDate, materialId, vehicleId, status, page, limit } = req.query;
+
+    const take = limit ? Number(limit) : 25;
+    const skip = page ? (Number(page) - 1) * take : 0;
+
+    let whereClause: any = { customerId };
+
+    if (fromDate || toDate) {
+      whereClause.createdAt = {};
+      if (fromDate) whereClause.createdAt.gte = new Date(fromDate as string);
+      if (toDate) {
+        const to = new Date(toDate as string);
+        to.setHours(23, 59, 59, 999);
+        whereClause.createdAt.lte = to;
+      }
+    }
+    if (materialId) whereClause.materialId = materialId;
+    if (vehicleId) whereClause.vehicleId = vehicleId;
+    if (status) whereClause.status = status;
+
+    const [weighments, total] = await Promise.all([
+      prisma.weighment.findMany({
+        where: whereClause,
+        include: {
+          vehicle: true,
+          material: true,
+          driver: true,
+          transporter: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take
+      }),
+      prisma.weighment.count({ where: whereClause })
+    ]);
+
+    res.json({
+      data: weighments,
+      meta: {
+        total,
+        page: page ? Number(page) : 1,
+        limit: take,
+        totalPages: Math.ceil(total / take)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching customer weighments:', error);
+    res.status(500).json({ message: 'Error fetching weighments' });
+  }
+});
+
 export default router;

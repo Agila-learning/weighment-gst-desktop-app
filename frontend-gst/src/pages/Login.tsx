@@ -137,7 +137,7 @@ const Login = () => {
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-6">
               <div className="h-16 w-16 bg-indigo-100 rounded-xl flex items-center justify-center p-2 mb-4">
-                <img src="/icon.png" alt="FIC GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
+                <img src="./icon.png" alt="FIC GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">FIC GST</h1>
             </div>

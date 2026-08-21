@@ -20,6 +20,10 @@ const Invoices = () => {
 
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
+  // Cancellation Modal State
+  const [cancelModalInvoiceId, setCancelModalInvoiceId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('');
+
   const fetchInvoices = async (page = 1) => {
     try {
       const params = new URLSearchParams();
@@ -87,12 +91,13 @@ const Invoices = () => {
     document.body.removeChild(link);
   };
 
-  const handleCancelInvoice = async (id: string) => {
-    const reason = prompt('Are you sure you want to cancel this invoice?\nPlease enter a reason for cancellation:');
-    if (!reason) return;
+  const handleCancelInvoice = async () => {
+    if (!cancelModalInvoiceId || !cancelReason.trim()) return;
     try {
-      await apiClient.put(`/invoices/${id}/cancel`, { cancelReason: reason });
+      await apiClient.put(`/invoices/${cancelModalInvoiceId}/cancel`, { cancelReason });
       fetchInvoices(meta.page);
+      setCancelModalInvoiceId(null);
+      setCancelReason('');
     } catch (err) {
       alert('Error cancelling invoice');
     }
@@ -188,6 +193,7 @@ const Invoices = () => {
                 <th className="px-6 py-4 font-medium text-right">Cost</th>
                 <th className="px-6 py-4 font-medium text-right">GST</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
+                <th className="px-6 py-4 font-medium text-center">Payment</th>
                 <th className="px-6 py-4 font-medium text-center">Actions</th>
               </tr>
             </thead>
@@ -222,6 +228,24 @@ const Invoices = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
+                      {inv.status === 'FINALIZED' ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                            inv.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' :
+                            inv.paymentStatus === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {inv.paymentStatus || 'UNPAID'}
+                          </span>
+                          {inv.paymentStatus !== 'PAID' && (
+                            <span className="text-[10px] text-gray-500">Bal: ₹{inv.balance?.toFixed(2) || inv.grandTotal.toFixed(2)}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         {inv.status === 'FINALIZED' && (
                           <>
@@ -234,8 +258,7 @@ const Invoices = () => {
                                 alert('Error generating PDF');
                               }
                             }} className="text-gray-400 hover:text-blue-600"><FileText size={16} /></button>
-                            <button title="Cancel Invoice" onClick={() => handleCancelInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
-                            <button title="Delete Invoice" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                            <button title="Cancel Invoice" onClick={() => { setCancelModalInvoiceId(inv.id); setCancelReason(''); }} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
                           </>
                         )}
                         {inv.status === 'DRAFT' && (
@@ -245,7 +268,7 @@ const Invoices = () => {
                           </>
                         )}
                         {inv.status === 'CANCELLED' && (
-                          <button title="Delete Invoice" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                          <span className="text-[10px] text-gray-400 italic">No Actions</span>
                         )}
                         <button title="Duplicate" onClick={() => navigate(`/billing?duplicateId=${inv.id}`)} className="text-gray-400 hover:text-green-600"><Copy size={16} /></button>
                       </div>
@@ -302,6 +325,38 @@ const Invoices = () => {
             }
           }}
         />
+      )}
+
+      {/* CANCEL INVOICE MODAL */}
+      {cancelModalInvoiceId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-4">Cancel Invoice</h2>
+            <p className="text-sm text-slate-600 mb-4">Are you sure you want to cancel this invoice? Please provide a reason for cancellation.</p>
+            <textarea
+              className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:border-red-500 mb-4 text-sm"
+              rows={4}
+              placeholder="Enter reason..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setCancelModalInvoiceId(null); setCancelReason(''); }}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCancelInvoice}
+                disabled={!cancelReason.trim()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm font-medium"
+              >
+                Confirm Cancellation
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

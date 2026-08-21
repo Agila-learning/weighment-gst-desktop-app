@@ -134,8 +134,13 @@ router.post('/first-weight', async (req, res) => {
     const { vehicleId, vehicleNumber, customerId, materialId, driverId, transporterId, firstWeight, unit, firstWeightSource } = req.body;
     
     // Check for open weighment
+    const whereClause: any = { status: { in: ['OPEN', 'FIRST_WEIGHT_RECORDED', 'WAITING_FOR_SECOND_WEIGHT'] } };
+    if (vehicleId) whereClause.vehicleId = vehicleId;
+    else if (vehicleNumber) whereClause.vehicleNumber = vehicleNumber;
+    else return res.status(400).json({ message: 'Vehicle ID or Number is required.' });
+
     const existingOpen = await prisma.weighment.findFirst({
-      where: { vehicleId, status: { in: ['OPEN', 'FIRST_WEIGHT_RECORDED', 'WAITING_FOR_SECOND_WEIGHT'] } }
+      where: whereClause
     });
 
     if (existingOpen) {
@@ -183,7 +188,15 @@ router.post('/second-weight', async (req, res) => {
       return res.status(400).json({ message: 'First weight is not recorded yet.' });
     }
 
-    const netWeight = Math.abs(secondWeight - openWeighment.firstWeight);
+    if (Number(secondWeight) === Number(openWeighment.firstWeight)) {
+      return res.status(400).json({ message: 'Second weight cannot be identical to the first weight.' });
+    }
+    
+    if (Number(secondWeight) <= 0) {
+      return res.status(400).json({ message: 'Second weight must be greater than zero.' });
+    }
+
+    const netWeight = Math.abs(Number(secondWeight) - Number(openWeighment.firstWeight));
 
     // Generate slip number
     const count = await prisma.weighment.count({ where: { status: 'COMPLETED' } });

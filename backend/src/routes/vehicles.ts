@@ -97,7 +97,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get Vehicle History
-router.get('/:vehicleNumber/history', async (req, res) => {
+router.get('/:vehicleNumber/summary', async (req, res) => {
   try {
     const { vehicleNumber } = req.params;
     const { fromDate, toDate, customerId, materialId, status, loadType } = req.query;
@@ -154,9 +154,8 @@ router.get('/:vehicleNumber/history', async (req, res) => {
         todaysLoads,
         todaysTotalWeight,
         totalHistoricalWeight,
-        lastWeighment
-      },
-      history: weighments
+        lastWeighmentDate: lastWeighment?.createdAt || null
+      }
     });
   } catch (error) {
     console.error('Error fetching vehicle history:', error);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Save, Settings, Printer, Scale, AlertTriangle, Truck, User, Package } from 'lucide-react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
@@ -7,6 +8,7 @@ import { logAudit } from '../utils/audit';
 
 export default function Weighment() {
   const { currentWeight, status: hwStatus, connectionType, stable } = useWeighbridgeStore();
+  const location = useLocation();
   
   const [, setVehicleNo] = useState('');
   const [vehicleSearchTerm, setVehicleSearchTerm] = useState('');
@@ -119,6 +121,39 @@ export default function Weighment() {
 
   const filteredVehicles = vehicles.filter(v => v.vehicleNumber.toLowerCase().includes(vehicleSearchTerm.toLowerCase())).slice(0, 5);
 
+  useEffect(() => {
+    if (location.state?.vehicleNumber && vehicles.length > 0 && !selectedVehicle) {
+      const v = vehicles.find(v => v.vehicleNumber === location.state.vehicleNumber);
+      if (v) {
+        handleVehicleSelect(v);
+      } else {
+        // If it's a manual entry not in master
+        setVehicleNo(location.state.vehicleNumber);
+        setVehicleSearchTerm(location.state.vehicleNumber);
+        setSelectedVehicle({ vehicleNumber: location.state.vehicleNumber });
+        
+        // Directly trigger pending check
+        const ipcRenderer = (window as any).ipcRenderer;
+        if (ipcRenderer) {
+          ipcRenderer.invoke('db-query', "SELECT * FROM weighments WHERE vehicleNumber = ? AND status = 'FIRST_WEIGHT'", [location.state.vehicleNumber])
+            .then((res: any) => {
+              if (res.success && res.data && res.data.length > 0) {
+                setPendingWeighment(res.data[0]);
+                if (res.data[0].customerId) setSelectedCustomer(res.data[0].customerId);
+                if (res.data[0].materialId) setSelectedMaterial(res.data[0].materialId);
+                if (res.data[0].driverId) setSelectedDriver(res.data[0].driverId);
+                if (res.data[0].transporterId) setSelectedTransporter(res.data[0].transporterId);
+                if (res.data[0].loadType) setLoadType(res.data[0].loadType);
+              }
+            });
+        }
+      }
+      
+      // Clear state to avoid loops on refresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state, vehicles]);
+
   const handleCaptureClick = () => {
     if (!selectedVehicle) return;
     if (connectionType === 'MANUAL') {
@@ -185,6 +220,11 @@ export default function Weighment() {
         if (currentWeight <= 0) {
            throw new Error("Weight must be > 0.");
         }
+        
+        if (Number(currentWeight) === Number(pendingWeighment.firstWeight)) {
+           throw new Error("Second weight cannot be identical to the first weight.");
+        }
+        
         const netW = Math.abs(currentWeight - pendingWeighment.firstWeight);
         
         let pricingType = 'PER_UNIT';

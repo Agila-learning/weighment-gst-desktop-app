@@ -71,11 +71,25 @@ router.post('/', async (req, res) => {
       }
     });
     
-    // Optionally update customer balance (not strictly necessary if we calculate on fly, but good practice if using balance field)
+    // Update customer balance
     await prisma.customer.update({
       where: { id: customerId },
       data: { balance: { decrement: Number(amount) } }
     });
+
+    // Update invoice if applicable
+    if (invoiceId) {
+      const inv = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+      if (inv) {
+        const newPaid = (inv.amountPaid || 0) + Number(amount);
+        const newBalance = inv.grandTotal - newPaid;
+        const newStatus = newPaid >= inv.grandTotal ? 'PAID' : newPaid > 0 ? 'PARTIAL' : 'UNPAID';
+        await prisma.invoice.update({
+          where: { id: invoiceId },
+          data: { amountPaid: newPaid, balance: newBalance, paymentStatus: newStatus }
+        });
+      }
+    }
     
     res.status(201).json(payment);
   } catch (error) {

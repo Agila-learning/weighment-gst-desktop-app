@@ -178,6 +178,11 @@ model Invoice {
   status       String  @default("DRAFT") // DRAFT, FINALIZED, CANCELLED
   cancelReason String?
   isDeleted    Boolean @default(false)
+  
+  // Payment Tracking
+  amountPaid    Float   @default(0.0)
+  balance       Float   @default(0.0)
+  paymentStatus String  @default("UNPAID") // UNPAID, PARTIAL, PAID, OVERPAID
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

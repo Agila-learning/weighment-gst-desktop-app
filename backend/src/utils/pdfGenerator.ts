@@ -262,11 +262,11 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
               ${invoice.items.map((item, index) => `
                 <tr class="${index === invoice.items.length - 1 ? 'last-row' : ''}">
                   <td class="text-center">${index + 1}</td>
-                  <td class="font-bold" style="color: #111827;">${item.materialName || item.material.name}</td>
-                  <td style="color: #4b5563;">${item.hsnCode || item.material.hsnCode || '-'}</td>
+                  <td class="font-bold" style="color: #111827;">${item.materialName || item.material?.name || '-'}</td>
+                  <td style="color: #4b5563;">${item.hsnCode || item.material?.hsnCode || '-'}</td>
                   <td class="text-right font-bold" style="color: #111827;">${item.quantity.toFixed(2)}</td>
                   <td class="text-right">₹${item.rate.toFixed(2)}</td>
-                  <td class="text-center text-xs" style="color: #6b7280;">${item.unit || item.material.unit || ''}</td>
+                  <td class="text-center text-xs" style="color: #6b7280;">${item.unit || item.material?.unit || ''}</td>
                   <td class="text-right font-bold" style="color: #111827;">₹${item.amount.toFixed(2)}</td>
                 </tr>
               `).join('')}

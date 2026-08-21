@@ -138,6 +138,8 @@ router.post('/', async (req, res) => {
         dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
         snapshotVehicleNumber, termsOfDelivery, weighmentReference,
         subTotal, taxTotal, grandTotal,
+        balance: grandTotal,
+        paymentStatus: 'UNPAID',
         status: status || 'DRAFT',
         items: { create: invoiceItems }
       },
@@ -174,6 +176,7 @@ router.put('/:id', async (req, res) => {
     const existing = await prisma.invoice.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: 'Invoice not found' });
     if (existing.status === 'CANCELLED') return res.status(400).json({ message: 'Cannot edit cancelled invoice' });
+    if (existing.status === 'FINALIZED') return res.status(400).json({ message: 'Cannot edit finalized invoice. Please cancel it instead.' });
 
     const { 
       customerId, vehicleId, items, status, date,
@@ -199,6 +202,8 @@ router.put('/:id', async (req, res) => {
           dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
           snapshotVehicleNumber, termsOfDelivery, weighmentReference,
           subTotal, taxTotal, grandTotal,
+          balance: grandTotal - (existing.amountPaid || 0),
+          paymentStatus: (existing.amountPaid || 0) >= grandTotal ? 'PAID' : (existing.amountPaid || 0) > 0 ? 'PARTIAL' : 'UNPAID',
           status: status || existing.status,
           items: { create: invoiceItems }
         }
@@ -244,7 +249,7 @@ router.put('/:id/cancel', async (req, res) => {
     
     const invoice = await prisma.invoice.update({
       where: { id: req.params.id },
-      data: { status: 'CANCELLED', cancelReason }
+      data: { status: 'CANCELLED', cancelReason, balance: 0 }
     });
     
     if (existing?.status === 'FINALIZED') {

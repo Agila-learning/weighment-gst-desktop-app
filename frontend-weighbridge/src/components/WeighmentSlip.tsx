@@ -60,19 +60,19 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
             <div className="border border-slate-300 p-3 rounded">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Customer</p>
-              <p className="font-bold text-slate-800">{weighment.customer?.name || 'N/A'}</p>
+              <p className="font-bold text-slate-800">{weighment.customer?.name || weighment.customerName || 'N/A'}</p>
             </div>
             <div className="border border-slate-300 p-3 rounded">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Material</p>
-              <p className="font-bold text-slate-800">{weighment.material?.name || 'N/A'}</p>
+              <p className="font-bold text-slate-800">{weighment.material?.name || weighment.materialName || 'N/A'}</p>
             </div>
             <div className="border border-slate-300 p-3 rounded">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Driver</p>
-              <p className="font-bold text-slate-800">{weighment.driver?.name || 'N/A'}</p>
+              <p className="font-bold text-slate-800">{weighment.driver?.name || weighment.driverName || 'N/A'}</p>
             </div>
             <div className="border border-slate-300 p-3 rounded">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Transporter</p>
-              <p className="font-bold text-slate-800">{weighment.transporter?.name || 'N/A'}</p>
+              <p className="font-bold text-slate-800">{weighment.transporter?.name || weighment.transporterName || 'N/A'}</p>
             </div>
           </div>
 
@@ -103,9 +103,19 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             </tbody>
           </table>
 
+          {weighment.status === 'COMPLETED' && weighment.rate > 0 && (
+            <div className="border border-slate-400 p-4 mb-12 text-sm grid grid-cols-2 gap-y-2 bg-slate-50">
+              <div className="col-span-2 text-center font-bold border-b border-slate-300 pb-2 mb-2 uppercase">Pricing Details</div>
+              <div><span className="font-bold inline-block w-32">Pricing Type:</span> {weighment.pricingType}</div>
+              <div><span className="font-bold inline-block w-32">Rate (₹):</span> {Number(weighment.rate).toFixed(2)}</div>
+              <div><span className="font-bold inline-block w-32">Quantity:</span> {Number(weighment.calculatedQuantity).toFixed(3)}</div>
+              <div className="text-lg text-right pr-4"><span className="font-bold">Total (₹):</span> {Number(weighment.calculatedAmount).toFixed(2)}</div>
+            </div>
+          )}
+
           <div className="flex justify-between mt-16 pt-8 text-sm border-t border-slate-200">
             <div className="text-center">
-              <p className="mb-8 font-semibold">{weighment.driver?.name || 'Driver'}</p>
+              <p className="mb-8 font-semibold">{weighment.driver?.name || weighment.driverName || 'Driver'}</p>
               <p className="border-t border-slate-400 pt-1 w-40">Driver Signature</p>
             </div>
             <div className="text-center">

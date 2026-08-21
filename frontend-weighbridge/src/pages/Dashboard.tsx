@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Truck, Clock, CheckCircle, Scale, Activity, PlusCircle, ClipboardList, Wifi } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -12,6 +12,8 @@ export default function Dashboard() {
     totalLoad: 0
   });
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [pendingQueue, setPendingQueue] = useState<any[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -34,6 +36,18 @@ export default function Dashboard() {
           
           if (res.success) {
             setRecentTransactions(res.data);
+          }
+          
+          const pendingRes = await ipcRenderer.invoke('db-query', `
+            SELECT w.*, c.name as customerName, m.name as materialName
+            FROM weighments w
+            LEFT JOIN customers c ON w.customerId = c.id
+            LEFT JOIN materials m ON w.materialId = m.id
+            WHERE w.status = 'FIRST_WEIGHT'
+            ORDER BY w.createdAt ASC
+          `);
+          if (pendingRes.success) {
+            setPendingQueue(pendingRes.data);
           }
         }
       } catch (error) {
@@ -104,6 +118,46 @@ export default function Dashboard() {
         </div>
       </div>
       
+      {pendingQueue.length > 0 && (
+        <div className="mt-6 bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden">
+          <div className="p-4 border-b border-amber-200 bg-amber-50 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-amber-800 flex items-center gap-2"><Clock size={20}/> Action Required: Pending Second Weights ({pendingQueue.length})</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-white text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 font-medium">Time In</th>
+                  <th className="px-6 py-3 font-medium">Vehicle</th>
+                  <th className="px-6 py-3 font-medium">Customer</th>
+                  <th className="px-6 py-3 font-medium text-right">First Wt.</th>
+                  <th className="px-6 py-3 font-medium text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendingQueue.map(tx => (
+                  <tr key={tx.id} className="hover:bg-amber-50/50 cursor-pointer" onClick={() => navigate('/weighment', { state: { vehicleNumber: tx.vehicleNumber } })}>
+                    <td className="px-6 py-3 whitespace-nowrap text-slate-600">
+                      {new Date(tx.firstWeightDate || tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap font-bold text-slate-800">{tx.vehicleNumber}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-slate-600">{tx.customerName || '-'}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-right font-mono font-bold text-amber-600">
+                      {tx.firstWeight} KG
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-center">
+                      <button className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded font-bold shadow-sm transition-colors">
+                        PROCESS
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-slate-700">Today's Recent Activity</h2>

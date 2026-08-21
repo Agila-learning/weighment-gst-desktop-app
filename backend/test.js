@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.invoice.findFirst().then(async inv => { console.log('Invoice:', inv.id); const res = await fetch('http://localhost:3000/api/invoices/'+inv.id+'/pdf'); console.log('Status:', res.status); console.log(await res.text()); }).catch(console.error).finally(()=>prisma.$disconnect());
