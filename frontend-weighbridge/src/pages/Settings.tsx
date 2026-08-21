@@ -6,7 +6,7 @@ import { Edit3, Network, Usb, Activity, Save, Terminal, RefreshCw, Cloud, CloudO
 import type { DeviceConfiguration } from '../services/hardware/IWeighbridgeDevice';
 
 export default function Settings() {
-  const { connect, disconnect, status, config, rawIncomingData, currentWeight, stable, connectionLogs } = useWeighbridgeStore();
+  const { connect, disconnect, status, config, rawIncomingData, currentWeight, stable, connectionLogs, saveConfig } = useWeighbridgeStore();
   const { isOnline, syncStatus, lastSyncTime, pendingRecords, syncedRecords, failedRecords, syncErrors, triggerSync, clearSyncErrors } = useSyncStore();
   const [activeTab, setActiveTab] = useState<'SETUP' | 'DIAGNOSTICS' | 'SYNC' | 'DATABASE'>('SETUP');
 
@@ -28,6 +28,21 @@ export default function Settings() {
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(localStorage.getItem('autoBackup') === 'true');
 
   useEffect(() => {
+    if (config) {
+      setSelectedType(config.connectionType || 'SIMULATED');
+      if (config.comPort) setComPort(config.comPort);
+      if (config.baudRate) setBaudRate(config.baudRate);
+      if (config.dataBits) setDataBits(config.dataBits);
+      if (config.parity) setParity(config.parity);
+      if (config.stopBits) setStopBits(config.stopBits);
+      if (config.readInterval) setReadInterval(config.readInterval);
+      if (config.connectionTimeout) setConnectionTimeout(config.connectionTimeout);
+      if (config.ipAddress) setIpAddress(config.ipAddress);
+      if (config.port) setPort(config.port);
+    }
+  }, [config]);
+
+  useEffect(() => {
     if (autoBackupEnabled) {
       // Trigger auto backup silently once on load if enabled
       const ipcRenderer = (window as any).ipcRenderer;
@@ -37,7 +52,7 @@ export default function Settings() {
     }
   }, [autoBackupEnabled]);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     const newConfig: DeviceConfiguration = {
       connectionType: selectedType,
       comPort: selectedType === 'SERIAL' ? comPort : undefined,
@@ -50,7 +65,9 @@ export default function Settings() {
       readInterval,
       connectionTimeout,
     };
+    await saveConfig(newConfig);
     connect(newConfig);
+    alert('Settings Saved Successfully!');
   };
 
   const handleResetSettings = () => {

@@ -100,7 +100,23 @@ export function initDatabase() {
       rate REAL,
       isActive INTEGER DEFAULT 1
     );
+
+    CREATE TABLE IF NOT EXISTS device_settings (
+      id TEXT PRIMARY KEY,
+      connectionType TEXT,
+      comPort TEXT,
+      baudRate INTEGER,
+      dataBits INTEGER,
+      parity TEXT,
+      stopBits INTEGER,
+      ipAddress TEXT,
+      port INTEGER,
+      readInterval INTEGER,
+      connectionTimeout INTEGER,
+      updatedAt TEXT
+    );
   `);
+
 
     // Safe alter tables for backwards compatibility with existing DB
     const alters = [

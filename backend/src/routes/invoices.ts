@@ -10,7 +10,7 @@ router.use(authenticate);
 // Get all invoices with pagination, filtering, searching
 router.get('/', async (req, res) => {
   try {
-    const { page, limit, search, status, startDate, endDate, customerId, vehicleId, materialId } = req.query;
+    const { page, limit, search, status, startDate, endDate, customerId, vehicleId, materialId, paymentStatus } = req.query;
     
     const take = limit ? Number(limit) : 25;
     const skip = page ? (Number(page) - 1) * take : 0;
@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
     const where: any = { isDeleted: false };
     
     if (status) where.status = status;
+    if (paymentStatus) where.paymentStatus = paymentStatus;
     if (startDate && endDate) {
       where.date = {
         gte: new Date(startDate as string),

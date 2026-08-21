@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Truck, Clock, CheckCircle, Scale, Activity, PlusCircle, ClipboardList, Wifi } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useSyncStore } from '../services/SyncService';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
   const navigate = useNavigate();
+  const { isOnline, pendingRecords } = useSyncStore();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -97,12 +99,12 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-slate-700 mb-4">System Status</h2>
           <div className="flex gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Wifi className="text-emerald-600" size={20} />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOnline ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                <Wifi className={isOnline ? "text-emerald-600" : "text-red-600"} size={20} />
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Internet</p>
-                <p className="font-semibold text-slate-800">ONLINE</p>
+                <p className={`font-semibold ${isOnline ? 'text-slate-800' : 'text-red-600'}`}>{isOnline ? 'ONLINE' : 'OFFLINE'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -115,6 +117,16 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+          
+          {!isOnline && pendingRecords > 0 && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="text-amber-500" size={16} />
+                <span className="text-sm font-medium text-amber-800">Pending Syncs:</span>
+              </div>
+              <span className="font-bold text-amber-600">{pendingRecords} records</span>
+            </div>
+          )}
         </div>
       </div>
       

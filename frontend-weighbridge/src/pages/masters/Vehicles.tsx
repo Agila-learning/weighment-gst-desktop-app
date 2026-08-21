@@ -1,3 +1,5 @@
+// @ts-ignore
+import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Truck, Info, Clock, CheckCircle, Scale } from 'lucide-react';
 import apiClient from '../../services/api';
@@ -27,10 +29,13 @@ const Vehicles = () => {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/vehicles');
-      setVehicles(response.data);
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM vehicles');
+        if (response.success) setVehicles(response.data);
+      }
     } catch (error) {
-      console.error('Error fetching vehicles:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -38,20 +43,45 @@ const Vehicles = () => {
 
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const error = null;
+    if (error) {
+      setErrorMsg(error);
+      return;
+    }
     setErrorMsg('');
     try {
-      if (isEditing && newVehicle.id) {
-        await apiClient.put(`/vehicles/${newVehicle.id}`, newVehicle);
-      } else {
-        await apiClient.post('/vehicles', newVehicle);
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (!ipcRenderer) return;
+
+      const payload = { ...newVehicle };
+      
+      // Attempt to push to central server if online
+      try {
+        if (isEditing && newVehicle.id) {
+          await apiClient.put(`/vehicles/${newVehicle.id}`, payload);
+        } else {
+          const res = await apiClient.post('/vehicles', payload);
+          if (res.data && res.data.id) payload.id = res.data.id;
+        }
+      } catch (err) {
+        console.warn("Offline or API error, generating local UUID", err);
+        if (!payload.id) {
+           payload.id = uuidv4();
+        }
       }
+
+      // Insert or Update locally
+      let q = '';
+      let params: any[] = [];
+      q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)'; params = [payload.id, payload.vehicleNumber, (payload as any).tareWeight || 0];
+
+      await ipcRenderer.invoke('db-query', q, params);
+      
       setShowModal(false);
-      setNewVehicle({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterName: '', state: '', capacityWeight: '' });
       setIsEditing(false);
       fetchVehicles();
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || 'Error saving vehicle');
-      console.error('Error saving vehicle', err);
+      setErrorMsg(err.message || 'Error saving');
     }
   };
   
@@ -107,7 +137,7 @@ const Vehicles = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>

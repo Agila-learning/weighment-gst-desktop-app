@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { IWeighbridgeDevice, DeviceConfiguration, ConnectionStatus } from './hardware/IWeighbridgeDevice';
 import { SimulatedWeighbridgeDevice } from './hardware/devices/SimulatedWeighbridgeDevice';
+import { v4 as uuidv4 } from 'uuid';
+
+const getIpcRenderer = () => {
+  return (window as any).ipcRenderer;
+};
+
 
 export type ConnectionType = 'SERIAL' | 'TCP' | 'USB' | 'MANUAL' | 'SIMULATED';
 
@@ -17,11 +23,13 @@ interface WeighbridgeState {
   device: IWeighbridgeDevice | null;
   connectionLogs: { timestamp: string, event: string }[];
 
-  connect: (config: DeviceConfiguration) => Promise<void>;
+connect: (config: DeviceConfiguration) => Promise<void>;
   disconnect: () => void;
   readWeight: () => number;
   simulateWeightReading: (weight: number) => void;
   addLog: (event: string) => void;
+  init: () => Promise<void>;
+  saveConfig: (config: DeviceConfiguration) => Promise<void>;
 }
 
 export const useWeighbridgeStore = create<WeighbridgeState>((set, get) => {
@@ -39,10 +47,77 @@ export const useWeighbridgeStore = create<WeighbridgeState>((set, get) => {
     device: null,
     connectionLogs: [],
 
-    addLog: (event: string) => {
+addLog: (event: string) => {
       set((state) => ({
         connectionLogs: [...state.connectionLogs, { timestamp: new Date().toISOString(), event }].slice(-50) // keep last 50
       }));
+    },
+    
+    init: async () => {
+      try {
+        const ipcRenderer = getIpcRenderer();
+        if (ipcRenderer) {
+          const res = await ipcRenderer.invoke('db-query', "SELECT * FROM device_settings LIMIT 1");
+          if (res.success && res.data && res.data.length > 0) {
+            const row = res.data[0];
+            const config: DeviceConfiguration = {
+              connectionType: row.connectionType as any,
+              comPort: row.comPort,
+              baudRate: row.baudRate,
+              dataBits: row.dataBits,
+              parity: row.parity,
+              stopBits: row.stopBits,
+              ipAddress: row.ipAddress,
+              port: row.port,
+              readInterval: row.readInterval,
+              connectionTimeout: row.connectionTimeout
+            };
+            set({ config });
+            // Auto connect if not NONE or MANUAL
+            if (config.connectionType !== 'MANUAL') {
+              get().connect(config);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load device config", err);
+      }
+    },
+    
+    saveConfig: async (config: DeviceConfiguration) => {
+      try {
+        const ipcRenderer = getIpcRenderer();
+        if (ipcRenderer) {
+          const res = await ipcRenderer.invoke('db-query', "SELECT id FROM device_settings LIMIT 1");
+          
+          if (res.success && res.data && res.data.length > 0) {
+            // Update existing
+            const id = res.data[0].id;
+            await ipcRenderer.invoke('db-query', 
+              `UPDATE device_settings SET 
+                connectionType = ?, comPort = ?, baudRate = ?, dataBits = ?, parity = ?, stopBits = ?, ipAddress = ?, port = ?, readInterval = ?, connectionTimeout = ?, updatedAt = ?
+              WHERE id = ?`,
+              [
+                config.connectionType, config.comPort || null, config.baudRate || null, config.dataBits || null, config.parity || null, config.stopBits || null, 
+                config.ipAddress || null, config.port || null, config.readInterval || 100, config.connectionTimeout || 3000, new Date().toISOString(), id
+              ]
+            );
+          } else {
+            // Insert new
+            await ipcRenderer.invoke('db-query',
+              `INSERT INTO device_settings (id, connectionType, comPort, baudRate, dataBits, parity, stopBits, ipAddress, port, readInterval, connectionTimeout, updatedAt)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                uuidv4(), config.connectionType, config.comPort || null, config.baudRate || null, config.dataBits || null, config.parity || null, config.stopBits || null, 
+                config.ipAddress || null, config.port || null, config.readInterval || 100, config.connectionTimeout || 3000, new Date().toISOString()
+              ]
+            );
+          }
+          set({ config });
+        }
+      } catch (err) {
+        console.error("Failed to save config", err);
+      }
     },
 
     connect: async (config: DeviceConfiguration) => {

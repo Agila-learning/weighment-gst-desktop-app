@@ -3,6 +3,8 @@ import { Bell, UserCircle, X } from 'lucide-react';
 import apiClient from '../api/client';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '../services/AuthService';
+import GlobalSearch from './GlobalSearch';
+import { Search } from 'lucide-react';
 
 const Header = () => {
   const { user, logout } = useAuthStore();
@@ -26,6 +28,22 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const fetchNotifications = async () => {
     try {
       const res = await apiClient.get('/audit');
@@ -40,7 +58,16 @@ const Header = () => {
       <div className="text-xl font-semibold text-gray-800">
         Welcome back, Admin
       </div>
+      
       <div className="flex items-center gap-4 text-gray-600">
+        <button 
+          onClick={() => setSearchOpen(true)}
+          className="hidden md:flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 transition-colors"
+        >
+          <Search size={16} />
+          <span>Search...</span>
+          <kbd className="hidden lg:inline-flex bg-white px-2 py-0.5 rounded text-xs font-mono font-medium text-gray-400 border border-gray-200">Ctrl+K</kbd>
+        </button>
         <div className="relative" ref={dropdownRef}>
           <button 
             onClick={() => setShowDropdown(!showDropdown)}
@@ -102,6 +129,8 @@ const Header = () => {
           </div>
         </div>
       </div>
+      
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 };

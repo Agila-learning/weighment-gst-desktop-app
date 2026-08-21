@@ -14,6 +14,13 @@ const Invoices = () => {
   const [status, setStatus] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [materialId, setMaterialId] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('');
+  
+  // Masters for dropdowns
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
   
   // Summary Stats
   const [summary, setSummary] = useState({ totalInvoices: 0, todaySales: 0, totalSales: 0, pendingAmount: 0 });
@@ -35,6 +42,9 @@ const Invoices = () => {
         params.append('startDate', startDate);
         params.append('endDate', endDate);
       }
+      if (customerId) params.append('customerId', customerId);
+      if (materialId) params.append('materialId', materialId);
+      if (paymentStatus) params.append('paymentStatus', paymentStatus);
       
       const res = await apiClient.get(`/invoices?${params.toString()}`);
       setInvoices(res.data.data);
@@ -58,7 +68,23 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchInvoices(1);
-  }, [search, status, startDate, endDate]);
+  }, [search, status, startDate, endDate, customerId, materialId, paymentStatus]);
+
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const [cRes, mRes] = await Promise.all([
+          apiClient.get('/customers'),
+          apiClient.get('/materials')
+        ]);
+        setCustomers(cRes.data);
+        setMaterials(mRes.data);
+      } catch (err) {
+        console.error('Failed to fetch masters', err);
+      }
+    };
+    fetchMasters();
+  }, []);
 
   const handleExportCSV = () => {
     if (invoices.length === 0) return;
@@ -171,7 +197,39 @@ const Invoices = () => {
             <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto mt-4 md:mt-0">
+          <select 
+            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={customerId}
+            onChange={e => setCustomerId(e.target.value)}
+          >
+            <option value="">All Customers</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          
+          <select 
+            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={materialId}
+            onChange={e => setMaterialId(e.target.value)}
+          >
+            <option value="">All Materials</option>
+            {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+
+          <select 
+            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={paymentStatus}
+            onChange={e => setPaymentStatus(e.target.value)}
+          >
+            <option value="">All Payments</option>
+            <option value="PAID">Paid</option>
+            <option value="PARTIAL">Partial</option>
+            <option value="UNPAID">Unpaid</option>
+          </select>
+        </div>
+        
+        <div className="flex gap-2 mt-4 md:mt-0 ml-auto">
           <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
             <Download size={16} /> Export CSV
           </button>

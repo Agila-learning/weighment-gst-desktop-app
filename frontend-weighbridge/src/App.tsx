@@ -165,6 +165,7 @@ function Sidebar() {
 
 function Layout() {
   const { init, isOnline, pendingRecords, triggerSync, syncStatus } = useSyncStore();
+  const { init: initWeighbridge } = useWeighbridgeStore();
   const { isAuthenticated, checkAuth } = useAuthStore();
 
   useEffect(() => {
@@ -173,7 +174,8 @@ function Layout() {
 
   useEffect(() => {
     init();
-  }, [init]);
+    initWeighbridge();
+  }, [init, initWeighbridge]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

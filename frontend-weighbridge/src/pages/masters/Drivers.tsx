@@ -1,3 +1,5 @@
+// @ts-ignore
+import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, LayoutList, LayoutGrid } from 'lucide-react';
 import api from '../../services/api';

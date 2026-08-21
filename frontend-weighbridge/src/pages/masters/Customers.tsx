@@ -1,3 +1,5 @@
+// @ts-ignore
+import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info } from 'lucide-react';
 import apiClient from '../../services/api';
@@ -35,10 +37,13 @@ const Customers = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/customers');
-      setCustomers(response.data);
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM customers');
+        if (response.success) setCustomers(response.data);
+      }
     } catch (error) {
-      console.error('Error fetching customers:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -64,23 +69,38 @@ const Customers = () => {
     }
     setErrorMsg('');
     try {
-      const payload = {
-        ...newCustomer,
-        phone: newCustomer.phone ? `${newCustomer.countryCode} ${newCustomer.phone}` : ''
-      };
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (!ipcRenderer) return;
+
+      const payload = { ...newCustomer };
       
-      if (isEditing && newCustomer.id) {
-        await apiClient.put(`/customers/${newCustomer.id}`, payload);
-      } else {
-        await apiClient.post('/customers', payload);
+      // Attempt to push to central server if online
+      try {
+        if (isEditing && newCustomer.id) {
+          await apiClient.put(`/customers/${newCustomer.id}`, payload);
+        } else {
+          const res = await apiClient.post('/customers', payload);
+          if (res.data && res.data.id) payload.id = res.data.id;
+        }
+      } catch (err) {
+        console.warn("Offline or API error, generating local UUID", err);
+        if (!payload.id) {
+           payload.id = uuidv4();
+        }
       }
+
+      // Insert or Update locally
+      let q = '';
+      let params: any[] = [];
+      q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.gstin || null, payload.mobile1 || null, payload.mobile2 || null];
+
+      await ipcRenderer.invoke('db-query', q, params);
+      
       setShowModal(false);
-      setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
       setIsEditing(false);
       fetchCustomers();
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || 'Error saving customer');
-      console.error('Error saving customer', err);
+      setErrorMsg(err.message || 'Error saving');
     }
   };
   
@@ -160,7 +180,7 @@ const Customers = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
@@ -370,7 +390,7 @@ const Customers = () => {
             ) : (
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
                 {activeTab === 'profile' && (
-                  <div className="space-y-6">
+                  <div className="p-8 max-w-7xl mx-auto space-y-6">
                     <div className="bg-white p-6 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Contact Info</h3>

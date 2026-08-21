@@ -13,12 +13,15 @@ const Vehicles = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+
   // Details Modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsVehicle, setDetailsVehicle] = useState<any>(null);
   const [detailsSummary, setDetailsSummary] = useState<any>(null);
   const [detailsHistory, setDetailsHistory] = useState<any[]>([]);
+  const [detailsInvoices, setDetailsInvoices] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'weighments' | 'invoices'>('weighments');
 
   useEffect(() => {
     fetchVehicles();
@@ -69,10 +72,12 @@ const Vehicles = () => {
     setShowModal(true);
   };
   
+
   const openDetailsModal = async (vehicle: any) => {
     setDetailsVehicle(vehicle);
     setShowDetailsModal(true);
     setDetailsLoading(true);
+    setActiveTab('weighments');
     try {
       // First get summary
       const summaryRes = await apiClient.get(`/vehicles/${vehicle.vehicleNumber}/summary`);
@@ -81,6 +86,10 @@ const Vehicles = () => {
       // Get paginated history (first page, limit 50)
       const historyRes = await apiClient.get(`/weighments?vehicleNumber=${vehicle.vehicleNumber}&limit=50`);
       setDetailsHistory(historyRes.data.data || []);
+      
+      // Get invoices
+      const invoicesRes = await apiClient.get(`/invoices?vehicleId=${vehicle.id}`);
+      setDetailsInvoices(invoicesRes.data.data || []);
     } catch (err) {
       console.error('Error fetching vehicle details', err);
     } finally {
@@ -249,9 +258,25 @@ const Vehicles = () => {
                   </div>
                 )}
                 
-                <div className="bg-white p-6 rounded-xl border border-gray-200">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Recent Weighments</h3>
-                  <div className="overflow-x-auto">
+                <div className="bg-white p-0 rounded-xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+                  <div className="flex border-b border-gray-200 bg-gray-50 px-2 pt-2 gap-2">
+                    <button 
+                      onClick={() => setActiveTab('weighments')}
+                      className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 ${activeTab === 'weighments' ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      Recent Weighments
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('invoices')}
+                      className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 ${activeTab === 'invoices' ? 'bg-white text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      Billed Invoices
+                    </button>
+                  </div>
+                  
+                  <div className="p-0">
+                  {activeTab === 'weighments' && (
+                    <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
                         <tr>
@@ -289,6 +314,43 @@ const Vehicles = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                  )}
+                  {activeTab === 'invoices' && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
+                          <tr>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Invoice No</th>
+                            <th className="px-4 py-3">Customer</th>
+                            <th className="px-4 py-3 text-right">Amount</th>
+                            <th className="px-4 py-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {detailsInvoices.map((inv: any) => (
+                            <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{new Date(inv.date).toLocaleDateString()}</td>
+                              <td className="px-4 py-3 font-medium">{inv.invoiceNumber}</td>
+                              <td className="px-4 py-3">{inv.customer?.name || inv.buyerName || '-'}</td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900">₹{inv.grandTotal.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
+                                  inv.status === 'FINALIZED' ? 'bg-green-100 text-green-700' :
+                                  inv.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                  'bg-yellow-100 text-yellow-700'
+                                }`}>{inv.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                          {detailsInvoices.length === 0 && (
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No invoices found for this vehicle.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                   </div>
                 </div>
               </div>
