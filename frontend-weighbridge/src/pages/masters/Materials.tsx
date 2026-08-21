@@ -11,12 +11,25 @@ export default function Materials() {
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0, gstRateId: '' });
   const [errorMsg, setErrorMsg] = useState('');
+  const [taxRates, setTaxRates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchMaterials();
+    fetchTaxRates();
   }, []);
+
+  const fetchTaxRates = async () => {
+    try {
+      const res = await api.get('/settings/taxes');
+      setTaxRates(res.data);
+      if (res.data.length > 0) {
+        setNewMaterial(prev => ({...prev, gstRateId: res.data[0].id}));
+      }
+    } catch (e) {}
+  };
+
 
   const fetchMaterials = async () => {
     try {
@@ -27,6 +40,7 @@ export default function Materials() {
 
   const validateForm = () => {
     if (newMaterial.name.length < 2) return "Name must be at least 2 characters.";
+    if (!newMaterial.gstRateId) return "GST Rate is required.";
     return null;
   };
 
@@ -88,7 +102,7 @@ export default function Materials() {
   };
 
   const openAddModal = () => {
-    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0, gstRateId: '' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -102,7 +116,8 @@ export default function Materials() {
       hsnCode: m.hsnCode || '',
       pricingType: m.pricingType || 'PER_TON',
       billingUnit: m.billingUnit || 'TON',
-      defaultRate: m.defaultRate || 0
+      defaultRate: m.defaultRate || 0,
+      gstRateId: m.gstRateId || ''
     });
     setIsEditing(true);
     setErrorMsg('');
@@ -172,7 +187,17 @@ export default function Materials() {
                     <option value="NOS">NOS</option>
                   </select>
                 </div>
-                
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate *</label>
+                  <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
+                    <option value="">Select GST Rate</option>
+                    {taxRates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
                   <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors">
                     Cancel

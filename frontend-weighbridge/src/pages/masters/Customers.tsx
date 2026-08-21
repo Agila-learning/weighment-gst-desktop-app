@@ -115,7 +115,7 @@ const Customers = () => {
 
       // Success
       if (typeof setShowModal === 'function') setShowModal(false);
-      if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
+      
       if (typeof setIsEditing === 'function') setIsEditing(false);
       fetchCustomers();
     } catch (err: any) {

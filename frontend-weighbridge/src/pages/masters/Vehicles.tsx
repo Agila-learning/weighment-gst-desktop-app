@@ -46,13 +46,6 @@ const Vehicles = () => {
   
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (typeof validateForm === 'function') {
-        const error = validateForm();
-        if (error) {
-          setErrorMsg(error);
-          return;
-        }
-    }
     setErrorMsg('');
     
     try {
@@ -96,7 +89,7 @@ const Vehicles = () => {
 
       // Success
       if (typeof setShowModal === 'function') setShowModal(false);
-      if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
+      
       if (typeof setIsEditing === 'function') setIsEditing(false);
       fetchVehicles();
     } catch (err: any) {

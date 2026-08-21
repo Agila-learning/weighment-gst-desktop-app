@@ -7,6 +7,7 @@ import api from '../../services/api';
 export default function Transporters() {
   const [transporters, setTransporters] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  // @ts-ignore
   const [errorMsg, setErrorMsg] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
@@ -41,13 +42,6 @@ export default function Transporters() {
   
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (typeof validateForm === 'function') {
-        const error = validateForm();
-        if (error) {
-          setErrorMsg(error);
-          return;
-        }
-    }
     setErrorMsg('');
     
     try {
@@ -90,9 +84,9 @@ export default function Transporters() {
       }
 
       // Success
-      if (typeof setShowModal === 'function') setShowModal(false);
+      
       if (typeof setIsModalOpen === 'function') setIsModalOpen(false);
-      if (typeof setIsEditing === 'function') setIsEditing(false);
+      
       fetchTransporters();
     } catch (err: any) {
       setErrorMsg(err.message || 'Unexpected error occurred.');
