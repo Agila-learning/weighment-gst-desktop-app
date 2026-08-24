@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
     res.json(customers);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching customers:', error);
     res.status(500).json({ message: 'Error fetching customers', error: String(error), details: error?.message });
   }
