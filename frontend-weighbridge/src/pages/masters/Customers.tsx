@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
 import api from '../../services/api';
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 import { getStateFromGstin, getStateFromName } from '../../utils/indianStates';
 
 const Customers = () => {

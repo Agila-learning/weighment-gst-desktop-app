@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import apiClient from '../api/client';
 import { getStateFromGstin, getStateFromName } from '../utils/indianStates';
 
 const Customers = () => {
