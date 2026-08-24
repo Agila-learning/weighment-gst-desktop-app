@@ -75,6 +75,11 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-app.listen(Number(port), '0.0.0.0', () => {
+import { seedDemoData } from './utils/seed-demo';
+
+app.listen(Number(port), '0.0.0.0', async () => {
   console.log(`Server is running on port ${port}`);
+  
+  // Seed demo data if it doesn't exist
+  await seedDemoData();
 });

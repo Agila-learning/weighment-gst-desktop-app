@@ -294,14 +294,31 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Download HTML Invoice (formerly PDF)
+// Download actual PDF
 router.get('/:id/pdf', async (req, res) => {
   try {
     const htmlContent = await generateInvoicePDF(req.params.id);
-    res.set({
-      'Content-Type': 'text/html',
-    });
-    res.send(htmlContent);
+    const invoice = await prisma.invoice.findUnique({ where: { id: req.params.id } });
+    
+    try {
+      const puppeteer = await import('puppeteer');
+      const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'load' });
+      const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '5mm', bottom: '5mm', left: '5mm', right: '5mm' } });
+      await browser.close();
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice?.invoiceNumber || req.params.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (pdfErr) {
+      console.warn('Puppeteer PDF generation failed, falling back to HTML', pdfErr);
+      res.set({
+        'Content-Type': 'text/html',
+        'Content-Disposition': `attachment; filename="Invoice-${invoice?.invoiceNumber || req.params.id}.html"`
+      });
+      res.send(htmlContent);
+    }
   } catch (error: any) {
     console.error('PDF GENERATION ERROR:', error);
     res.status(500).json({ message: 'Error generating PDF: ' + (error.message || String(error)) });

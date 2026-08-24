@@ -318,7 +318,7 @@ const Invoices = () => {
                                 const url = window.URL.createObjectURL(new Blob([pdfRes.data]));
                                 const link = document.createElement('a');
                                 link.href = url;
-                                link.setAttribute('download', `Invoice_${inv.invoiceNumber}.html`);
+                                link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
                                 document.body.appendChild(link);
                                 link.click();
                                 link.parentNode?.removeChild(link);
@@ -390,7 +390,7 @@ const Invoices = () => {
           onDownload={() => {
             const link = document.createElement('a');
             link.href = previewBlobUrl;
-            link.download = `Invoice.html`;
+            link.download = `Invoice.pdf`;
             link.click();
           }}
           onPrint={() => {

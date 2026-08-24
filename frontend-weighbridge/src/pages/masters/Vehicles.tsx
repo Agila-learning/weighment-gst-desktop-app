@@ -1,5 +1,3 @@
-// @ts-ignore
-import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Truck, Info, Clock, CheckCircle, Scale } from 'lucide-react';
 import api from '../../services/api';
@@ -7,11 +5,13 @@ import api from '../../services/api';
 const Vehicles = () => {
   const [search, setSearch] = useState('');
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [transporters, setTransporters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const [showModal, setShowModal] = useState(false);
-  const [newVehicle, setNewVehicle] = useState({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterName: '', state: '', capacityWeight: '' });
+  const [newVehicle, setNewVehicle] = useState({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', driverId: '', state: '', capacityWeight: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -23,89 +23,64 @@ const Vehicles = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
+    fetchMasters();
     fetchVehicles();
   }, []);
+
+  const fetchMasters = async () => {
+    try {
+      const [dRes, tRes] = await Promise.all([
+        api.get('/drivers'),
+        api.get('/transporters')
+      ]);
+      setDrivers(Array.isArray(dRes.data) ? dRes.data : dRes.data?.data || []);
+      setTransporters(Array.isArray(tRes.data) ? tRes.data : tRes.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching masters', err);
+    }
+  };
 
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      
-      // 1. Fetch from Server First (Priority)
-      try {
-        const res = await api.get('/vehicles');
-        setVehicles(res.data);
-        setLoading(false);
-        return; // Success, exit early
-      } catch (serverErr) {
-        console.warn('Server fetch failed, falling back to offline', serverErr);
-      }
-
-      // 2. Fallback to Local SQLite if offline
+      const res = await api.get('/vehicles');
+      setVehicles(Array.isArray(res.data) ? res.data : res.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      // Fallback to local SQLite if offline
       const ipcRenderer = (window as any).ipcRenderer;
       if (ipcRenderer) {
         const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM vehicles');
         if (response.success) setVehicles(response.data);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  
-  
-  
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     
     try {
-      const ipcRenderer = (window as any).ipcRenderer;
-      let serverSaved = false;
-      let serverErrorMsg = '';
-
-      let payload: any = {};
-      payload = { ...newVehicle };
-        const idToEdit = newVehicle.id;
-        const isEditingFlag = isEditing;
-        
-      // 1. Attempt Server API Call First (since user prioritizes Postgresql)
-      try {
-        if (isEditingFlag && idToEdit) {
-          await api.put(`/vehicles/${idToEdit}`, payload);
-        } else {
-          const res = await api.post('/vehicles', payload);
-          if (res.data && res.data.id) payload.id = res.data.id;
-        }
-        serverSaved = true;
-      } catch (err: any) {
-        console.warn("Server API Error:", err);
-        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
-        if (!payload.id) {
-           payload.id = uuidv4();
-        }
-      }
-
-      // 2. Attempt Local SQLite (Offline Mode)
-      if (ipcRenderer) {
-          let q = '';
-          let params: any[] = [];
-          q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)'; params = [payload.id, payload.vehicleNumber, payload.tareWeight || 0];
-          await ipcRenderer.invoke('db-query', q, params);
-      } else if (!serverSaved) {
-          // Web Mode (no Electron) and Server Failed!
-          setErrorMsg(serverErrorMsg || "Could not save to server.");
-          return;
-      }
-
-      // Success
-      if (typeof setShowModal === 'function') setShowModal(false);
+      let payload = {
+        ...newVehicle,
+        capacityWeight: newVehicle.capacityWeight ? parseFloat(newVehicle.capacityWeight) : null,
+        driverId: newVehicle.driverId || null,
+        transporterId: newVehicle.transporterId || null
+      };
       
-      if (typeof setIsEditing === 'function') setIsEditing(false);
+      if (isEditing && newVehicle.id) {
+        await api.put(`/vehicles/${newVehicle.id}`, payload);
+      } else {
+        await api.post('/vehicles', payload);
+      }
+
+      setShowModal(false);
+      setIsEditing(false);
       fetchVehicles();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Unexpected error occurred.');
+      setErrorMsg(err.response?.data?.message || err.message || 'Unexpected error occurred.');
     }
   };
 
@@ -114,7 +89,8 @@ const Vehicles = () => {
       id: vehicle.id,
       vehicleNumber: vehicle.vehicleNumber || '',
       vehicleType: vehicle.vehicleType || 'Tipper',
-      transporterName: vehicle.transporterInfo || '',
+      transporterId: vehicle.transporterId || '',
+      driverId: vehicle.driverId || '',
       state: vehicle.state || '',
       capacityWeight: vehicle.capacityWeight ? vehicle.capacityWeight.toString() : ''
     });
@@ -128,11 +104,9 @@ const Vehicles = () => {
     setShowDetailsModal(true);
     setDetailsLoading(true);
     try {
-      // First get summary
       const summaryRes = await api.get(`/vehicles/${vehicle.vehicleNumber}/summary`);
       setDetailsSummary(summaryRes.data.summary);
       
-      // Get paginated history (first page, limit 50)
       const historyRes = await api.get(`/weighments?vehicleNumber=${vehicle.vehicleNumber}&limit=50`);
       setDetailsHistory(historyRes.data.data || []);
     } catch (err) {
@@ -143,7 +117,7 @@ const Vehicles = () => {
   };
   
   const openAddModal = () => {
-    setNewVehicle({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterName: '', state: '', capacityWeight: '' });
+    setNewVehicle({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', driverId: '', state: '', capacityWeight: '' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -169,22 +143,10 @@ const Vehicles = () => {
         </div>
         <div className="flex gap-3">
           <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-            <button 
-              onClick={() => setViewMode('list')} 
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              title="List View"
-            >
-              <LayoutList size={18} />
-            </button>
-            <button 
-              onClick={() => setViewMode('grid')} 
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              title="Grid View"
-            >
-              <LayoutGrid size={18} />
-            </button>
+            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><LayoutList size={18} /></button>
+            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><LayoutGrid size={18} /></button>
           </div>
-          <button onClick={openAddModal} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 shadow-md bg-primary-600 hover:bg-primary-700">
+          <button onClick={openAddModal} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 shadow-md bg-blue-600 hover:bg-blue-700">
             <Plus size={20} />
             <span>Add Vehicle</span>
           </button>
@@ -192,7 +154,7 @@ const Vehicles = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -212,17 +174,15 @@ const Vehicles = () => {
               
               <form id="vehicle-form" onSubmit={handleAddOrEdit} className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                    <Info size={16} /> Vehicle Identification
-                  </h3>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2"><Info size={16} /> Vehicle Identification</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number <span className="text-red-500">*</span></label>
-                      <input required type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none uppercase font-mono transition-shadow" value={newVehicle.vehicleNumber} onChange={e => setNewVehicle({...newVehicle, vehicleNumber: e.target.value.toUpperCase().replace(/\s/g, '')})} placeholder="e.g. MH12AB1234" />
+                      <input required type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none uppercase font-mono" value={newVehicle.vehicleNumber} onChange={e => setNewVehicle({...newVehicle, vehicleNumber: e.target.value.toUpperCase().replace(/\s/g, '')})} placeholder="e.g. MH12AB1234" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
-                      <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-white transition-shadow" value={newVehicle.vehicleType} onChange={e => setNewVehicle({...newVehicle, vehicleType: e.target.value})}>
+                      <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none bg-white" value={newVehicle.vehicleType} onChange={e => setNewVehicle({...newVehicle, vehicleType: e.target.value})}>
                         <option value="Tipper">Tipper</option>
                         <option value="Lorry">Lorry</option>
                         <option value="Tractor">Tractor</option>
@@ -233,38 +193,46 @@ const Vehicles = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                      <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none transition-shadow" value={newVehicle.state} onChange={e => setNewVehicle({...newVehicle, state: e.target.value})} placeholder="e.g. Maharashtra" />
+                      <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.state} onChange={e => setNewVehicle({...newVehicle, state: e.target.value})} placeholder="e.g. Maharashtra" />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                    <Scale size={16} /> Capacity & Transporter
-                  </h3>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2"><Scale size={16} /> Additional Details</h3>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Capacity / Weight (Tons)</label>
-                      <input type="number" step="0.1" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none transition-shadow" value={newVehicle.capacityWeight} onChange={e => setNewVehicle({...newVehicle, capacityWeight: e.target.value})} placeholder="e.g. 10.5" />
+                      <input type="number" step="0.1" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.capacityWeight} onChange={e => setNewVehicle({...newVehicle, capacityWeight: e.target.value})} placeholder="e.g. 10.5" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Transporter / Owner Info</label>
-                      <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none transition-shadow" value={newVehicle.transporterName} onChange={e => setNewVehicle({...newVehicle, transporterName: e.target.value})} placeholder="e.g. Fast Logistics Pvt Ltd" />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Transporter</label>
+                      <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.transporterId} onChange={e => setNewVehicle({...newVehicle, transporterId: e.target.value})}>
+                        <option value="">-- No Transporter --</option>
+                        {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Default Driver</label>
+                      <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.driverId} onChange={e => setNewVehicle({...newVehicle, driverId: e.target.value})}>
+                        <option value="">-- No Driver --</option>
+                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>
               </form>
             </div>
             <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 shrink-0">
-              <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors font-medium shadow-sm">Cancel</button>
-              <button type="submit" form="vehicle-form" className="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium shadow-sm">Save Vehicle</button>
+              <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg font-medium shadow-sm">Cancel</button>
+              <button type="submit" form="vehicle-form" className="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium shadow-sm">Save Vehicle</button>
             </div>
           </div>
         </div>
       )}
 
       {showDetailsModal && detailsVehicle && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white p-0 rounded-xl shadow-lg w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
               <div>
@@ -286,19 +254,19 @@ const Vehicles = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white p-4 rounded-xl border border-blue-100 text-center shadow-sm">
                       <div className="text-xs text-gray-500 font-medium uppercase mb-1 flex items-center justify-center gap-1"><Clock size={14} /> Today's Loads</div>
-                      <div className="text-2xl font-bold text-blue-600">{detailsSummary.todaysLoads}</div>
+                      <div className="text-2xl font-bold text-blue-600">{detailsSummary.todaysLoads || 0}</div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-green-100 text-center shadow-sm">
                       <div className="text-xs text-gray-500 font-medium uppercase mb-1 flex items-center justify-center gap-1"><Scale size={14} /> Today's Weight</div>
-                      <div className="text-2xl font-bold text-green-600">{detailsSummary.todaysTotalWeight.toFixed(2)} KG</div>
+                      <div className="text-2xl font-bold text-green-600">{(detailsSummary.todaysTotalWeight || 0).toFixed(2)} KG</div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-purple-100 text-center shadow-sm">
                       <div className="text-xs text-gray-500 font-medium uppercase mb-1 flex items-center justify-center gap-1"><CheckCircle size={14} /> Total Lifetime Loads</div>
-                      <div className="text-2xl font-bold text-purple-600">{detailsSummary.completedWeighments}</div>
+                      <div className="text-2xl font-bold text-purple-600">{detailsSummary.completedWeighments || 0}</div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-indigo-100 text-center shadow-sm">
                       <div className="text-xs text-gray-500 font-medium uppercase mb-1">Total Lifetime Weight</div>
-                      <div className="text-2xl font-bold text-indigo-600">{(detailsSummary.totalHistoricalWeight / 1000).toFixed(2)} TON</div>
+                      <div className="text-2xl font-bold text-indigo-600">{((detailsSummary.totalHistoricalWeight || 0) / 1000).toFixed(2)} TON</div>
                     </div>
                   </div>
                 )}
@@ -365,7 +333,6 @@ const Vehicles = () => {
           </div>
         </div>
         
-        
         {viewMode === 'list' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
@@ -373,9 +340,9 @@ const Vehicles = () => {
                 <tr>
                   <th className="px-6 py-4">Vehicle No.</th>
                   <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">State</th>
                   <th className="px-6 py-4">Capacity</th>
                   <th className="px-6 py-4">Transporter</th>
+                  <th className="px-6 py-4">Driver</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -389,20 +356,14 @@ const Vehicles = () => {
                     <tr key={vehicle.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">{vehicle.vehicleNumber}</td>
                       <td className="px-6 py-4">{vehicle.vehicleType || '-'}</td>
-                      <td className="px-6 py-4">{vehicle.state || '-'}</td>
                       <td className="px-6 py-4">{vehicle.capacityWeight ? `${vehicle.capacityWeight} Tons` : '-'}</td>
-                      <td className="px-6 py-4">{vehicle.transporterInfo || '-'}</td>
+                      <td className="px-6 py-4">{vehicle.transporter?.name || '-'}</td>
+                      <td className="px-6 py-4">{vehicle.driver?.name || '-'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex gap-2 justify-end">
-                          <button onClick={() => openDetailsModal(vehicle)} className="text-gray-500 hover:text-blue-600 transition-colors p-1" title="Vehicle Details">
-                            <Truck size={18} />
-                          </button>
-                          <button onClick={() => openEditModal(vehicle)} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Edit Vehicle">
-                            <Edit2 size={18} />
-                          </button>
-                          <button onClick={() => handleDelete(vehicle.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Delete Vehicle">
-                            <Trash2 size={18} />
-                          </button>
+                          <button onClick={() => openDetailsModal(vehicle)} className="text-gray-500 hover:text-blue-600 transition-colors p-1" title="Vehicle Details"><Truck size={18} /></button>
+                          <button onClick={() => openEditModal(vehicle)} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Edit Vehicle"><Edit2 size={18} /></button>
+                          <button onClick={() => handleDelete(vehicle.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Delete Vehicle"><Trash2 size={18} /></button>
                         </div>
                       </td>
                     </tr>
@@ -431,13 +392,13 @@ const Vehicles = () => {
                         <span className="text-gray-400">Capacity:</span>
                         <span className="font-medium text-gray-700">{vehicle.capacityWeight ? `${vehicle.capacityWeight} Tons` : 'N/A'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">State:</span>
-                        <span className="font-medium text-gray-700">{vehicle.state || 'N/A'}</span>
-                      </div>
                       <div className="pt-2 border-t border-gray-100 mt-2">
-                        <span className="block text-xs text-gray-400 mb-0.5">Transporter / Owner</span>
-                        <span className="font-medium text-gray-800 truncate block">{vehicle.transporterInfo || 'N/A'}</span>
+                        <span className="block text-xs text-gray-400 mb-0.5">Transporter</span>
+                        <span className="font-medium text-gray-800 truncate block">{vehicle.transporter?.name || 'N/A'}</span>
+                      </div>
+                      <div className="pt-1 mt-1">
+                        <span className="block text-xs text-gray-400 mb-0.5">Driver</span>
+                        <span className="font-medium text-gray-800 truncate block">{vehicle.driver?.name || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -449,8 +410,8 @@ const Vehicles = () => {
                       </button>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => openEditModal(vehicle)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors border border-transparent hover:border-blue-100"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(vehicle.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors border border-transparent hover:border-red-100"><Trash2 size={16} /></button>
+                      <button onClick={() => openEditModal(vehicle)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDelete(vehicle.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /></button>
                     </div>
                   </div>
                 </div>

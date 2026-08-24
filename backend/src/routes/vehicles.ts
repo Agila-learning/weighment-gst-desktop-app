@@ -6,6 +6,27 @@ const router = Router();
 
 router.use(authenticate);
 
+// Search vehicles (case-insensitive, normalized)
+router.get('/search', async (req, res) => {
+  try {
+    const q = (req.query.q as string || '').trim().replace(/\s+/g, '').toUpperCase();
+    if (!q) return res.json([]);
+
+    const vehicles = await prisma.vehicle.findMany({
+      where: {
+        isActive: true,
+        vehicleNumber: { contains: q, mode: 'insensitive' }
+      },
+      include: { driver: true, transporter: true },
+      take: 10,
+      orderBy: { vehicleNumber: 'asc' }
+    });
+    res.json(vehicles);
+  } catch (error) {
+    res.status(500).json({ message: 'Error searching vehicles' });
+  }
+});
+
 // Get all vehicles
 router.get('/', async (req, res) => {
   try {

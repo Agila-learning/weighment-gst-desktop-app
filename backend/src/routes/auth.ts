@@ -38,6 +38,23 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Auto-create demo_admin if it doesn't exist
+    if (!user && (usernameOrEmail === 'demo_admin' || usernameOrEmail === 'demo@example.com')) {
+      const hash = await bcrypt.hash('Demo@123', 10);
+      user = await prisma.user.upsert({
+        where: { email: 'demo@example.com' },
+        update: {},
+        create: {
+          email: 'demo@example.com',
+          username: 'demo_admin',
+          name: '[DEMO] Demo Admin',
+          password: hash,
+          role: 'ADMIN',
+          applicationAccess: ['GST_BILLING', 'WEIGHBRIDGE']
+        }
+      });
+    }
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
