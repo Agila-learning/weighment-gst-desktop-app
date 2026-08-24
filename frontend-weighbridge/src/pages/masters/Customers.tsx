@@ -1,7 +1,7 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
-import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info } from 'lucide-react';
+import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
 import api from '../../services/api';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 import { getStateFromGstin, getStateFromName } from '../../utils/indianStates';
@@ -29,6 +29,23 @@ const Customers = () => {
   const [ledgerData, setLedgerData] = useState<any>({ summary: {}, transactions: [] });
   const [weighmentsData, setWeighmentsData] = useState<any[]>([]);
   const [, setWeighmentsMeta] = useState<any>(null);
+
+  const downloadInvoicePdf = async (invId: string, invNumber: string) => {
+    try {
+      const pdfRes = await api.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'text/html' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Invoice-${invNumber}.html`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download PDF', err);
+      alert('Could not download invoice PDF. Please try again.');
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -77,58 +94,45 @@ const Customers = () => {
   
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (typeof validateForm === 'function') {
-        const error = validateForm();
-        if (error) {
-          setErrorMsg(error);
-          return;
-        }
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMsg(validationError);
+      return;
     }
     setErrorMsg('');
     
     try {
-      const ipcRenderer = (window as any).ipcRenderer;
-      let serverSaved = false;
-      let serverErrorMsg = '';
+      // Build clean payload - strip empty strings to null so DB unique constraints are not violated
+      const cleanPayload: any = {
+        name: newCustomer.name.trim(),
+        gstin: newCustomer.gstin.trim() || null,
+        phone: newCustomer.phone.trim() ? `${newCustomer.countryCode} ${newCustomer.phone.trim()}` : null,
+        email: newCustomer.email.trim() || null,
+        address: newCustomer.address.trim() || null,
+        stateName: newCustomer.stateName.trim() || null,
+        stateCode: newCustomer.stateCode.trim() || null,
+        mobile1: newCustomer.mobile1.trim() || null,
+        mobile2: newCustomer.mobile2.trim() || null,
+      };
 
-      let payload: any = {};
-      payload = { ...newCustomer };
-        const idToEdit = newCustomer.id;
-        const isEditingFlag = isEditing;
+      const idToEdit = newCustomer.id;
+      const isEditingFlag = isEditing;
         
-      // 1. Attempt Server API Call First (since user prioritizes Postgresql)
+      // Server API Call (PostgreSQL is the source of truth)
       try {
         if (isEditingFlag && idToEdit) {
-          await api.put(`/customers/${idToEdit}`, payload);
+          await api.put(`/customers/${idToEdit}`, cleanPayload);
         } else {
-          const res = await api.post('/customers', payload);
-          if (res.data && res.data.id) payload.id = res.data.id;
+          await api.post('/customers', cleanPayload);
         }
-        serverSaved = true;
       } catch (err: any) {
-        console.warn("Server API Error:", err);
-        serverErrorMsg = err.response?.data?.message || err.message || 'Server error';
-        if (!payload.id) {
-           payload.id = uuidv4();
-        }
+        const serverMsg = err.response?.data?.message || err.message || 'Could not save to server.';
+        setErrorMsg(serverMsg);
+        return; // Stop here - do not silently try SQLite on server errors
       }
 
-      // 2. Attempt Local SQLite (Offline Mode)
-      if (ipcRenderer) {
-          let q = '';
-          let params: any[] = [];
-          q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.gstin || null, payload.mobile1 || null, payload.mobile2 || null];
-          await ipcRenderer.invoke('db-query', q, params);
-      } else if (!serverSaved) {
-          // Web Mode (no Electron) and Server Failed!
-          setErrorMsg(serverErrorMsg || "Could not save to server.");
-          return;
-      }
-
-      // Success
-      if (typeof setShowModal === 'function') setShowModal(false);
-      
-      if (typeof setIsEditing === 'function') setIsEditing(false);
+      setShowModal(false);
+      setIsEditing(false);
       fetchCustomers();
     } catch (err: any) {
       setErrorMsg(err.message || 'Unexpected error occurred.');
@@ -485,7 +489,9 @@ const Customers = () => {
                             <td className="px-4 py-3 text-right text-green-600">₹{(inv.amountPaid || 0).toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-bold text-red-600">₹{(inv.balance || 0).toFixed(2)}</td>
                             <td className="px-4 py-3 text-center">
-                              <a href={`${API_BASE_URL}/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">View PDF</a>
+                              <button onClick={() => downloadInvoicePdf(inv.id, inv.invoiceNumber)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline">
+                                <Download size={14} /> Download PDF
+                              </button>
                             </td>
                           </tr>
                         ))}

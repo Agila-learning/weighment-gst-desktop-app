@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     res.json(customers);
   } catch (error) {
     console.error('Error fetching customers:', error);
-    res.status(500).json({ message: 'Error fetching customers', error: String(error) });
+    res.status(500).json({ message: 'Error fetching customers', error: String(error), details: error?.message });
   }
 });
 
@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
       const field = error.meta?.target?.[0] || 'record';
       return res.status(400).json({ message: `A customer with this ${field} already exists.` });
     }
-    res.status(500).json({ message: 'Error creating customer' });
+    res.status(500).json({ message: 'Error creating customer', error: String(error), details: error?.message });
   }
 });
 

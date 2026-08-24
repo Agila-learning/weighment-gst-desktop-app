@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info } from 'lucide-react';
+import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
 import apiClient, { API_BASE_URL } from '../api/client';
 import { getStateFromGstin, getStateFromName } from '../utils/indianStates';
 
@@ -29,6 +29,23 @@ const Customers = () => {
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  const downloadInvoicePdf = async (invId: string, invNumber: string) => {
+    try {
+      const pdfRes = await apiClient.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'text/html' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Invoice-${invNumber}.html`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download PDF', err);
+      alert('Could not download invoice PDF. Please try again.');
+    }
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -62,15 +79,22 @@ const Customers = () => {
     }
     setErrorMsg('');
     try {
-      const payload = {
-        ...newCustomer,
-        phone: newCustomer.phone ? `${newCustomer.countryCode} ${newCustomer.phone}` : ''
+      const cleanPayload = {
+        name: newCustomer.name.trim(),
+        gstin: newCustomer.gstin.trim() || null,
+        phone: newCustomer.phone.trim() ? `${newCustomer.countryCode} ${newCustomer.phone.trim()}` : null,
+        email: newCustomer.email.trim() || null,
+        address: newCustomer.address.trim() || null,
+        stateName: newCustomer.stateName.trim() || null,
+        stateCode: newCustomer.stateCode.trim() || null,
+        mobile1: newCustomer.mobile1.trim() || null,
+        mobile2: newCustomer.mobile2.trim() || null,
       };
       
       if (isEditing && newCustomer.id) {
-        await apiClient.put(`/customers/${newCustomer.id}`, payload);
+        await apiClient.put(`/customers/${newCustomer.id}`, cleanPayload);
       } else {
-        await apiClient.post('/customers', payload);
+        await apiClient.post('/customers', cleanPayload);
       }
       setShowModal(false);
       setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
@@ -431,7 +455,9 @@ const Customers = () => {
                             <td className="px-4 py-3 text-right text-green-600">₹{(inv.amountPaid || 0).toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-bold text-red-600">₹{(inv.balance || 0).toFixed(2)}</td>
                             <td className="px-4 py-3 text-center">
-                              <a href={`${API_BASE_URL}/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">View PDF</a>
+                              <button onClick={() => downloadInvoicePdf(inv.id, inv.invoiceNumber)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline">
+                                <Download size={14} /> Download PDF
+                              </button>
                             </td>
                           </tr>
                         ))}
