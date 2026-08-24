@@ -248,6 +248,7 @@ const Invoices = () => {
                 <th className="px-6 py-4 font-medium">Invoice No</th>
                 <th className="px-6 py-4 font-medium">Date</th>
                 <th className="px-6 py-4 font-medium">Customer</th>
+                <th className="px-6 py-4 font-medium">Vehicle & Load</th>
                 <th className="px-6 py-4 font-medium text-right">Cost</th>
                 <th className="px-6 py-4 font-medium text-right">GST</th>
                 <th className="px-6 py-4 font-medium text-center">Status</th>
@@ -273,6 +274,10 @@ const Invoices = () => {
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{inv.buyerName || inv.customer?.name}</div>
                       <div className="text-xs text-gray-500">{inv.buyerGstin || inv.customer?.gstin}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-blue-600">{inv.snapshotVehicleNumber || inv.vehicle?.vehicleNumber || '-'}</div>
+                      <div className="text-xs text-gray-500">{inv.items?.map((i: any) => i.materialName + ' (' + i.quantity + ' ' + (i.quantityUnit || 'TON') + ')').join(', ') || '-'}</div>
                     </td>
                     <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.subTotal)}</td>
                     <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.taxTotal)}</td>
@@ -307,6 +312,20 @@ const Invoices = () => {
                       <div className="flex items-center justify-center gap-2">
                         {inv.status === 'FINALIZED' && (
                           <>
+                            <button title="Download PDF" onClick={async () => {
+                              try {
+                                const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
+                                const url = window.URL.createObjectURL(new Blob([pdfRes.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', `Invoice_${inv.invoiceNumber}.html`);
+                                document.body.appendChild(link);
+                                link.click();
+                                link.parentNode?.removeChild(link);
+                              } catch (err) {
+                                alert('Error downloading');
+                              }
+                            }} className="text-gray-400 hover:text-green-600"><Download size={16} /></button>
                             <button title="Preview PDF" onClick={async () => {
                               try {
                                 const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });

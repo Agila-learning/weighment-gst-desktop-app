@@ -113,7 +113,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-8 h-full flex flex-col">
+    <div className="p-8 min-h-screen overflow-y-auto flex flex-col pb-32">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Hardware Integration</h1>
         

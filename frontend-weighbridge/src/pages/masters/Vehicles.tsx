@@ -29,6 +29,18 @@ const Vehicles = () => {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
+      
+      // 1. Fetch from Server First (Priority)
+      try {
+        const res = await api.get('/vehicles');
+        setVehicles(res.data);
+        setLoading(false);
+        return; // Success, exit early
+      } catch (serverErr) {
+        console.warn('Server fetch failed, falling back to offline', serverErr);
+      }
+
+      // 2. Fallback to Local SQLite if offline
       const ipcRenderer = (window as any).ipcRenderer;
       if (ipcRenderer) {
         const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM vehicles');

@@ -241,7 +241,7 @@ const Materials = () => {
                   <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
                     <option value="">Select Rate</option>
                     {taxRates.map(tr => (
-                      <option key={tr.id} value={tr.id}>{tr.name}</option>
+                      <option key={tr.id} value={tr.id}>{tr.name} ({tr.cgst + tr.sgst + tr.igst}%)</option>
                     ))}
                   </select>
                 </div>

@@ -25,8 +25,21 @@ export default function Transporters() {
 
   const fetchTransporters = async () => {
     try {
-      const res = await api.get('/transporters');
-      setTransporters(res.data);
+      // 1. Fetch from Server First
+      try {
+        const res = await api.get('/transporters');
+        setTransporters(res.data);
+        return;
+      } catch (serverErr) {
+        console.warn('Server fetch failed, falling back to offline');
+      }
+
+      // 2. Fallback
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM transporters');
+        if (response.success) setTransporters(response.data);
+      }
     } catch (err) {}
   };
 

@@ -26,8 +26,21 @@ export default function Drivers() {
 
   const fetchDrivers = async () => {
     try {
-      const res = await api.get('/drivers');
-      setDrivers(res.data);
+      // 1. Fetch from Server First
+      try {
+        const res = await api.get('/drivers');
+        setDrivers(res.data);
+        return;
+      } catch (serverErr) {
+        console.warn('Server fetch failed, falling back to offline');
+      }
+
+      // 2. Fallback
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        const response = await ipcRenderer.invoke('db-query', 'SELECT * FROM drivers');
+        if (response.success) setDrivers(response.data);
+      }
     } catch (err) {}
   };
 

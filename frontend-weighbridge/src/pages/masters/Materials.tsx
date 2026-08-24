@@ -193,7 +193,7 @@ export default function Materials() {
                   <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
                     <option value="">Select GST Rate</option>
                     {taxRates.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
+                      <option key={t.id} value={t.id}>{t.name} ({t.cgst + t.sgst + t.igst}%)</option>
                     ))}
                   </select>
                 </div>
