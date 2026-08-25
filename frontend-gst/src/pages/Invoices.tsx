@@ -336,7 +336,7 @@ const Invoices = () => {
                             <button title="Preview PDF" onClick={async () => {
                               try {
                                 const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
-                                const blob = new Blob([pdfRes.data], { type: 'text/html' });
+                                const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
                                 setPreviewBlobUrl(URL.createObjectURL(blob));
                               } catch (err) {
                                 alert('Error generating PDF');

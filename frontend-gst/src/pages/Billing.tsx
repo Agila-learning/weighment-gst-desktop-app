@@ -472,7 +472,7 @@ const Billing = () => {
         let pdfBuffer = null;
         try {
           const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
-          const blob = new Blob([pdfRes.data], { type: 'text/html' });
+          const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
           const blobUrl = URL.createObjectURL(blob);
           setPreviewBlobUrl(blobUrl);
           pdfBuffer = await blob.arrayBuffer();
