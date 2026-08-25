@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
 import apiClient from '../api/client';
+import { fetchInvoicePdf } from '../utils/pdfHelper';
 import { getStateFromGstin, getStateFromName } from '../utils/indianStates';
 
 const Customers = () => {
@@ -32,18 +33,17 @@ const Customers = () => {
 
   const downloadInvoicePdf = async (invId: string, invNumber: string) => {
     try {
-      const pdfRes = await apiClient.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'application/pdf' }));
+      const { blobUrl } = await fetchInvoicePdf(invId);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       link.setAttribute('download', `Invoice-${invNumber}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Wait a moment before revoking
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
     } catch (err) {
-      console.error('Failed to download PDF', err);
-      alert('Could not download invoice PDF. Please try again.');
+      alert('Error downloading PDF');
     }
   };
 

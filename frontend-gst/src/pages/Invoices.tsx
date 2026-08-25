@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2, FileText } from 'lucide-react';
 import apiClient from '../api/client';
 import PdfPreviewModal from '../components/PdfPreviewModal';
+import { fetchInvoicePdf } from '../utils/pdfHelper';
 import { useNavigate } from 'react-router-dom';
 
 const Invoices = () => {
@@ -321,23 +322,21 @@ const Invoices = () => {
                           <>
                             <button title="Download PDF" onClick={async () => {
                               try {
-                                const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
-                                const url = window.URL.createObjectURL(new Blob([pdfRes.data]));
+                                const { blobUrl } = await fetchInvoicePdf(inv.id);
                                 const link = document.createElement('a');
-                                link.href = url;
+                                link.href = blobUrl;
                                 link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
                                 document.body.appendChild(link);
                                 link.click();
                                 link.parentNode?.removeChild(link);
                               } catch (err) {
-                                alert('Error downloading');
+                                alert('Error downloading PDF');
                               }
                             }} className="text-gray-400 hover:text-green-600"><Download size={16} /></button>
                             <button title="Preview PDF" onClick={async () => {
                               try {
-                                const pdfRes = await apiClient.get(`/invoices/${inv.id}/pdf`, { responseType: 'blob' });
-                                const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
-                                setPreviewBlobUrl(URL.createObjectURL(blob));
+                                const { blobUrl } = await fetchInvoicePdf(inv.id);
+                                setPreviewBlobUrl(blobUrl);
                               } catch (err) {
                                 alert('Error generating PDF');
                               }

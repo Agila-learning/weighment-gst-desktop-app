@@ -154,5 +154,22 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('generate-pdf', async (event, htmlContent) => {
+    try {
+      const printWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+      await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+      const pdfBuffer = await printWin.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 }
+      });
+      printWin.close();
+      return { success: true, buffer: pdfBuffer };
+    } catch (err: any) {
+      console.error('Local PDF Generation Error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   createWindow();
 })

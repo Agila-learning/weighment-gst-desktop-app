@@ -3,6 +3,7 @@ import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search,
 import apiClient from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PdfPreviewModal from '../components/PdfPreviewModal';
+import { fetchInvoicePdf } from '../utils/pdfHelper';
 
 const STATE_MAPPINGS: Record<string, string> = {
   '33': 'Tamil Nadu',
@@ -471,11 +472,9 @@ const Billing = () => {
       if (status === 'FINALIZED') {
         let pdfBuffer = null;
         try {
-          const pdfRes = await apiClient.get(`/invoices/${res.data.id}/pdf`, { responseType: 'blob' });
-          const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
-          const blobUrl = URL.createObjectURL(blob);
+          const { blobUrl, buffer } = await fetchInvoicePdf(res.data.id);
           setPreviewBlobUrl(blobUrl);
-          pdfBuffer = await blob.arrayBuffer();
+          pdfBuffer = buffer;
         } catch (pdfErr) {
           console.error("PDF generation failed:", pdfErr);
           // Show alert but still show success screen
