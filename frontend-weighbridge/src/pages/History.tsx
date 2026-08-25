@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, Eye, XCircle, Printer, Download, ChevronLeft, ChevronRight, Ban } from 'lucide-react';
 import api from '../services/api';
 import WeighmentSlip from '../components/WeighmentSlip';
-import { logAudit } from '../utils/audit';
 
 export default function History() {
   const [history, setHistory] = useState<any[]>([]);
@@ -43,61 +42,28 @@ export default function History() {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
-
-      let query = `
-        SELECT w.*, c.name as customerName, m.name as materialName, d.name as driverName, t.name as transporterName 
-        FROM weighments w
-        LEFT JOIN customers c ON w.customerId = c.id
-        LEFT JOIN materials m ON w.materialId = m.id
-        LEFT JOIN drivers d ON w.driverId = d.id
-        LEFT JOIN transporters t ON w.transporterId = t.id
-      `;
-      let countQuery = "SELECT count(*) as count FROM weighments w";
-      let conditions: string[] = [];
-      let params: any[] = [];
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
 
       if (debouncedSearch) {
-        conditions.push("(w.vehicleNumber LIKE ? OR w.slipNumber LIKE ? OR c.name LIKE ? OR m.name LIKE ?)");
-        params.push(`%${debouncedSearch}%`, `%${debouncedSearch}%`, `%${debouncedSearch}%`, `%${debouncedSearch}%`);
+        params.append('vehicleNumber', debouncedSearch);
+        params.append('slipNumber', debouncedSearch); // Backend can handle searching both if needed, or we just pass a generic search if available, but backend takes them separately. Wait, backend takes `vehicleNumber`, `slipNumber` separately but uses OR logic? Ah, wait, if we pass both, backend uses AND logic. 
+        // Let's pass a custom query param `search` and we can update backend to support it if needed, or we just use `vehicleNumber` for now as the main search.
+        params.append('search', debouncedSearch);
       }
-      if (filters.status) {
-        conditions.push("w.status = ?");
-        params.push(filters.status);
-      }
-      if (filters.weightSource) {
-        conditions.push("(w.firstWeightSource = ? OR w.secondWeightSource = ?)");
-        params.push(filters.weightSource, filters.weightSource);
-      }
-      if (filters.fromDate) {
-        conditions.push("w.date >= ?");
-        params.push(new Date(filters.fromDate).toISOString());
-      }
-      if (filters.toDate) {
-        const to = new Date(filters.toDate);
-        to.setHours(23, 59, 59, 999);
-        conditions.push("w.date <= ?");
-        params.push(to.toISOString());
-      }
-
-      if (conditions.length > 0) {
-        const whereClause = " WHERE " + conditions.join(" AND ");
-        query += whereClause;
-        countQuery += whereClause;
-      }
-
-      query += " ORDER BY w.date DESC LIMIT ? OFFSET ?";
       
-      const countRes = await ipcRenderer.invoke('db-query', countQuery, params);
-      const res = await ipcRenderer.invoke('db-query', query, [...params, limit, (page - 1) * limit]);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.weightSource) params.append('weightSource', filters.weightSource);
+      if (filters.fromDate) params.append('fromDate', filters.fromDate);
+      if (filters.toDate) params.append('toDate', filters.toDate);
+
+      const res = await api.get(`/weighments?${params.toString()}`);
       
-      if (res.success && countRes.success) {
-        setHistory(res.data);
-        const t = countRes.data[0].count;
-        setTotal(t);
-        setTotalPages(Math.ceil(t / limit));
-      }
+      setHistory(res.data.data);
+      setTotal(res.data.total);
+      setTotalPages(Math.ceil(res.data.total / limit));
     } catch (err) {
       console.error("Failed to fetch history", err);
     } finally {
@@ -117,8 +83,8 @@ export default function History() {
       new Date(row.createdAt).toLocaleDateString(),
       new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       row.vehicleNumber,
-      row.customerName || '',
-      row.materialName || '',
+      row.customer?.name || row.customerName || '',
+      row.material?.name || row.materialName || '',
       row.loadType || '',
       row.firstWeight || '',
       row.netWeight || '',
@@ -144,7 +110,7 @@ export default function History() {
   const handleExportExcel = async () => {
     try {
       const params = new URLSearchParams({
-        ...(debouncedSearch && { vehicleNumber: debouncedSearch }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(filters.status && { status: filters.status }),
         ...(filters.fromDate && { fromDate: filters.fromDate }),
         ...(filters.toDate && { toDate: filters.toDate }),
@@ -171,30 +137,15 @@ export default function History() {
     }
     
     try {
-      const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
-
-      const q = "UPDATE weighments SET status = 'CANCELLED', cancellationReason = ?, syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
-      const res = await ipcRenderer.invoke('db-query', q, [cancelReason, new Date().toISOString(), selectedWeighment.id]);
-
-      if (!res.success) {
-        throw new Error(res.error);
-      }
-
-      await logAudit(
-        'CANCEL', 
-        'WEIGHMENT', 
-        selectedWeighment.id, 
-        `Cancelled weighment. Reason: ${cancelReason}`
-      );
-
+      await api.post(`/weighments/${selectedWeighment.id}/cancel`, { reason: cancelReason });
+      
       alert("Weighment cancelled successfully.");
       setShowCancelPrompt(false);
       setViewDetails(false);
       setSelectedWeighment(null);
       fetchHistory();
     } catch (err: any) {
-      alert(err.message || "Failed to cancel weighment");
+      alert(err.response?.data?.message || err.message || "Failed to cancel weighment");
     }
   };
 
@@ -204,33 +155,7 @@ export default function History() {
       return;
     }
     try {
-      const ipcRenderer = (window as any).ipcRenderer;
-      if (!ipcRenderer) return;
-
-      // Duplicate the record with a new ID, setting it as a correction
-      const newId = crypto.randomUUID();
-      const now = new Date().toISOString();
-      const insertQ = `
-        INSERT INTO weighments (
-          id, slipNumber, vehicleId, vehicleNumber, customerId, customerName, materialId, materialName, driverId, driverName, transporterId, transporterName, 
-          firstWeight, secondWeight, netWeight, status, syncStatus, date, createdAt, updatedAt, loadType, firstWeightDate, secondWeightDate, firstWeightSource, secondWeightSource,
-          originalWeighmentId, isCorrection
-        )
-        SELECT 
-          ?, slipNumber, vehicleId, vehicleNumber, customerId, customerName, materialId, materialName, driverId, driverName, transporterId, transporterName, 
-          firstWeight, secondWeight, netWeight, 'COMPLETED', 'PENDING_SYNC', date, ?, ?, loadType, firstWeightDate, secondWeightDate, firstWeightSource, secondWeightSource,
-          id, 1
-        FROM weighments WHERE id = ?
-      `;
-      const insertRes = await ipcRenderer.invoke('db-query', insertQ, [newId, now, now, selectedWeighment.id]);
-      
-      if (!insertRes.success) throw new Error(insertRes.error);
-
-      // Mark original as CORRECTED
-      const updateQ = "UPDATE weighments SET status = 'CORRECTED', cancellationReason = ?, syncStatus = 'PENDING_SYNC', updatedAt = ? WHERE id = ?";
-      await ipcRenderer.invoke('db-query', updateQ, [correctionReason, now, selectedWeighment.id]);
-
-      await logAudit('CORRECT', 'WEIGHMENT', selectedWeighment.id, `Corrected weighment. Reason: ${correctionReason}`);
+      await api.post(`/weighments/${selectedWeighment.id}/correct`, { reason: correctionReason });
 
       alert("Correction version created successfully. Original retained.");
       setShowCorrectionPrompt(false);
@@ -238,7 +163,7 @@ export default function History() {
       setSelectedWeighment(null);
       fetchHistory();
     } catch (err: any) {
-      alert(err.message || "Failed to create correction");
+      alert(err.response?.data?.message || err.message || "Failed to create correction");
     }
   };
 

@@ -12,9 +12,18 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
 
-    const { vehicleNumber, slipNumber, customerId, materialId, driverId, transporterId, status, fromDate, toDate, weightSource } = req.query;
+    const { vehicleNumber, slipNumber, customerId, materialId, driverId, transporterId, status, fromDate, toDate, weightSource, search } = req.query;
 
     const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { vehicleNumber: { contains: search as string, mode: 'insensitive' } },
+        { slipNumber: { contains: search as string, mode: 'insensitive' } },
+        { customerName: { contains: search as string, mode: 'insensitive' } },
+        { materialName: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
 
     if (vehicleNumber) where.vehicleNumber = { contains: vehicleNumber as string, mode: 'insensitive' };
     if (slipNumber) where.slipNumber = { contains: slipNumber as string, mode: 'insensitive' };
@@ -119,6 +128,68 @@ router.post('/:id/cancel', async (req, res) => {
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Error cancelling weighment' });
+  }
+});
+
+// Request correction for a weighment
+router.post('/:id/correct', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ message: "Correction reason is required" });
+
+    // @ts-ignore
+    const user = req.user;
+
+    const weighment = await prisma.weighment.findUnique({ where: { id: req.params.id } });
+    if (!weighment) return res.status(404).json({ message: "Weighment not found" });
+
+    // Mark original as CORRECTED
+    await prisma.weighment.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'CORRECTED',
+        cancellationReason: reason,
+        cancelledBy: user.name || user.id,
+        cancelledAt: new Date()
+      }
+    });
+
+    // Duplicate the record as a correction
+    const newWeighment = await prisma.weighment.create({
+      data: {
+        slipNumber: weighment.slipNumber ? `${weighment.slipNumber}-C` : undefined,
+        vehicleId: weighment.vehicleId,
+        vehicleNumber: weighment.vehicleNumber,
+        customerId: weighment.customerId,
+        materialId: weighment.materialId,
+        driverId: weighment.driverId,
+        transporterId: weighment.transporterId,
+        firstWeight: weighment.firstWeight,
+        secondWeight: weighment.secondWeight,
+        netWeight: weighment.netWeight,
+        createdAt: weighment.createdAt,
+        loadType: weighment.loadType,
+        firstWeightDate: weighment.firstWeightDate,
+        secondWeightDate: weighment.secondWeightDate,
+        firstWeightSource: weighment.firstWeightSource,
+        secondWeightSource: weighment.secondWeightSource,
+        status: 'COMPLETED'
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'CORRECT_WEIGHMENT',
+        entity: 'Weighment',
+        entityId: weighment.id,
+        details: `Requested correction for weighment ${weighment.slipNumber || weighment.id}. Reason: ${reason}`
+      }
+    });
+
+    res.json(newWeighment);
+  } catch (error) {
+    res.status(500).json({ message: 'Error correcting weighment' });
   }
 });
 

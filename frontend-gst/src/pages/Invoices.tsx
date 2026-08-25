@@ -169,20 +169,30 @@ const Invoices = () => {
       </div>
 
       {/* Filters and Actions */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+          {/* Search */}
           <div className="relative">
             <input 
               type="text" 
               placeholder="Search invoice or customer..." 
-              className="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none text-sm"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           </div>
+
+          {/* Date Range */}
+          <div className="flex items-center gap-2">
+            <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:border-blue-500" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <span className="text-gray-500">-</span>
+            <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:border-blue-500" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+
+          {/* Status */}
           <select 
-            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
             value={status}
             onChange={e => setStatus(e.target.value)}
           >
@@ -191,34 +201,10 @@ const Invoices = () => {
             <option value="FINALIZED">Finalized</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
-          <div className="flex items-center gap-2">
-            <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <span className="text-gray-500">-</span>
-            <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          </div>
-        </div>
-        
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto mt-4 md:mt-0">
-          <select 
-            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
-            value={customerId}
-            onChange={e => setCustomerId(e.target.value)}
-          >
-            <option value="">All Customers</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          
-          <select 
-            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
-            value={materialId}
-            onChange={e => setMaterialId(e.target.value)}
-          >
-            <option value="">All Materials</option>
-            {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
 
+          {/* Payment Status */}
           <select 
-            className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
             value={paymentStatus}
             onChange={e => setPaymentStatus(e.target.value)}
           >
@@ -227,15 +213,36 @@ const Invoices = () => {
             <option value="PARTIAL">Partial</option>
             <option value="UNPAID">Unpaid</option>
           </select>
-        </div>
-        
-        <div className="flex gap-2 mt-4 md:mt-0 ml-auto">
-          <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-            <Download size={16} /> Export CSV
-          </button>
-          <button onClick={() => navigate('/billing')} className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors text-sm font-medium bg-primary-600 hover:bg-primary-700">
-            + Create Invoice
-          </button>
+
+          {/* Customer */}
+          <select 
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={customerId}
+            onChange={e => setCustomerId(e.target.value)}
+          >
+            <option value="">All Customers</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          
+          {/* Material */}
+          <select 
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            value={materialId}
+            onChange={e => setMaterialId(e.target.value)}
+          >
+            <option value="">All Materials</option>
+            {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+
+          {/* Actions - Span remaining space in grid or push to right */}
+          <div className="col-span-1 md:col-span-2 lg:col-span-2 flex gap-2 justify-end items-center">
+            <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+              <Download size={16} /> Export CSV
+            </button>
+            <button onClick={() => navigate('/billing')} className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors text-sm font-medium bg-primary-600 hover:bg-primary-700 shadow-sm">
+              + Create Invoice
+            </button>
+          </div>
         </div>
       </div>
 
