@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
-import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut } from 'lucide-react';
+import { useAuthStore } from '../services/AuthService';
 
 const Sidebar = () => {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({
@@ -113,6 +114,16 @@ const Sidebar = () => {
           })}
         </ul>
       </nav>
+      <div className="p-4 border-t border-white/10 bg-blue-950">
+        <button 
+          onClick={() => useAuthStore.getState().logout()}
+          className={`flex items-center justify-center text-white/70 hover:text-white bg-white/5 hover:bg-white/10 py-2 rounded-lg transition-colors ${isMinimized ? 'w-full' : 'w-full space-x-2'}`}
+          title="Logout"
+        >
+          <LogOut size={16} className="shrink-0" />
+          {!isMinimized && <span className="text-sm font-medium">Logout</span>}
+        </button>
+      </div>
     </aside>
   );
 };
