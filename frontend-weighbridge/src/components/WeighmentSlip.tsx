@@ -133,11 +133,7 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             </div>
           )}
 
-          <div className="flex justify-between mt-16 pt-8 text-sm border-t border-slate-200">
-            <div className="text-center">
-              <p className="mb-8 font-semibold">{weighment.driver?.name || weighment.driverName || 'Driver'}</p>
-              <p className="border-t border-slate-400 pt-1 w-40">Driver Signature</p>
-            </div>
+          <div className="flex justify-end mt-16 pt-8 text-sm border-t border-slate-200">
             <div className="text-center">
               <p className="mb-8 font-semibold">Authorized</p>
               <p className="border-t border-slate-400 pt-1 w-40">Operator Signature</p>

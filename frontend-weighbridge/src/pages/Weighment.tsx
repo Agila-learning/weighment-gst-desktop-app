@@ -438,11 +438,9 @@ export default function Weighment() {
                   <div className="text-right"><p className="text-xs text-gray-500 uppercase">Total Amount</p><p className="text-2xl font-bold">₹{(completedWeighment.calculatedAmount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</p></div>
                 </div>
               )}
-              <div className="flex justify-between mt-10 pt-4 text-xs text-center">
-                <div><div className="border-t border-black w-32 pt-1 mx-auto">Operator Signature</div></div>
-                <div><div className="border-t border-black w-32 pt-1 mx-auto">Driver Signature</div></div>
-                <div><div className="border-t border-black w-32 pt-1 mx-auto">Authorized Signatory</div></div>
-              </div>
+                <div className="flex justify-end mt-10 pt-4 text-xs text-center">
+                  <div><div className="border-t border-black w-32 pt-1 mx-auto">Authorized Signatory</div></div>
+                </div>
               <p className="text-center text-gray-400 text-xs mt-3 border-t border-gray-200 pt-2">Computer Generated Weighment Slip</p>
             </div>
           </div>
