@@ -1,4 +1,5 @@
 import { X, Download, Printer } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -19,6 +20,38 @@ export default function PdfPreviewModal({
   onPrint,
   title = "PDF Preview" 
 }: PdfPreviewModalProps) {
+  const [base64Url, setBase64Url] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blobUrl) {
+      setBase64Url(null);
+      return;
+    }
+    
+    // If it's already a data URL, use it directly
+    if (blobUrl.startsWith('data:')) {
+      setBase64Url(blobUrl);
+      return;
+    }
+
+    // If it's a blob URL, convert it to Base64 to bypass Electron file:// sandboxing in iframes
+    if (blobUrl.startsWith('blob:')) {
+      fetch(blobUrl)
+        .then(r => r.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => setBase64Url(reader.result as string);
+          reader.readAsDataURL(blob);
+        })
+        .catch(err => {
+          console.error("Failed to convert blob to base64:", err);
+          setBase64Url(blobUrl); // Fallback
+        });
+    } else {
+      setBase64Url(blobUrl);
+    }
+  }, [blobUrl]);
+
   if (!isOpen) return null;
 
   return (
@@ -60,9 +93,9 @@ export default function PdfPreviewModal({
               <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
               <p className="text-slate-600 font-medium">Generating Document...</p>
             </div>
-          ) : blobUrl ? (
+          ) : base64Url ? (
             <iframe 
-              src={blobUrl} 
+              src={base64Url} 
               className="w-full h-full border-none"
               title={title}
             />
