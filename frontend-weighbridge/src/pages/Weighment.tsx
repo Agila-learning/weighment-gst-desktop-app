@@ -398,9 +398,18 @@ export default function Weighment() {
                 {completedWeighment.id && <button onClick={() => downloadSlipPdf(completedWeighment.id, completedWeighment.slipNumber || completedWeighment.id)} disabled={slipDownloading} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-blue-700 disabled:opacity-50"><Download size={15} /> {slipDownloading ? 'Downloading...' : 'Download PDF'}</button>}
               </div>
             </div>
-            <div className="p-6 font-sans text-black">
-              <div className="text-center mb-4 pb-4 border-b-2 border-black">
-                <h1 className="text-xl font-bold uppercase tracking-widest">{cn}</h1>
+              <div className="p-6 font-sans text-black relative">
+                {companySettings?.logoUrl && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-0"
+                    style={{ backgroundImage: `url(${companySettings.logoUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'contain', margin: '20%' }}
+                  />
+                )}
+                <div className="text-center mb-4 pb-4 border-b-2 border-black relative z-10">
+                  {companySettings?.logoUrl && (
+                    <img src={companySettings.logoUrl} alt="Company Logo" className="w-16 h-16 object-contain mx-auto mb-2" />
+                  )}
+                  <h1 className="text-xl font-bold uppercase tracking-widest">{cn}</h1>
                 {companySettings?.address && <p className="text-xs text-gray-600 mt-1">{companySettings.address}</p>}
                 {companySettings?.phone && <p className="text-xs text-gray-600">Tel: {companySettings.phone}</p>}
                 <div className="inline-block bg-black text-white px-6 py-1 mt-2 text-sm font-bold tracking-widest">{completedWeighment.status === 'FIRST_WEIGHT' ? 'FIRST WEIGHT RECEIPT' : 'WEIGHBRIDGE SLIP'}</div>

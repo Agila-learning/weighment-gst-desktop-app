@@ -321,7 +321,7 @@ export default function Reports() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="flex-1 min-h-[400px] bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full bg-slate-50/50 py-20">
             <Loader2 size={40} className="text-emerald-500 animate-spin mb-4" />

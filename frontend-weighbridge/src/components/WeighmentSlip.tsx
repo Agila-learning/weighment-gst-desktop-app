@@ -1,6 +1,14 @@
 import { Printer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 
 export default function WeighmentSlip({ weighment, onClose }: { weighment: any, onClose: () => void }) {
+  const [companySettings, setCompanySettings] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/settings/company').then(res => setCompanySettings(res.data)).catch(console.error);
+  }, []);
+
   if (!weighment) return null;
 
   const handlePrint = () => {
@@ -28,7 +36,15 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
           </div>
         </div>
 
-        <div className="p-8 overflow-y-auto bg-white" id="printable-slip">
+        <div className="p-8 overflow-y-auto bg-white relative" id="printable-slip">
+          {/* Watermark */}
+          {companySettings?.logoUrl && (
+            <div 
+              className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-0"
+              style={{ backgroundImage: `url(${companySettings.logoUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'contain', margin: '20%' }}
+            />
+          )}
+          
           <style>{`
             @media print {
               body * { visibility: hidden; }
@@ -37,11 +53,15 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             }
           `}</style>
           
-          <div className="text-center mb-8 border-b-2 border-slate-800 pb-6 flex flex-col items-center">
-            <img src="/icon.png" alt="FIC Logo" className="w-16 h-16 mb-2" />
-            <h1 className="text-3xl font-black text-slate-900 mb-1">FIC WEIGHBRIDGE</h1>
-            <p className="text-sm text-slate-600">123 Industrial Estate, Main Road, City - 600001</p>
-            <p className="text-sm text-slate-600">Phone: +91 98765 43210</p>
+          <div className="text-center mb-8 border-b-2 border-slate-800 pb-6 flex flex-col items-center relative z-10">
+            {companySettings?.logoUrl ? (
+              <img src={companySettings.logoUrl} alt="Company Logo" className="w-16 h-16 object-contain mb-2" />
+            ) : (
+              <img src="/icon.png" alt="FIC Logo" className="w-16 h-16 object-contain mb-2" />
+            )}
+            <h1 className="text-3xl font-black text-slate-900 mb-1">{companySettings?.companyName || 'FIC WEIGHBRIDGE'}</h1>
+            <p className="text-sm text-slate-600">{companySettings?.address || '123 Industrial Estate, Main Road, City - 600001'}</p>
+            <p className="text-sm text-slate-600">Phone: {companySettings?.phone || '+91 98765 43210'}</p>
             <div className="mt-4 inline-block px-4 py-1 border-2 border-slate-800 rounded font-bold tracking-widest uppercase">
               Weighment Slip
             </div>
