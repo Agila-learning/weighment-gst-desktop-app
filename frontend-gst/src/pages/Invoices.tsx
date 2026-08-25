@@ -170,9 +170,9 @@ const Invoices = () => {
 
       {/* Filters and Actions */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 w-full">
           {/* Search */}
-          <div className="relative">
+          <div className="relative lg:col-span-2">
             <input 
               type="text" 
               placeholder="Search invoice or customer..." 
@@ -184,7 +184,7 @@ const Invoices = () => {
           </div>
 
           {/* Date Range */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 lg:col-span-2">
             <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:border-blue-500" value={startDate} onChange={e => setStartDate(e.target.value)} />
             <span className="text-gray-500">-</span>
             <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:border-blue-500" value={endDate} onChange={e => setEndDate(e.target.value)} />
@@ -192,7 +192,7 @@ const Invoices = () => {
 
           {/* Status */}
           <select 
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm lg:col-span-1"
             value={status}
             onChange={e => setStatus(e.target.value)}
           >
@@ -204,7 +204,7 @@ const Invoices = () => {
 
           {/* Payment Status */}
           <select 
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm lg:col-span-1"
             value={paymentStatus}
             onChange={e => setPaymentStatus(e.target.value)}
           >
@@ -216,7 +216,7 @@ const Invoices = () => {
 
           {/* Customer */}
           <select 
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm lg:col-span-2"
             value={customerId}
             onChange={e => setCustomerId(e.target.value)}
           >
@@ -226,7 +226,7 @@ const Invoices = () => {
           
           {/* Material */}
           <select 
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm lg:col-span-2"
             value={materialId}
             onChange={e => setMaterialId(e.target.value)}
           >
