@@ -10,7 +10,10 @@ function d() {
 	l = new e({
 		width: 1200,
 		height: 800,
-		webPreferences: { preload: a.join(c, "preload.mjs") }
+		webPreferences: {
+			preload: a.join(c, "preload.mjs"),
+			plugins: !0
+		}
 	}), l.webContents.on("did-finish-load", () => {
 		l?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
 	}), u ? l.loadURL(u) : l.loadFile(a.join(process.env.DIST, "index.html"));
