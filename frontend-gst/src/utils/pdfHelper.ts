@@ -2,7 +2,7 @@ import apiClient from '../api/client';
 
 export async function fetchInvoicePdf(invoiceId: string): Promise<{ blob: Blob, blobUrl: string, buffer: ArrayBuffer }> {
   const pdfRes = await apiClient.get(`/invoices/${invoiceId}/pdf`, { responseType: 'arraybuffer' });
-  const contentType = pdfRes.headers['content-type'] || '';
+  const contentType = (pdfRes.headers['content-type'] as string) || '';
   
   let blob: Blob;
   let buffer = pdfRes.data;
