@@ -110,17 +110,19 @@ t.on("window-all-closed", () => {
 				error: e.message
 			};
 		}
-	}), r.handle("generate-pdf", async (t, n) => {
+	}), r.handle("generate-pdf", async (n, r) => {
 		try {
-			let t = new e({
+			let n = a.join(t.getPath("temp"), `temp_invoice_${Date.now()}.html`);
+			s.writeFileSync(n, r, "utf-8");
+			let i = new e({
 				show: !1,
 				webPreferences: {
 					nodeIntegration: !1,
 					contextIsolation: !0
 				}
 			});
-			await t.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`);
-			let r = await t.webContents.printToPDF({
+			await i.loadURL(`file://${n}`), await new Promise((e) => i.webContents.once("did-finish-load", () => e(null)));
+			let o = await i.webContents.printToPDF({
 				printBackground: !0,
 				pageSize: "A4",
 				margins: {
@@ -130,14 +132,18 @@ t.on("window-all-closed", () => {
 					right: 0
 				}
 			});
-			return t.close(), {
+			i.close();
+			try {
+				s.unlinkSync(n);
+			} catch {}
+			return {
 				success: !0,
-				buffer: r
+				buffer: o
 			};
 		} catch (e) {
 			return console.error("Local PDF Generation Error:", e), {
 				success: !1,
-				error: e.message
+				error: e.message || String(e)
 			};
 		}
 	}), d();
