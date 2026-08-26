@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2, FileText } from 'lucide-react';
+import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2, FileText, Info } from 'lucide-react';
 import apiClient from '../api/client';
 import PdfPreviewModal from '../components/PdfPreviewModal';
 import { fetchInvoicePdf } from '../utils/pdfHelper';
@@ -27,6 +27,10 @@ const Invoices = () => {
   const [summary, setSummary] = useState({ totalInvoices: 0, todaySales: 0, totalSales: 0, pendingAmount: 0 });
 
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+
+  // Invoice Details Modal
+  const [detailsModalInvoice, setDetailsModalInvoice] = useState<any | null>(null);
+
 
   // Cancellation Modal State
   const [cancelModalInvoiceId, setCancelModalInvoiceId] = useState<string | null>(null);
@@ -90,32 +94,56 @@ const Invoices = () => {
   const handleExportCSV = () => {
     if (invoices.length === 0) return;
     
-    const headers = ['Invoice No', 'Date', 'Customer', 'Vehicle Number', 'Cost', 'GST Amount', 'Total Amount', 'Status'];
-    const rows = invoices.map(i => [
-      i.invoiceNumber,
-      i.date ? i.date.split('T')[0] : '',
-      i.customer?.name || i.buyerName || '',
-      i.vehicle?.vehicleNumber || i.snapshotVehicleNumber || '',
-      i.subTotal,
-      i.taxTotal,
-      i.grandTotal,
-      i.status
-    ]);
+    const headers = ['Date', 'Invoice Number', 'Customer', 'GSTIN', 'Bill To', 'Vehicle Number', 'Driver', 'Material', 'HSN', 'Quantity', 'Unit', 'Rate', 'Subtotal', 'CGST %', 'CGST Amount', 'SGST %', 'SGST Amount', 'IGST %', 'IGST Amount', 'Tax Total', 'Grand Total', 'Status'];
     
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(e => e.join(','))
-    ].join('\n');
+    const rows: any[] = [];
+    invoices.forEach(i => {
+      const date = i.date ? i.date.split('T')[0] : '';
+      const invNo = i.invoiceNumber;
+      const cust = i.customer?.name || '';
+      const gstin = i.buyerGstin || i.customer?.gstin || '';
+      const billTo = i.buyerName || i.customer?.name || '';
+      const veh = i.snapshotVehicleNumber || i.vehicle?.vehicleNumber || '';
+      const driver = i.vehicle?.driver?.name || '';
+      
+      if (i.items && i.items.length > 0) {
+        i.items.forEach((item: any, index: number) => {
+          rows.push([
+            index === 0 ? date : '',
+            index === 0 ? invNo : '',
+            index === 0 ? cust : '',
+            index === 0 ? gstin : '',
+            index === 0 ? billTo : '',
+            index === 0 ? veh : '',
+            index === 0 ? driver : '',
+            item.materialName || item.material?.name || '',
+            item.hsnCode || item.material?.hsnCode || '',
+            item.quantity || 0,
+            item.unit || item.material?.unit || '',
+            item.rate || 0,
+            item.amount || 0,
+            item.cgstRate || 0,
+            item.cgstAmount || 0,
+            item.sgstRate || 0,
+            item.sgstAmount || 0,
+            item.igstRate || 0,
+            item.igstAmount || 0,
+            index === 0 ? i.taxTotal || 0 : '',
+            index === 0 ? i.grandTotal || 0 : '',
+            index === 0 ? i.status : ''
+          ]);
+        });
+      } else {
+        rows.push([date, invNo, cust, gstin, billTo, veh, driver, '', '', 0, '', 0, i.subTotal || 0, 0, 0, 0, 0, 0, 0, i.taxTotal || 0, i.grandTotal || 0, i.status]);
+      }
+    });
     
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `invoices_export_${new Date().getTime()}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `Invoices_Export_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
   const handleCancelInvoice = async () => {
@@ -253,15 +281,19 @@ const Invoices = () => {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 font-medium">Invoice No</th>
-                <th className="px-6 py-4 font-medium">Date</th>
-                <th className="px-6 py-4 font-medium">Customer</th>
-                <th className="px-6 py-4 font-medium">Vehicle & Load</th>
-                <th className="px-6 py-4 font-medium text-right">Cost</th>
-                <th className="px-6 py-4 font-medium text-right">GST</th>
-                <th className="px-6 py-4 font-medium text-center">Status</th>
-                <th className="px-6 py-4 font-medium text-center">Payment</th>
-                <th className="px-6 py-4 font-medium text-center">Actions</th>
+                <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Invoice No</th>
+                <th className="px-4 py-3 font-medium">Customer</th>
+                <th className="px-4 py-3 font-medium">Vehicle</th>
+                <th className="px-4 py-3 font-medium">Driver</th>
+                <th className="px-4 py-3 font-medium">Material</th>
+                <th className="px-4 py-3 font-medium text-right">Qty</th>
+                <th className="px-4 py-3 font-medium text-right">Rate</th>
+                <th className="px-4 py-3 font-medium text-right">CGST</th>
+                <th className="px-4 py-3 font-medium text-right">SGST</th>
+                <th className="px-4 py-3 font-medium text-right">Total</th>
+                <th className="px-4 py-3 font-medium text-center">Status</th>
+                <th className="px-4 py-3 font-medium text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -277,19 +309,20 @@ const Invoices = () => {
               ) : (
                 invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-blue-600">{inv.invoiceNumber}</td>
-                    <td className="px-6 py-4">{inv.date ? inv.date.split('T')[0] : '-'}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{inv.buyerName || inv.customer?.name}</div>
-                      <div className="text-xs text-gray-500">{inv.buyerGstin || inv.customer?.gstin}</div>
+                    <td className="px-4 py-3">{inv.date ? inv.date.split('T')[0] : '-'}</td>
+                    <td className="px-4 py-3 font-medium text-blue-600">{inv.invoiceNumber}</td>
+                    <td className="px-4 py-3 truncate max-w-[150px]" title={inv.buyerName || inv.customer?.name}>{inv.buyerName || inv.customer?.name}</td>
+                    <td className="px-4 py-3">{inv.snapshotVehicleNumber || inv.vehicle?.vehicleNumber || '-'}</td>
+                    <td className="px-4 py-3 truncate max-w-[100px]" title={inv.vehicle?.driver?.name || '-'}>{inv.vehicle?.driver?.name || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 truncate max-w-[150px]" title={inv.items?.map((i: any) => i.materialName || i.material?.name).join(', ')}>
+                      {inv.items?.map((i: any) => i.materialName || i.material?.name).join(', ') || '-'}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-blue-600">{inv.snapshotVehicleNumber || inv.vehicle?.vehicleNumber || '-'}</div>
-                      <div className="text-xs text-gray-500">{inv.items?.map((i: any) => i.materialName + ' (' + i.quantity + ' ' + (i.quantityUnit || 'TON') + ')').join(', ') || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.subTotal)}</td>
-                    <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(inv.taxTotal)}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 py-3 text-right">{inv.items?.map((i: any) => i.quantity + ' ' + (i.unit || 'TON')).join(', ') || '-'}</td>
+                    <td className="px-4 py-3 text-right">{inv.items?.map((i: any) => formatCurrency(i.rate)).join(', ') || '-'}</td>
+                    <td className="px-4 py-3 text-right text-gray-500">{inv.items?.map((i: any) => formatCurrency(i.cgstAmount || 0)).join(', ') || '-'}</td>
+                    <td className="px-4 py-3 text-right text-gray-500">{inv.items?.map((i: any) => formatCurrency(i.sgstAmount || 0)).join(', ') || '-'}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(inv.grandTotal)}</td>
+                    <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         inv.status === 'FINALIZED' ? 'bg-green-100 text-green-700' : 
                         inv.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
@@ -298,26 +331,9 @@ const Invoices = () => {
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      {inv.status === 'FINALIZED' ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                            inv.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' :
-                            inv.paymentStatus === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {inv.paymentStatus || 'UNPAID'}
-                          </span>
-                          {inv.paymentStatus !== 'PAID' && (
-                            <span className="text-[10px] text-gray-500">Bal: ₹{inv.balance?.toFixed(2) || inv.grandTotal.toFixed(2)}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button title="View Details" onClick={() => setDetailsModalInvoice(inv)} className="text-gray-400 hover:text-blue-600"><Info size={16} /></button>
                         {inv.status === 'FINALIZED' && (
                           <>
                             <button title="Download PDF" onClick={async () => {
@@ -333,27 +349,12 @@ const Invoices = () => {
                                 alert('Error downloading PDF');
                               }
                             }} className="text-gray-400 hover:text-green-600"><Download size={16} /></button>
-                            <button title="Preview PDF" onClick={async () => {
-                              try {
-                                const { blobUrl } = await fetchInvoicePdf(inv.id);
-                                setPreviewBlobUrl(blobUrl);
-                              } catch (err) {
-                                alert('Error generating PDF');
-                              }
-                            }} className="text-gray-400 hover:text-blue-600"><FileText size={16} /></button>
                             <button title="Cancel Invoice" onClick={() => { setCancelModalInvoiceId(inv.id); setCancelReason(''); }} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
                           </>
                         )}
                         {inv.status === 'DRAFT' && (
-                          <>
-                            <button title="Edit Draft" onClick={() => navigate(`/billing?editId=${inv.id}`)} className="text-gray-400 hover:text-blue-600"><Edit2 size={16} /></button>
-                            <button title="Delete Draft" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
-                          </>
+                          <button title="Delete Draft" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                         )}
-                        {inv.status === 'CANCELLED' && (
-                          <span className="text-[10px] text-gray-400 italic">No Actions</span>
-                        )}
-                        <button title="Duplicate" onClick={() => navigate(`/billing?duplicateId=${inv.id}`)} className="text-gray-400 hover:text-green-600"><Copy size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -408,6 +409,156 @@ const Invoices = () => {
             }
           }}
         />
+      )}
+
+      
+      {/* INVOICE DETAILS MODAL */}
+      {detailsModalInvoice && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Invoice Details</h2>
+                <p className="text-sm text-slate-500">{detailsModalInvoice.invoiceNumber} • {detailsModalInvoice.date ? detailsModalInvoice.date.split('T')[0] : ''}</p>
+              </div>
+              <div className="flex gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        detailsModalInvoice.status === 'FINALIZED' ? 'bg-green-100 text-green-700' : 
+                        detailsModalInvoice.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                  {detailsModalInvoice.status}
+                </span>
+                <button onClick={() => setDetailsModalInvoice(null)} className="text-gray-400 hover:text-gray-700"><XCircle size={24} /></button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Bill To */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Bill To</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Customer:</span> <span className="font-semibold text-gray-900">{detailsModalInvoice.buyerName || detailsModalInvoice.customer?.name}</span></p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">GSTIN:</span> {detailsModalInvoice.buyerGstin || detailsModalInvoice.customer?.gstin || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Address:</span> {detailsModalInvoice.buyerAddress || detailsModalInvoice.customer?.address || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">State:</span> {detailsModalInvoice.buyerState || detailsModalInvoice.customer?.stateName || '-'} ({detailsModalInvoice.buyerStateCode || detailsModalInvoice.customer?.stateCode || '-'})</p>
+                  </div>
+                </div>
+
+                {/* Vehicle & Delivery */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Vehicle / Delivery</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Vehicle No:</span> <span className="font-semibold text-gray-900">{detailsModalInvoice.snapshotVehicleNumber || detailsModalInvoice.vehicle?.vehicleNumber || '-'}</span></p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Driver:</span> {detailsModalInvoice.vehicle?.driver?.name || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Transporter:</span> {detailsModalInvoice.dispatchedThrough || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-24 inline-block">Destination:</span> {detailsModalInvoice.destination || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">Item Details</h3>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-gray-600">
+                      <tr>
+                        <th className="px-4 py-2 font-medium">Material</th>
+                        <th className="px-4 py-2 font-medium">HSN</th>
+                        <th className="px-4 py-2 font-medium text-right">Qty</th>
+                        <th className="px-4 py-2 font-medium">Unit</th>
+                        <th className="px-4 py-2 font-medium text-right">Rate</th>
+                        <th className="px-4 py-2 font-medium text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {detailsModalInvoice.items?.map((item: any) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3 font-medium text-gray-900">{item.materialName || item.material?.name}</td>
+                          <td className="px-4 py-3 text-gray-600">{item.hsnCode || item.material?.hsnCode || '-'}</td>
+                          <td className="px-4 py-3 text-right">{item.quantity}</td>
+                          <td className="px-4 py-3 text-gray-600">{item.unit || item.material?.unit}</td>
+                          <td className="px-4 py-3 text-right">{formatCurrency(item.rate)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(item.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tax Details & Totals */}
+              <div className="flex justify-end">
+                <div className="w-full md:w-1/2 lg:w-1/3 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal:</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(detailsModalInvoice.subTotal)}</span>
+                    </div>
+                    {/* Sum up taxes from items to display a clean summary */}
+                    <div className="flex justify-between text-gray-600">
+                      <span>CGST:</span>
+                      <span className="font-medium">{formatCurrency(detailsModalInvoice.items?.reduce((sum: number, i: any) => sum + (i.cgstAmount || 0), 0) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>SGST:</span>
+                      <span className="font-medium">{formatCurrency(detailsModalInvoice.items?.reduce((sum: number, i: any) => sum + (i.sgstAmount || 0), 0) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>IGST:</span>
+                      <span className="font-medium">{formatCurrency(detailsModalInvoice.items?.reduce((sum: number, i: any) => sum + (i.igstAmount || 0), 0) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 border-t border-gray-200 pt-2">
+                      <span>Total Tax:</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(detailsModalInvoice.taxTotal)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-gray-300 pt-3 mt-3">
+                      <span className="font-bold text-gray-900">Grand Total:</span>
+                      <span className="text-xl font-bold text-blue-600">{formatCurrency(detailsModalInvoice.grandTotal)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+              {detailsModalInvoice.status === 'FINALIZED' && (
+                <>
+                  <button onClick={async () => {
+                              try {
+                                const { blobUrl } = await fetchInvoicePdf(detailsModalInvoice.id);
+                                setPreviewBlobUrl(blobUrl);
+                              } catch (err) {
+                                alert('Error generating PDF');
+                              }
+                            }} className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
+                    <FileText size={16} /> Preview PDF
+                  </button>
+                  <button onClick={async () => {
+                              try {
+                                const { blobUrl } = await fetchInvoicePdf(detailsModalInvoice.id);
+                                const link = document.createElement('a');
+                                link.href = blobUrl;
+                                link.setAttribute('download', `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`);
+                                document.body.appendChild(link);
+                                link.click();
+                                link.parentNode?.removeChild(link);
+                              } catch (err) {
+                                alert('Error downloading PDF');
+                              }
+                            }} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium shadow-sm">
+                    <Download size={16} /> Download PDF
+                  </button>
+                </>
+              )}
+              <button onClick={() => setDetailsModalInvoice(null)} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* CANCEL INVOICE MODAL */}

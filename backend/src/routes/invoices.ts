@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,
-        include: { customer: true, vehicle: true, items: true },
+        include: { customer: true, vehicle: { include: { driver: true } }, items: { include: { material: true } } },
         orderBy: { createdAt: 'desc' },
         skip,
         take
@@ -310,7 +310,7 @@ router.get('/:id/pdf', async (req, res) => {
       
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice?.invoiceNumber || req.params.id}.pdf"`);
-      res.send(pdfBuffer);
+      res.send(Buffer.from(pdfBuffer));
     } catch (pdfErr) {
       console.warn('Puppeteer PDF generation failed, falling back to HTML', pdfErr);
       res.set({
