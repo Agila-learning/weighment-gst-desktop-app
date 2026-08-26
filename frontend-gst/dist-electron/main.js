@@ -110,6 +110,36 @@ t.on("window-all-closed", () => {
 				error: e.message
 			};
 		}
+	}), r.handle("generate-pdf", async (t, n) => {
+		try {
+			let t = new e({
+				show: !1,
+				webPreferences: {
+					nodeIntegration: !1,
+					contextIsolation: !0
+				}
+			});
+			await t.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`);
+			let r = await t.webContents.printToPDF({
+				printBackground: !0,
+				pageSize: "A4",
+				margins: {
+					top: 0,
+					bottom: 0,
+					left: 0,
+					right: 0
+				}
+			});
+			return t.close(), {
+				success: !0,
+				buffer: r
+			};
+		} catch (e) {
+			return console.error("Local PDF Generation Error:", e), {
+				success: !1,
+				error: e.message
+			};
+		}
 	}), d();
 });
 //#endregion
