@@ -11,7 +11,7 @@ function d() {
 		width: 1200,
 		height: 800,
 		webPreferences: {
-			preload: a.join(c, "preload.mjs"),
+			preload: a.join(c, "preload.js"),
 			plugins: !0
 		}
 	}), l.webContents.on("did-finish-load", () => {
