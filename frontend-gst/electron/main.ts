@@ -162,7 +162,7 @@ app.whenReady().then(() => {
       await printWin.loadURL(`file://${tempPath}`);
       
       // Wait for window to load just in case
-      await new Promise(resolve => printWin.webContents.once('did-finish-load', resolve));
+      await new Promise(resolve => printWin.webContents.once('did-finish-load', () => resolve(null)));
       
       const pdfBuffer = await printWin.webContents.printToPDF({
         printBackground: true,
