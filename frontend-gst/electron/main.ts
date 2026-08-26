@@ -156,18 +156,25 @@ app.whenReady().then(() => {
 
   ipcMain.handle('generate-pdf', async (event, htmlContent) => {
     try {
+      const tempPath = path.join(app.getPath('temp'), `temp_invoice_${Date.now()}.html`);
+      fs.writeFileSync(tempPath, htmlContent, 'utf-8');
       const printWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
-      await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+      await printWin.loadURL(`file://${tempPath}`);
+      
+      // Wait for window to load just in case
+      await new Promise(resolve => printWin.webContents.once('did-finish-load', resolve));
+      
       const pdfBuffer = await printWin.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
         margins: { top: 0, bottom: 0, left: 0, right: 0 }
       });
       printWin.close();
+      try { fs.unlinkSync(tempPath); } catch (e) {}
       return { success: true, buffer: pdfBuffer };
     } catch (err: any) {
       console.error('Local PDF Generation Error:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || String(err) };
     }
   });
 

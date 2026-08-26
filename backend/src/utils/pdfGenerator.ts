@@ -74,8 +74,7 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
         }
         .invoice-box { 
           width: 100%; 
-          height: 287mm; /* Fit exactly on one page minus margin */
-          overflow: hidden; 
+          min-height: 287mm; /* Ensures footer stays at bottom on single page */
           border: 1px solid #1e3a8a; 
           border-radius: 4px; 
           display: flex; 
@@ -83,7 +82,6 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
         }
         .items-container {
           flex: 1; /* Pushes footer to the bottom */
-          overflow: hidden;
         }
         @media print {
           html, body { background: white; box-shadow: none; margin: 0; padding: 0; max-width: 100%; min-height: auto; }

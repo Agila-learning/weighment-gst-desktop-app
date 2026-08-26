@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, Edit2, XCircle, Copy, Trash2, FileText, Info } from 'lucide-react';
+import { FileClock, Search, Download, XCircle, Trash2, FileText, Info } from 'lucide-react';
 import apiClient from '../api/client';
 import PdfPreviewModal from '../components/PdfPreviewModal';
 import { fetchInvoicePdf } from '../utils/pdfHelper';
@@ -345,8 +345,8 @@ const Invoices = () => {
                                 document.body.appendChild(link);
                                 link.click();
                                 link.parentNode?.removeChild(link);
-                              } catch (err) {
-                                alert('Error downloading PDF');
+                              } catch (err: any) {
+                                alert('Error downloading PDF: ' + String(err?.message || err));
                               }
                             }} className="text-gray-400 hover:text-green-600"><Download size={16} /></button>
                             <button title="Cancel Invoice" onClick={() => { setCancelModalInvoiceId(inv.id); setCancelReason(''); }} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
@@ -530,8 +530,8 @@ const Invoices = () => {
                               try {
                                 const { blobUrl } = await fetchInvoicePdf(detailsModalInvoice.id);
                                 setPreviewBlobUrl(blobUrl);
-                              } catch (err) {
-                                alert('Error generating PDF');
+                              } catch (err: any) {
+                                alert('Error generating PDF: ' + String(err?.message || err));
                               }
                             }} className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
                     <FileText size={16} /> Preview PDF
