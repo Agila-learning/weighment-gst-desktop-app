@@ -46,11 +46,17 @@ export const getPermitCardById = async (req: Request, res: Response) => {
 export const createPermitCard = async (req: Request, res: Response) => {
   try {
     const permitReference = await generatePermitReference();
+    const data = { ...req.body, permitReference };
+    
+    // Sanitize empty foreign keys and date
+    if (!data.vehicleId) delete data.vehicleId;
+    if (!data.customerId) delete data.customerId;
+    if (!data.materialId) delete data.materialId;
+    if (!data.driverId) delete data.driverId;
+    if (data.date) data.date = new Date(data.date).toISOString();
+
     const newPermit = await prisma.permitCard.create({
-      data: {
-        ...req.body,
-        permitReference,
-      },
+      data
     });
     res.status(201).json(newPermit);
   } catch (error) {
@@ -61,9 +67,16 @@ export const createPermitCard = async (req: Request, res: Response) => {
 
 export const updatePermitCard = async (req: Request, res: Response) => {
   try {
+    const data = { ...req.body };
+    if (!data.vehicleId) delete data.vehicleId;
+    if (!data.customerId) delete data.customerId;
+    if (!data.materialId) delete data.materialId;
+    if (!data.driverId) delete data.driverId;
+    if (data.date) data.date = new Date(data.date).toISOString();
+    
     const updatedPermit = await prisma.permitCard.update({
       where: { id: req.params.id as string },
-      data: req.body,
+      data,
     });
     res.json(updatedPermit);
   } catch (error) {

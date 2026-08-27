@@ -62,6 +62,17 @@ const PermitCardSettings = () => {
     setSettings({ ...settings, [e.target.name]: e.target.value });
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettings((prev) => ({ ...prev, [fieldName]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -125,19 +136,19 @@ const PermitCardSettings = () => {
           <h2 className="text-lg font-semibold border-b pb-2 flex items-center gap-2"><ImageIcon size={18} /> Media & Signatures (Provide Base64 or Image URLs)</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fixed QR Code Image URL</label>
-              <input type="text" name="qrImageUrl" value={settings.qrImageUrl} onChange={handleChange} className="w-full border rounded px-3 py-2" placeholder="data:image/png;base64,..." />
-              {settings.qrImageUrl && <img src={settings.qrImageUrl} alt="QR" className="mt-2 h-24 object-contain border p-1" />}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fixed QR Code</label>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'qrImageUrl')} className="w-full border rounded px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              {settings.qrImageUrl && <div className="mt-2"><img src={settings.qrImageUrl} alt="QR" className="h-24 object-contain border p-1 rounded" /></div>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Seal / Stamp Image URL</label>
-              <input type="text" name="sealImageUrl" value={settings.sealImageUrl} onChange={handleChange} className="w-full border rounded px-3 py-2" placeholder="data:image/png;base64,..." />
-              {settings.sealImageUrl && <img src={settings.sealImageUrl} alt="Seal" className="mt-2 h-16 object-contain border p-1" />}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Seal / Stamp</label>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sealImageUrl')} className="w-full border rounded px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              {settings.sealImageUrl && <div className="mt-2"><img src={settings.sealImageUrl} alt="Seal" className="h-16 object-contain border p-1 rounded" /></div>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Register Holder Signature URL</label>
-              <input type="text" name="signatureImageUrl" value={settings.signatureImageUrl} onChange={handleChange} className="w-full border rounded px-3 py-2" placeholder="data:image/png;base64,..." />
-              {settings.signatureImageUrl && <img src={settings.signatureImageUrl} alt="Signature" className="mt-2 h-16 object-contain border p-1" />}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'signatureImageUrl')} className="w-full border rounded px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              {settings.signatureImageUrl && <div className="mt-2"><img src={settings.signatureImageUrl} alt="Signature" className="h-16 object-contain border p-1 rounded" /></div>}
             </div>
           </div>
         </div>
