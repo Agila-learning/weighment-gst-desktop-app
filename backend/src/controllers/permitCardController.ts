@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 // Generate internal Permit Reference automatically (e.g., PER-2024-001)
 const generatePermitReference = async () => {
