@@ -1,6 +1,4 @@
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const Database = require('better-sqlite3');
+import Database from 'better-sqlite3';
 import path from 'node:path';
 import { app } from 'electron';
 
