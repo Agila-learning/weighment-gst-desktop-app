@@ -8,7 +8,7 @@
   "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npx esbuild electron/main.ts --bundle --platform=node --format=cjs --outfile=dist-electron/main.cjs --external:electron && npx esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist-electron/preload.cjs --external:electron",
     "lint": "oxlint",
     "preview": "vite preview",
     "dist": "npm run build && electron-builder"

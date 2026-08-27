@@ -5,9 +5,9 @@ import bcrypt from 'bcryptjs'
 import fs from 'node:fs'
 import { initDatabase, executeQuery } from './database'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
-process.env.DIST = path.join(__dirname, '../dist')
+process.env.DIST = path.join(currentDir, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow | null
@@ -18,7 +18,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
+      preload: path.join(currentDir, 'preload.cjs'),
       plugins: true,
     },
   })
