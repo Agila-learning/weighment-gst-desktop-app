@@ -5,7 +5,7 @@
   "description": "GST Billing Desktop Application",
   "author": "FIC GST",
   "type": "module",
-  "main": "dist-electron/main.cjs",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
