@@ -3,9 +3,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// In CommonJS __dirname is available
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
-process.env.DIST = path.join(__dirname, '../dist')
+process.env.DIST = path.join(currentDir, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow | null
@@ -16,7 +17,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(currentDir, 'preload.cjs'),
       plugins: true,
     },
   })

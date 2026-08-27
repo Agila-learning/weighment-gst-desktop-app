@@ -3,7 +3,7 @@ import a from "node:path";
 import { fileURLToPath as o } from "node:url";
 import s from "node:fs";
 //#region electron/main.ts
-var c = a.dirname(o(import.meta.url));
+var c = typeof __dirname < "u" ? __dirname : a.dirname(o(import.meta.url));
 process.env.DIST = a.join(c, "../dist"), process.env.VITE_PUBLIC = t.isPackaged ? process.env.DIST : a.join(process.env.DIST, "../public");
 var l, u = process.env.VITE_DEV_SERVER_URL;
 function d() {
@@ -11,7 +11,7 @@ function d() {
 		width: 1200,
 		height: 800,
 		webPreferences: {
-			preload: a.join(c, "preload.js"),
+			preload: a.join(c, "preload.cjs"),
 			plugins: !0
 		}
 	}), l.webContents.on("did-finish-load", () => {
