@@ -31,7 +31,8 @@ const CreatePermitCard = () => {
     securityPaperNumber: '',
     transitPassNumber: '',
     bulkTransitPassNumber: '',
-    approximateDistance: ''
+    approximateDistance: '',
+    driverSignatureUrl: ''
   });
 
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -102,7 +103,8 @@ const CreatePermitCard = () => {
           setPermit(prev => ({
             ...prev,
             driverName: driver.name,
-            driverMobile: driver.mobile || ''
+            driverMobile: driver.mobile || '',
+            driverSignatureUrl: driver.signatureImageUrl || ''
           }));
         }
       }
@@ -144,7 +146,8 @@ const CreatePermitCard = () => {
         ...prev,
         driverId: drv.id,
         driverName: drv.name,
-        driverMobile: drv.mobile || ''
+        driverMobile: drv.mobile || '',
+        driverSignatureUrl: drv.signatureImageUrl || ''
       }));
     }
   };

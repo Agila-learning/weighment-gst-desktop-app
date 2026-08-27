@@ -8,6 +8,7 @@ export default function Drivers() {
   const [currentDriver, setCurrentDriver] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [signatureImageUrl, setSignatureImageUrl] = useState<string | null>(null);
 
   const fetchDrivers = async () => {
     try {
@@ -32,6 +33,7 @@ export default function Drivers() {
       licenseExpiry: formData.get('licenseExpiry') || undefined,
       address: formData.get('address'),
       transporterName: formData.get('transporterName'),
+      signatureImageUrl: signatureImageUrl,
     };
 
     try {
@@ -89,7 +91,7 @@ export default function Drivers() {
             </button>
           </div>
           <button
-            onClick={() => { setCurrentDriver(null); setShowModal(true); }}
+            onClick={() => { setCurrentDriver(null); setSignatureImageUrl(null); setShowModal(true); }}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition-colors bg-primary-600 hover:bg-primary-700"
           >
             <Plus size={20} /> Add Driver
@@ -134,7 +136,7 @@ export default function Drivers() {
                     <td className="p-4 text-gray-600">{d.transporterName || '-'}</td>
                     <td className="p-4">
                       <div className="flex gap-2">
-                        <button onClick={() => { setCurrentDriver(d); setShowModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                        <button onClick={() => { setCurrentDriver(d); setSignatureImageUrl(d.signatureImageUrl || null); setShowModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                           <Edit2 size={18} />
                         </button>
                         <button onClick={() => handleDelete(d.id)} className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
@@ -233,6 +235,27 @@ export default function Drivers() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <textarea name="address" defaultValue={currentDriver?.address} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none"></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Electronic Signature (Optional)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setSignatureImageUrl(reader.result as string);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full border rounded px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 outline-none"
+                />
+                {signatureImageUrl && (
+                  <div className="mt-2">
+                    <img src={signatureImageUrl} alt="Signature Preview" className="h-12 object-contain border p-1 rounded" />
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

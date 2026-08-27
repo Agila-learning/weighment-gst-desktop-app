@@ -283,7 +283,8 @@ model Driver {
   licenseNumber   String?
   licenseExpiry   DateTime?
   address         String?
-  transporterName String?
+  transporterName   String?
+  signatureImageUrl String? // Base64
   isActive        Boolean      @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -427,8 +428,9 @@ model PermitCard {
   // Snapshot for Vehicle/Driver
   vehicleNumber String
   vehicleType   String?
-  driverName    String?
-  driverMobile  String?
+  driverName         String?
+  driverMobile       String?
+  driverSignatureUrl String? // Base64 snapshot
 
   // Snapshot for Purchaser
   purchaserName        String?

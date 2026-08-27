@@ -177,7 +177,9 @@ export const generatePermitHtml = (permit: any, template: any) => {
           </tr>
           <tr>
             <td class="label" style="height: 40px; vertical-align: middle;">Driver Signature :</td>
-            <td class="signature-cell"></td>
+            <td class="signature-cell">
+               ${permit.driverSignatureUrl ? `<img class="signature-img" src="${permit.driverSignatureUrl}" />` : ''}
+            </td>
             <td class="label" style="vertical-align: middle;">Registree Signature :</td>
             <td class="signature-cell" style="vertical-align: middle;">
                ${template?.signatureImageUrl ? `<img class="signature-img" src="${template.signatureImageUrl}" />` : ''}
