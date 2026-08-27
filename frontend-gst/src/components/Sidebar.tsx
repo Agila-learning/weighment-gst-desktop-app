@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
-import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut, FileBadge } from 'lucide-react';
 import { useAuthStore } from '../services/AuthService';
 
 const Sidebar = () => {
@@ -35,6 +35,7 @@ const Sidebar = () => {
         { name: 'Quick Bill', path: '/billing', icon: FileText },
         { name: 'Invoice Register', path: '/invoices', icon: FileClock },
         { name: 'Payments', path: '/payments', icon: CreditCard },
+        { name: 'Permit Cards', path: '/permit-cards', icon: FileBadge },
       ]
     },
     {

@@ -31,58 +31,60 @@ model User {
 }
 
 model Customer {
-  id         String      @id @default(uuid())
-  name       String
-  gstin      String?     @unique
-  address    String?
-  stateName  String?
-  stateCode  String?
-  phone      String?
-  email      String?
-  mobile1    String?
-  mobile2    String?
-  balance    Float       @default(0.0)
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  invoices   Invoice[]
-  payments   Payment[]
-  weighments Weighment[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  gstin                  String?                 @unique
+  address                String?
+  stateName              String?
+  stateCode              String?
+  phone                  String?
+  email                  String?
+  mobile1                String?
+  mobile2                String?
+  balance                Float                   @default(0.0)
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  invoices               Invoice[]
+  payments               Payment[]
+  weighments             Weighment[]
   customerMaterialPrices CustomerMaterialPrice[]
-  transactions CustomerTransaction[]
+  transactions           CustomerTransaction[]
+  permitCards            PermitCard[]
 }
 
 model Material {
-  id           String        @id @default(uuid())
-  name         String        @unique
-  hsnCode      String?
-  unit         String        @default("TON") // TON, KG, LOAD, CFT
-  billingUnit  String        @default("TON") // TON, KG, LOAD, CFT
-  pricingType  String        @default("PER_TON") // PER_TON, PER_KG, PER_LOAD, PER_CFT, FIXED_AMOUNT
-  defaultRate  Float
-  gstRateId    String
-  taxRate      TaxRate       @relation(fields: [gstRateId], references: [id])
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  invoiceItems InvoiceItem[]
-  weighments   Weighment[]
+  id                     String                  @id @default(uuid())
+  name                   String                  @unique
+  hsnCode                String?
+  unit                   String                  @default("TON") // TON, KG, LOAD, CFT
+  billingUnit            String                  @default("TON") // TON, KG, LOAD, CFT
+  pricingType            String                  @default("PER_TON") // PER_TON, PER_KG, PER_LOAD, PER_CFT, FIXED_AMOUNT
+  defaultRate            Float
+  gstRateId              String
+  taxRate                TaxRate                 @relation(fields: [gstRateId], references: [id])
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  invoiceItems           InvoiceItem[]
+  weighments             Weighment[]
   customerMaterialPrices CustomerMaterialPrice[]
+  permitCards            PermitCard[]
 }
 
 model CustomerMaterialPrice {
-  id           String   @id @default(uuid())
-  customerId   String
-  customer     Customer @relation(fields: [customerId], references: [id])
-  materialId   String
-  material     Material @relation(fields: [materialId], references: [id])
-  pricingType  String
-  billingUnit  String
-  rate         Float
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  materialId  String
+  material    Material @relation(fields: [materialId], references: [id])
+  pricingType String
+  billingUnit String
+  rate        Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   @@unique([customerId, materialId])
 }
 
@@ -91,12 +93,12 @@ model CustomerTransaction {
   customerId      String
   customer        Customer @relation(fields: [customerId], references: [id])
   date            DateTime @default(now())
-  type            String   // INVOICE, PAYMENT, CREDIT, DEBIT, ADJUSTMENT
-  referenceId     String?  
-  referenceNumber String?  
+  type            String // INVOICE, PAYMENT, CREDIT, DEBIT, ADJUSTMENT
+  referenceId     String?
+  referenceNumber String?
   debit           Float    @default(0.0)
   credit          Float    @default(0.0)
-  balance         Float    @default(0.0) 
+  balance         Float    @default(0.0)
   paymentMethod   String?
   remarks         String?
   createdAt       DateTime @default(now())
@@ -115,11 +117,12 @@ model Vehicle {
   driverId String?
   driver   Driver? @relation(fields: [driverId], references: [id])
 
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  invoices   Invoice[]
-  weighments Weighment[]
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  invoices    Invoice[]
+  weighments  Weighment[]
+  permitCards PermitCard[]
 }
 
 model TaxRate {
@@ -178,11 +181,11 @@ model Invoice {
   status       String  @default("DRAFT") // DRAFT, FINALIZED, CANCELLED
   cancelReason String?
   isDeleted    Boolean @default(false)
-  
+
   // Payment Tracking
-  amountPaid    Float   @default(0.0)
-  balance       Float   @default(0.0)
-  paymentStatus String  @default("UNPAID") // UNPAID, PARTIAL, PAID, OVERPAID
+  amountPaid    Float  @default(0.0)
+  balance       Float  @default(0.0)
+  paymentStatus String @default("UNPAID") // UNPAID, PARTIAL, PAID, OVERPAID
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -274,18 +277,19 @@ model AuditLog {
 }
 
 model Driver {
-  id              String      @id @default(uuid())
+  id              String       @id @default(uuid())
   name            String
   mobile          String?
   licenseNumber   String?
   licenseExpiry   DateTime?
   address         String?
   transporterName String?
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   vehicles        Vehicle[]
   weighments      Weighment[]
+  permitCards     PermitCard[]
 }
 
 model ImportHistory {
@@ -333,8 +337,8 @@ model Weighment {
   transporterId String?
   transporter   Transporter? @relation(fields: [transporterId], references: [id])
 
-  slipNumber    String? @unique
-  firstWeightSource String? // DEVICE, MANUAL
+  slipNumber         String? @unique
+  firstWeightSource  String? // DEVICE, MANUAL
   secondWeightSource String? // DEVICE, MANUAL
 
   firstWeight     Float?
@@ -344,7 +348,7 @@ model Weighment {
   secondWeightDate DateTime?
 
   netWeight Float?
-  unit      String @default("KG")
+  unit      String  @default("KG")
   loadType  String? // LOAD, EMPTY, RETURN, OTHER
 
   status String @default("OPEN") // OPEN, FIRST_WEIGHT_RECORDED, WAITING_FOR_SECOND_WEIGHT, COMPLETED, CANCELLED
@@ -379,4 +383,82 @@ model WeighbridgeSetting {
   apiUrl         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model PermitCardTemplate {
+  id                 String   @id @default(uuid())
+  registrationNumber String?
+  registerHolderName String?
+  stockyardLocation  String?
+  stockyardSfNo      String?
+  stockyardVillage   String?
+  stockyardTaluk     String?
+  stockyardDistrict  String?
+  stockyardValidity  String?
+  qrImageUrl         String?
+  signatureImageUrl  String?
+  sealImageUrl       String?
+  extraFields        String? // JSON string for any future flexibility
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model PermitCard {
+  id              String @id @default(uuid())
+  permitReference String @unique // Internal Reference Number
+
+  // Dispatch Details
+  date         DateTime @default(now())
+  dispatchTime String?
+  timeStart    String?
+  timeEnd      String?
+  approximateDistance String?
+
+  // Relations
+  vehicleId  String?
+  vehicle    Vehicle?  @relation(fields: [vehicleId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+  driverId   String?
+  driver     Driver?   @relation(fields: [driverId], references: [id])
+
+  // Snapshot for Vehicle/Driver
+  vehicleNumber String
+  vehicleType   String?
+  driverName    String?
+  driverMobile  String?
+
+  // Snapshot for Purchaser
+  purchaserName        String?
+  purchaserAddress     String?
+  purchaserDestination String?
+  purchaserState       String?
+
+  // Snapshot for Material
+  materialName String?
+  quantity     Float
+  quantityUnit String  @default("MT")
+
+  // Permit Numbers
+  securityPaperNumber   String?
+  transitPassNumber     String?
+  bulkTransitPassNumber String?
+
+  // Fixed Stockyard Snapshot from Template (preserved at creation time)
+  registrationNumber String?
+  registerHolderName String?
+  stockyardLocation  String?
+  stockyardSfNo      String?
+  stockyardVillage   String?
+  stockyardTaluk     String?
+  stockyardDistrict  String?
+  stockyardValidity  String?
+
+  status    String  @default("DRAFT") // DRAFT, GENERATED, CANCELLED
+  createdBy String? // User ID or name
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
