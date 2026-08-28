@@ -443,7 +443,7 @@ router.post('/first-weight', async (req, res) => {
 // Update Second Weight and Complete
 router.post('/second-weight', async (req, res) => {
   try {
-    const { weighmentId, vehicleId, vehicleNumber, secondWeight, secondWeightSource, pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount } = req.body;
+    const { weighmentId, vehicleId, vehicleNumber, secondWeight, secondWeightSource, pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount, loadType, customerId, materialId, driverId, transporterId } = req.body;
     
     // Find open weighment by id, vehicleId, or vehicleNumber
     let whereClause: any = { status: { in: ['OPEN', 'FIRST_WEIGHT_RECORDED', 'WAITING_FOR_SECOND_WEIGHT'] } };
@@ -486,6 +486,11 @@ router.post('/second-weight', async (req, res) => {
         billingUnit: billingUnit || null,
         calculatedQuantity: calculatedQuantity || null,
         calculatedAmount: calculatedAmount || null,
+        ...(loadType && { loadType }),
+        ...(customerId && { customerId }),
+        ...(materialId && { materialId }),
+        ...(driverId && { driverId }),
+        ...(transporterId && { transporterId })
       },
       include: { vehicle: true, customer: true, material: true, driver: true, transporter: true }
     });

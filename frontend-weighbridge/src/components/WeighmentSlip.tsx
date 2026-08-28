@@ -74,6 +74,7 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             </div>
             <div className="text-right">
               <p><span className="font-semibold w-24 inline-block">Vehicle No</span>: <span className="font-bold text-lg">{weighment.vehicleNumber}</span></p>
+              <p><span className="font-semibold w-24 inline-block">Load Type</span>: <span className="font-bold">{weighment.loadType || 'N/A'}</span></p>
             </div>
           </div>
 
@@ -117,19 +118,24 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
               </tr>
               <tr className="bg-slate-50">
                 <td className="border border-slate-400 p-3 font-bold text-lg">NET WEIGHT</td>
-                <td className="border border-slate-400 p-3 text-right font-mono font-bold text-xl">{weighment.netWeight}</td>
-                <td className="border border-slate-400 p-3 text-right font-bold">{(weighment.netWeight / 1000).toFixed(2)} TON</td>
+                <td className="border border-slate-400 p-3 text-right">
+                  <span className="font-mono font-bold text-xl">{weighment.netWeight}</span> KG<br/>
+                  <span className="text-sm text-slate-500 font-bold">{(weighment.netWeight / 1000).toFixed(3)} TON</span>
+                </td>
+                <td className="border border-slate-400 p-3 text-right font-bold"></td>
               </tr>
             </tbody>
           </table>
 
           {weighment.status === 'COMPLETED' && weighment.rate > 0 && (
-            <div className="border border-slate-400 p-4 mb-12 text-sm grid grid-cols-2 gap-y-2 bg-slate-50">
-              <div className="col-span-2 text-center font-bold border-b border-slate-300 pb-2 mb-2 uppercase">Pricing Details</div>
-              <div><span className="font-bold inline-block w-32">Pricing Type:</span> {weighment.pricingType}</div>
-              <div><span className="font-bold inline-block w-32">Rate (₹):</span> {Number(weighment.rate).toFixed(2)}</div>
-              <div><span className="font-bold inline-block w-32">Quantity:</span> {Number(weighment.calculatedQuantity).toFixed(3)}</div>
-              <div className="text-lg text-right pr-4"><span className="font-bold">Total (₹):</span> {Number(weighment.calculatedAmount).toFixed(2)}</div>
+            <div className="border border-slate-400 mb-12 text-sm overflow-hidden">
+              <div className="text-center font-bold border-b border-slate-400 p-2 uppercase bg-slate-200">Pricing Details</div>
+              <div className="grid grid-cols-4 divide-x divide-slate-400 bg-slate-50">
+                <div className="p-3"><span className="block text-xs text-slate-500 uppercase mb-1">Pricing Type</span> <span className="font-bold">{weighment.pricingType}</span></div>
+                <div className="p-3"><span className="block text-xs text-slate-500 uppercase mb-1">Rate (₹)</span> <span className="font-bold">{Number(weighment.rate).toFixed(2)}</span></div>
+                <div className="p-3"><span className="block text-xs text-slate-500 uppercase mb-1">Quantity</span> <span className="font-bold">{Number(weighment.calculatedQuantity).toFixed(3)} {weighment.billingUnit}</span></div>
+                <div className="p-3 bg-slate-100 flex flex-col justify-center items-end"><span className="block text-xs text-slate-500 uppercase mb-1">Total Amount (₹)</span> <span className="font-bold text-lg">{Number(weighment.calculatedAmount).toFixed(2)}</span></div>
+              </div>
             </div>
           )}
 

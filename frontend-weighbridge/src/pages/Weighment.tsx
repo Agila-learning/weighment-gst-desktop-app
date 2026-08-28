@@ -191,8 +191,8 @@ export default function Weighment() {
         if (Math.abs(ew - fw) < 1) throw new Error('Second weight cannot be the same as first weight.');
         const netWeight = Math.abs(ew - fw);
         let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
-        const cp = customerPrices.find(p => p.customerId === pendingWeighment.customerId && p.materialId === pendingWeighment.materialId && p.isActive);
-        const bm = materials.find(m => m.id === pendingWeighment.materialId);
+        const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
+        const bm = materials.find(m => m.id === selectedMaterial);
         if (cp) { pricingType = cp.pricingType; billingUnit = cp.billingUnit; rate = cp.rate; }
         else if (bm) { pricingType = bm.pricingType || 'PER_UNIT'; billingUnit = bm.billingUnit || 'TON'; rate = bm.defaultRate || 0; }
         let qty = netWeight;
@@ -200,7 +200,8 @@ export default function Weighment() {
         const amt = pricingType === 'FIXED' ? rate : qty * rate;
         const res = await api.post('/weighments/second-weight', {
           weighmentId: pendingWeighment.id, vehicleId: pendingWeighment.vehicleId, vehicleNumber: pendingWeighment.vehicleNumber,
-          secondWeight: ew, secondWeightSource: ws, pricingType, rate, billingUnit, calculatedQuantity: qty, calculatedAmount: amt
+          secondWeight: ew, secondWeightSource: ws, pricingType, rate, billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
+          loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: selectedTransporter || null
         });
         setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId), transporter: transporters.find(t => t.id === res.data.transporterId) });
         resetFormState();
@@ -310,20 +311,20 @@ export default function Weighment() {
           <h3 className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Transaction Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><User size={12} /> Customer</label>
-              <select value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)} disabled={!!pendingWeighment} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
+              <select value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Customer --</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Package size={12} /> Material *</label>
-              <select value={selectedMaterial} onChange={e => setSelectedMaterial(e.target.value)} disabled={!!pendingWeighment} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
+              <select value={selectedMaterial} onChange={e => setSelectedMaterial(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Material --</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><User size={12} /> Driver</label>
-              <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)} disabled={!!pendingWeighment} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
+              <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Driver --</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Truck size={12} /> Transporter</label>
-              <select value={selectedTransporter} onChange={e => setSelectedTransporter(e.target.value)} disabled={!!pendingWeighment} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
+              <select value={selectedTransporter} onChange={e => setSelectedTransporter(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Transporter --</option>{transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
           </div>
           <div className="mt-3"><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-2"><Package size={12} /> Load Type</label>
-            <div className="flex gap-4 flex-wrap">{['LOAD','EMPTY','RETURN','OTHER'].map(type => (<label key={type} className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="loadType" value={type} checked={loadType === type} onChange={e => setLoadType(e.target.value)} disabled={!!pendingWeighment} className="text-blue-600" /><span className="text-sm text-slate-700">{type}</span></label>))}</div></div>
+            <div className="flex gap-4 flex-wrap">{['LOAD','EMPTY','RETURN','OTHER'].map(type => (<label key={type} className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="loadType" value={type} checked={loadType === type} onChange={e => setLoadType(e.target.value)} className="text-blue-600" /><span className="text-sm text-slate-700">{type}</span></label>))}</div></div>
         </div>
 
         {connectionType === 'MANUAL' && selectedVehicle && (

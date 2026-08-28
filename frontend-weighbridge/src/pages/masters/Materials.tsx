@@ -188,14 +188,37 @@ export default function Materials() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate *</label>
-                  <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
-                    <option value="">Select GST Rate</option>
-                    {taxRates.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.cgst + t.sgst + t.igst}%)</option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Type</label>
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.pricingType} onChange={e => setNewMaterial({...newMaterial, pricingType: e.target.value})}>
+                      <option value="PER_UNIT">Per Unit</option>
+                      <option value="FIXED">Fixed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Billing Unit</label>
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.billingUnit} onChange={e => setNewMaterial({...newMaterial, billingUnit: e.target.value})}>
+                      <option value="TON">TON</option>
+                      <option value="KG">KG</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Rate (₹)</label>
+                    <input type="number" min="0" step="0.01" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.defaultRate} onChange={e => setNewMaterial({...newMaterial, defaultRate: parseFloat(e.target.value) || 0})} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate *</label>
+                    <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
+                      <option value="">Select GST Rate</option>
+                      {taxRates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.cgst + t.sgst + t.igst}%)</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
