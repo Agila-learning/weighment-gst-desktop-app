@@ -85,7 +85,7 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
         }
         @media print {
           html, body { background: white; box-shadow: none; margin: 0; padding: 0; max-width: 100%; min-height: auto; }
-          .invoice-box { border-radius: 0; height: auto; max-height: 285mm; }
+          .invoice-box { border-radius: 0; height: auto; min-height: auto; max-height: none; page-break-inside: avoid; }
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -275,7 +275,7 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
         <div class="totals-grid">
           <div class="totals-left">
             <div style="font-size: 10px; color: #6b7280; text-transform: uppercase; margin-bottom: 4px;">Amount Chargeable (in words)</div>
-            <div class="font-bold" style="font-size: 13px; color: #1e3a8a;">Indian Rupees ${amountInWords} Only</div>
+            <div class="font-bold" style="font-size: 13px; color: #1e3a8a;">${amountInWords}</div>
           </div>
           <div class="totals-right p-0">
             <table class="totals-table">
@@ -354,7 +354,7 @@ export const generateInvoicePDF = async (invoiceId: string): Promise<string> => 
           </table>
           <div style="margin-top: 10px;">
             <div style="font-size: 10px; color: #6b7280; text-transform: uppercase;">Tax Amount (in words)</div>
-            <div class="font-bold" style="font-size: 12px; color: #111827;">Indian Rupees ${taxInWords} Only</div>
+            <div class="font-bold" style="font-size: 12px; color: #111827;">${taxInWords}</div>
           </div>
         </div>
 
