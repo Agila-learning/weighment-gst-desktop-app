@@ -4,11 +4,11 @@
   "version": "1.0.0",
   "description": "Weighbridge Desktop Application",
   "author": "FIC GST",
-  "type": "module",
-  "main": "dist-electron/main.cjs",  
+  "type": "commonjs",
+  "main": "dist-electron/main.js",   
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npx esbuild electron/main.ts --bundle --platform=node --format=cjs --outfile=dist-electron/main.cjs --external:electron && npx esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist-electron/preload.cjs --external:electron",
+    "build": "tsc -b && vite build && npx esbuild electron/main.ts --bundle --platform=node --format=cjs --outfile=dist-electron/main.js --external:electron --external:better-sqlite3 --external:bcryptjs && npx esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist-electron/preload.js --external:electron",
     "lint": "oxlint",
     "preview": "vite preview",
     "dist": "npm run build && electron-builder"

@@ -24,8 +24,10 @@ export async function fetchInvoicePdf(invoiceId: string): Promise<{ blob: Blob, 
     if (ipcRenderer) {
       const result = await ipcRenderer.invoke('generate-pdf', text);
       if (result.success) {
-        buffer = result.buffer;
-        blob = new Blob([result.buffer], { type: 'application/pdf' });
+        // Handle case where Buffer is serialized as { type: 'Buffer', data: [...] }
+        const bufferData = result.buffer.data ? new Uint8Array(result.buffer.data) : result.buffer;
+        buffer = bufferData;
+        blob = new Blob([bufferData], { type: 'application/pdf' });
       } else {
         throw new Error('Local PDF Generation failed: ' + result.error);
       }

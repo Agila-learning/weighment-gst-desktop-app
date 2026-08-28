@@ -16,6 +16,7 @@ export default defineConfig({
     electron([
       {
         entry: 'electron/main.ts',
+        vite: { build: { rollupOptions: { external: ['better-sqlite3', 'bcryptjs'] } } }
       },
       {
         entry: 'electron/preload.ts',
