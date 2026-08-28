@@ -29,17 +29,12 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
+  width: 0px;
   background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.3);
+.custom-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 @keyframes blob {
