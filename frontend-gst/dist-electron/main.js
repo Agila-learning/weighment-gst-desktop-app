@@ -1,167 +1,129 @@
-import { BrowserWindow, app, dialog, ipcMain, shell } from "electron";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import fs from "node:fs";
+import { BrowserWindow as e, app as t, dialog as n, ipcMain as r, shell as i } from "electron";
+import a from "node:path";
+import { fileURLToPath as o } from "node:url";
+import s from "node:fs";
 //#region electron/main.ts
-var currentDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-process.env.DIST = path.join(currentDir, "../dist");
-process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, "../public");
-var win;
-var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-function createWindow() {
-	win = new BrowserWindow({
+var c = typeof __dirname < "u" ? __dirname : a.dirname(o(import.meta.url));
+process.env.DIST = a.join(c, "../dist"), process.env.VITE_PUBLIC = t.isPackaged ? process.env.DIST : a.join(process.env.DIST, "../public");
+var l, u = process.env.VITE_DEV_SERVER_URL;
+function d() {
+	l = new e({
 		width: 1200,
 		height: 800,
 		webPreferences: {
-			preload: path.join(currentDir, "preload.cjs"),
-			plugins: true
+			preload: a.join(c, "preload.cjs"),
+			plugins: !0
 		}
-	});
-	win.webContents.on("did-finish-load", () => {
-		win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-	});
-	if (VITE_DEV_SERVER_URL) win.loadURL(VITE_DEV_SERVER_URL);
-	else win.loadFile(path.join(process.env.DIST, "index.html"));
+	}), l.webContents.on("did-finish-load", () => {
+		l?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+	}), u ? l.loadURL(u) : l.loadFile(a.join(process.env.DIST, "index.html"));
 }
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		app.quit();
-		win = null;
-	}
-});
-app.on("activate", () => {
-	if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-app.whenReady().then(() => {
-	ipcMain.handle("choose-folder", async () => {
-		const result = await dialog.showOpenDialog(win, { properties: ["openDirectory"] });
-		if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
-		return null;
-	});
-	ipcMain.handle("save-pdf", async (event, { buffer, invoiceNumber, customPath, forceReplace }) => {
+t.on("window-all-closed", () => {
+	process.platform !== "darwin" && (t.quit(), l = null);
+}), t.on("activate", () => {
+	e.getAllWindows().length === 0 && d();
+}), t.whenReady().then(() => {
+	r.handle("choose-folder", async () => {
+		let e = await n.showOpenDialog(l, { properties: ["openDirectory"] });
+		return !e.canceled && e.filePaths.length > 0 ? e.filePaths[0] : null;
+	}), r.handle("save-pdf", async (e, { buffer: n, invoiceNumber: r, customPath: i, forceReplace: o }) => {
 		try {
-			let targetDir = customPath;
-			if (!targetDir) targetDir = path.join(app.getPath("documents"), "GST Billing", "Invoices", (/* @__PURE__ */ new Date()).getFullYear().toString());
-			if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-			const filePath = path.join(targetDir, `${invoiceNumber}.pdf`);
-			if (fs.existsSync(filePath) && !forceReplace) return {
-				success: false,
+			let e = i;
+			e ||= a.join(t.getPath("documents"), "GST Billing", "Invoices", (/* @__PURE__ */ new Date()).getFullYear().toString()), s.existsSync(e) || s.mkdirSync(e, { recursive: !0 });
+			let c = a.join(e, `${r}.pdf`);
+			return s.existsSync(c) && !o ? {
+				success: !1,
 				error: "FILE_EXISTS",
-				path: filePath
-			};
-			fs.writeFileSync(filePath, Buffer.from(buffer));
-			return {
-				success: true,
-				path: filePath
-			};
-		} catch (err) {
-			console.error("Error saving PDF:", err);
-			return {
-				success: false,
-				error: err.message
+				path: c
+			} : (s.writeFileSync(c, Buffer.from(n)), {
+				success: !0,
+				path: c
+			});
+		} catch (e) {
+			return console.error("Error saving PDF:", e), {
+				success: !1,
+				error: e.message
 			};
 		}
-	});
-	ipcMain.handle("save-pdf-dialog", async (event, { buffer, defaultFilename }) => {
+	}), r.handle("save-pdf-dialog", async (e, { buffer: t, defaultFilename: r }) => {
 		try {
-			const { canceled, filePath } = await dialog.showSaveDialog(win, {
+			let { canceled: e, filePath: i } = await n.showSaveDialog(l, {
 				title: "Save Invoice PDF",
-				defaultPath: defaultFilename || "invoice.pdf",
+				defaultPath: r || "invoice.pdf",
 				filters: [{
 					name: "PDF Documents",
 					extensions: ["pdf"]
 				}]
 			});
-			if (canceled || !filePath) return {
-				success: false,
-				canceled: true
-			};
-			fs.writeFileSync(filePath, Buffer.from(buffer));
-			return {
-				success: true,
-				path: filePath
-			};
-		} catch (err) {
-			console.error("Error in save-pdf-dialog:", err);
-			return {
-				success: false,
-				error: err.message
+			return e || !i ? {
+				success: !1,
+				canceled: !0
+			} : (s.writeFileSync(i, Buffer.from(t)), {
+				success: !0,
+				path: i
+			});
+		} catch (e) {
+			return console.error("Error in save-pdf-dialog:", e), {
+				success: !1,
+				error: e.message
 			};
 		}
-	});
-	ipcMain.handle("check-pdf-exists", async (event, { invoiceNumber, customPath }) => {
-		if (!invoiceNumber) return { exists: false };
-		let targetDir = customPath;
-		if (!targetDir) targetDir = path.join(app.getPath("documents"), "GST Billing", "Invoices", (/* @__PURE__ */ new Date()).getFullYear().toString());
-		const filePath = path.join(targetDir, `${invoiceNumber}.pdf`);
+	}), r.handle("check-pdf-exists", async (e, { invoiceNumber: n, customPath: r }) => {
+		if (!n) return { exists: !1 };
+		let i = r;
+		i ||= a.join(t.getPath("documents"), "GST Billing", "Invoices", (/* @__PURE__ */ new Date()).getFullYear().toString());
+		let o = a.join(i, `${n}.pdf`);
 		return {
-			exists: fs.existsSync(filePath),
-			path: filePath
+			exists: s.existsSync(o),
+			path: o
 		};
-	});
-	ipcMain.handle("open-pdf", async (event, filePath) => {
-		if (!filePath || !fs.existsSync(filePath)) return {
-			success: false,
+	}), r.handle("open-pdf", async (e, t) => {
+		if (!t || !s.existsSync(t)) return {
+			success: !1,
 			error: "File not found"
 		};
-		const err = await shell.openPath(filePath);
-		if (err) return {
-			success: false,
-			error: err
-		};
-		return { success: true };
-	});
-	ipcMain.handle("open-folder", async (event, filePath) => {
-		if (!filePath || !fs.existsSync(filePath)) return {
-			success: false,
-			error: "File not found"
-		};
-		shell.showItemInFolder(filePath);
-		return { success: true };
-	});
-	ipcMain.handle("get-printers", async () => {
-		if (!win) return [];
-		return await win.webContents.getPrintersAsync();
-	});
-	ipcMain.handle("print-pdf", async (event, { filePath, printerName }) => {
+		let n = await i.openPath(t);
+		return n ? {
+			success: !1,
+			error: n
+		} : { success: !0 };
+	}), r.handle("open-folder", async (e, t) => !t || !s.existsSync(t) ? {
+		success: !1,
+		error: "File not found"
+	} : (i.showItemInFolder(t), { success: !0 })), r.handle("get-printers", async () => l ? await l.webContents.getPrintersAsync() : []), r.handle("print-pdf", async (t, { filePath: n, printerName: r }) => {
 		try {
-			const printWin = new BrowserWindow({ show: false });
-			await printWin.loadURL(`file://${filePath}`);
-			return new Promise((resolve) => {
-				printWin.webContents.print({
-					deviceName: printerName,
-					silent: true
-				}, (success, failureReason) => {
-					printWin.close();
-					if (success) resolve({ success: true });
-					else resolve({
-						success: false,
-						error: failureReason
+			let t = new e({ show: !1 });
+			return await t.loadURL(`file://${n}`), new Promise((e) => {
+				t.webContents.print({
+					deviceName: r,
+					silent: !0
+				}, (n, r) => {
+					t.close(), e(n ? { success: !0 } : {
+						success: !1,
+						error: r
 					});
 				});
 			});
-		} catch (err) {
+		} catch (e) {
 			return {
-				success: false,
-				error: err.message
+				success: !1,
+				error: e.message
 			};
 		}
-	});
-	ipcMain.handle("generate-pdf", async (event, htmlContent) => {
+	}), r.handle("generate-pdf", async (n, r) => {
 		try {
-			const tempPath = path.join(app.getPath("temp"), `temp_invoice_${Date.now()}.html`);
-			fs.writeFileSync(tempPath, htmlContent, "utf-8");
-			const printWin = new BrowserWindow({
-				show: false,
+			let n = a.join(t.getPath("temp"), `temp_invoice_${Date.now()}.html`);
+			s.writeFileSync(n, r, "utf-8");
+			let i = new e({
+				show: !1,
 				webPreferences: {
-					nodeIntegration: false,
-					contextIsolation: true
+					nodeIntegration: !1,
+					contextIsolation: !0
 				}
 			});
-			await printWin.loadURL(`file://${tempPath}`);
-			await new Promise((resolve) => printWin.webContents.once("did-finish-load", () => resolve(null)));
-			const pdfBuffer = await printWin.webContents.printToPDF({
-				printBackground: true,
+			await i.loadURL(`file://${n}`), await new Promise((e) => i.webContents.once("did-finish-load", () => e(null)));
+			let o = await i.webContents.printToPDF({
+				printBackground: !0,
 				pageSize: "A4",
 				margins: {
 					top: 0,
@@ -170,23 +132,21 @@ app.whenReady().then(() => {
 					right: 0
 				}
 			});
-			printWin.close();
+			i.close();
 			try {
-				fs.unlinkSync(tempPath);
-			} catch (e) {}
+				s.unlinkSync(n);
+			} catch {}
 			return {
-				success: true,
-				buffer: pdfBuffer
+				success: !0,
+				buffer: o
 			};
-		} catch (err) {
-			console.error("Local PDF Generation Error:", err);
-			return {
-				success: false,
-				error: err.message || String(err)
+		} catch (e) {
+			return console.error("Local PDF Generation Error:", e), {
+				success: !1,
+				error: e.message || String(e)
 			};
 		}
-	});
-	createWindow();
+	}), d();
 });
 //#endregion
 export {};

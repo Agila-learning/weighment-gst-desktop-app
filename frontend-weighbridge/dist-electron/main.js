@@ -1,4 +1,42 @@
-var e=Object.create,t=Object.defineProperty,n=Object.getOwnPropertyDescriptor,r=Object.getOwnPropertyNames,i=Object.getPrototypeOf,a=Object.prototype.hasOwnProperty,o=(e,i,o,s)=>{if(i&&typeof i==`object`||typeof i==`function`)for(var c=r(i),l=0,u=c.length,d;l<u;l++)d=c[l],!a.call(e,d)&&d!==o&&t(e,d,{get:(e=>i[e]).bind(null,d),enumerable:!(s=n(i,d))||s.enumerable});return e},s=(n,r,s)=>(s=n==null?{}:e(i(n)),o(r||!n||!n.__esModule||!a.call(n,`default`)?t(s,`default`,{value:n,enumerable:!0}):s,n));let c=require("electron"),l=require("node:path");l=s(l);let u=require("node:url"),d=require("bcryptjs");d=s(d);let f=require("node:fs");f=s(f);let p=require("better-sqlite3");p=s(p);var m=null;function h(){let e=l.default.join(c.app.getPath(`userData`),`weighbridge_offline.db`);m=new p.default(e,{verbose:console.log}),m.exec(`
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// electron/main.ts
+var import_electron2 = require("electron");
+var import_node_path2 = __toESM(require("node:path"));
+var import_node_url = require("node:url");
+var import_bcryptjs = __toESM(require("bcryptjs"));
+var import_node_fs = __toESM(require("node:fs"));
+
+// electron/database.ts
+var import_better_sqlite3 = __toESM(require("better-sqlite3"));
+var import_node_path = __toESM(require("node:path"));
+var import_electron = require("electron");
+var dbInstance = null;
+function initDatabase() {
+  const dbPath = import_node_path.default.join(import_electron.app.getPath("userData"), "weighbridge_offline.db");
+  dbInstance = new import_better_sqlite3.default(dbPath, { verbose: console.log });
+  dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -103,4 +141,177 @@ var e=Object.create,t=Object.defineProperty,n=Object.getOwnPropertyDescriptor,r=
       connectionTimeout INTEGER,
       updatedAt TEXT
     );
-  `);for(let e of[`ALTER TABLE weighments ADD COLUMN loadType TEXT`,`ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT`,`ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT`,`ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT`,`ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT`,`ALTER TABLE weighments ADD COLUMN invoiceReference TEXT`,`ALTER TABLE weighments ADD COLUMN cancellationReason TEXT`,`ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT`,`ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0`,`ALTER TABLE weighments ADD COLUMN pricingType TEXT`,`ALTER TABLE weighments ADD COLUMN rate REAL`,`ALTER TABLE weighments ADD COLUMN billingUnit TEXT`,`ALTER TABLE weighments ADD COLUMN calculatedQuantity REAL`,`ALTER TABLE weighments ADD COLUMN calculatedAmount REAL`,`ALTER TABLE weighments ADD COLUMN pricingSnapshot TEXT`,`ALTER TABLE materials ADD COLUMN pricingType TEXT`,`ALTER TABLE materials ADD COLUMN billingUnit TEXT`,`ALTER TABLE materials ADD COLUMN defaultRate REAL`,`ALTER TABLE customers ADD COLUMN mobile1 TEXT`,`ALTER TABLE customers ADD COLUMN mobile2 TEXT`])try{m.exec(e)}catch{}return m}function g(e,t=[]){m||=h();let n=m.prepare(e);return e.trim().toUpperCase().startsWith(`SELECT`)?n.all(...t):n.run(...t)}var _=typeof __dirname<`u`?__dirname:l.default.dirname((0,u.fileURLToPath)(require("url").pathToFileURL(__filename).href));process.env.DIST=l.default.join(_,`../dist`),process.env.VITE_PUBLIC=c.app.isPackaged?process.env.DIST:l.default.join(process.env.DIST,`../public`);var v,y=process.env.VITE_DEV_SERVER_URL;function b(){v=new c.BrowserWindow({width:1200,height:800,webPreferences:{preload:l.default.join(_,`preload.cjs`),plugins:!0}}),v.webContents.on(`did-finish-load`,()=>{v?.webContents.send(`main-process-message`,new Date().toLocaleString())}),y?v.loadURL(y):v.loadFile(l.default.join(process.env.DIST||``,`index.html`))}c.app.whenReady().then(()=>{h(),c.ipcMain.handle(`db-query`,async(e,t,n=[])=>{try{return{success:!0,data:g(t,n)}}catch(e){return{success:!1,error:e.message}}}),c.ipcMain.handle(`db-transaction`,async(e,t)=>{try{let e=h();return{success:!0,data:e.transaction(t=>{let n=[];for(let r of t){let t=e.prepare(r.query);r.query.trim().toUpperCase().startsWith(`SELECT`)?n.push(t.all(...r.params||[])):n.push(t.run(...r.params||[]))}return n})(t)}}catch(e){return{success:!1,error:e.message}}}),c.ipcMain.handle(`verify-password`,async(e,t,n)=>{try{return{success:!0,isValid:await d.default.compare(t,n)}}catch(e){return{success:!1,error:e.message}}}),c.ipcMain.handle(`backup-db`,async()=>{try{let e=l.default.join(c.app.getPath(`userData`),`weighbridge_offline.db`);if(!v)return{success:!1,error:`No window`};let{canceled:t,filePath:n}=await c.dialog.showSaveDialog(v,{title:`Save Database Backup`,defaultPath:l.default.join(c.app.getPath(`documents`),`weighbridge_backup_${new Date().toISOString().split(`T`)[0]}.db`),filters:[{name:`SQLite Database`,extensions:[`db`]}]});return t||!n?{success:!1,error:`Cancelled`}:(f.default.copyFileSync(e,n),{success:!0,filePath:n})}catch(e){return{success:!1,error:e.message}}}),c.ipcMain.handle(`auto-backup-db`,async()=>{try{let e=l.default.join(c.app.getPath(`userData`),`weighbridge_offline.db`),t=l.default.join(c.app.getPath(`documents`),`Weighbridge_AutoBackups`);f.default.existsSync(t)||f.default.mkdirSync(t,{recursive:!0});let n=l.default.join(t,`auto_backup_${new Date().toISOString().split(`T`)[0]}.db`);return f.default.copyFileSync(e,n),{success:!0,filePath:n}}catch(e){return{success:!1,error:e.message}}}),c.ipcMain.handle(`restore-db`,async()=>{try{let e=l.default.join(c.app.getPath(`userData`),`weighbridge_offline.db`);if(!v)return{success:!1,error:`No window`};let{canceled:t,filePaths:n}=await c.dialog.showOpenDialog(v,{title:`Restore Database Backup`,filters:[{name:`SQLite Database`,extensions:[`db`]}],properties:[`openFile`]});return t||n.length===0||(await c.dialog.showMessageBox(v,{type:`warning`,buttons:[`Yes, Restore`,`Cancel`],title:`Confirm Restore`,message:`Are you sure you want to overwrite the current database? This action cannot be undone and the application will restart.`})).response!==0?{success:!1,error:`Cancelled`}:(f.default.copyFileSync(n[0],e),c.app.relaunch(),c.app.exit(0),{success:!0})}catch(e){return{success:!1,error:e.message}}}),b()}),c.app.on(`window-all-closed`,()=>{process.platform!==`darwin`&&(c.app.quit(),v=null)}),c.app.on(`activate`,()=>{c.BrowserWindow.getAllWindows().length===0&&b()});
+  `);
+  const alters = [
+    "ALTER TABLE weighments ADD COLUMN loadType TEXT",
+    "ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
+    "ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
+    "ALTER TABLE weighments ADD COLUMN firstWeightSource TEXT",
+    "ALTER TABLE weighments ADD COLUMN secondWeightSource TEXT",
+    "ALTER TABLE weighments ADD COLUMN invoiceReference TEXT",
+    "ALTER TABLE weighments ADD COLUMN cancellationReason TEXT",
+    "ALTER TABLE weighments ADD COLUMN originalWeighmentId TEXT",
+    "ALTER TABLE weighments ADD COLUMN isCorrection INTEGER DEFAULT 0",
+    // Advanced Enhancements Additions
+    "ALTER TABLE weighments ADD COLUMN pricingType TEXT",
+    "ALTER TABLE weighments ADD COLUMN rate REAL",
+    "ALTER TABLE weighments ADD COLUMN billingUnit TEXT",
+    "ALTER TABLE weighments ADD COLUMN calculatedQuantity REAL",
+    "ALTER TABLE weighments ADD COLUMN calculatedAmount REAL",
+    "ALTER TABLE weighments ADD COLUMN pricingSnapshot TEXT",
+    "ALTER TABLE materials ADD COLUMN pricingType TEXT",
+    "ALTER TABLE materials ADD COLUMN billingUnit TEXT",
+    "ALTER TABLE materials ADD COLUMN defaultRate REAL",
+    "ALTER TABLE customers ADD COLUMN mobile1 TEXT",
+    "ALTER TABLE customers ADD COLUMN mobile2 TEXT"
+  ];
+  for (const query of alters) {
+    try {
+      dbInstance.exec(query);
+    } catch (e) {
+    }
+  }
+  return dbInstance;
+}
+function executeQuery(query, params = []) {
+  if (!dbInstance) {
+    dbInstance = initDatabase();
+  }
+  const stmt = dbInstance.prepare(query);
+  if (query.trim().toUpperCase().startsWith("SELECT")) {
+    return stmt.all(...params);
+  } else {
+    return stmt.run(...params);
+  }
+}
+
+// electron/main.ts
+var import_meta = {};
+var currentDir = typeof __dirname !== "undefined" ? __dirname : import_node_path2.default.dirname((0, import_node_url.fileURLToPath)(import_meta.url));
+process.env.DIST = import_node_path2.default.join(currentDir, "../dist");
+process.env.VITE_PUBLIC = import_electron2.app.isPackaged ? process.env.DIST : import_node_path2.default.join(process.env.DIST, "../public");
+var win;
+var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+function createWindow() {
+  win = new import_electron2.BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: import_node_path2.default.join(currentDir, "preload.cjs"),
+      plugins: true
+    }
+  });
+  win.webContents.on("did-finish-load", () => {
+    win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  });
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile(import_node_path2.default.join(process.env.DIST || "", "index.html"));
+  }
+}
+import_electron2.app.whenReady().then(() => {
+  initDatabase();
+  import_electron2.ipcMain.handle("db-query", async (event, query, params = []) => {
+    try {
+      return { success: true, data: executeQuery(query, params) };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("db-transaction", async (event, queries) => {
+    try {
+      const db = initDatabase();
+      const runTransaction = db.transaction((queriesList) => {
+        const results = [];
+        for (const q of queriesList) {
+          const stmt = db.prepare(q.query);
+          if (q.query.trim().toUpperCase().startsWith("SELECT")) {
+            results.push(stmt.all(...q.params || []));
+          } else {
+            results.push(stmt.run(...q.params || []));
+          }
+        }
+        return results;
+      });
+      return { success: true, data: runTransaction(queries) };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("verify-password", async (event, password, hash) => {
+    try {
+      const isValid = await import_bcryptjs.default.compare(password, hash);
+      return { success: true, isValid };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("backup-db", async () => {
+    try {
+      const dbPath = import_node_path2.default.join(import_electron2.app.getPath("userData"), "weighbridge_offline.db");
+      if (!win) return { success: false, error: "No window" };
+      const { canceled, filePath } = await import_electron2.dialog.showSaveDialog(win, {
+        title: "Save Database Backup",
+        defaultPath: import_node_path2.default.join(import_electron2.app.getPath("documents"), `weighbridge_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`),
+        filters: [{ name: "SQLite Database", extensions: ["db"] }]
+      });
+      if (canceled || !filePath) return { success: false, error: "Cancelled" };
+      import_node_fs.default.copyFileSync(dbPath, filePath);
+      return { success: true, filePath };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("auto-backup-db", async () => {
+    try {
+      const dbPath = import_node_path2.default.join(import_electron2.app.getPath("userData"), "weighbridge_offline.db");
+      const backupDir = import_node_path2.default.join(import_electron2.app.getPath("documents"), "Weighbridge_AutoBackups");
+      if (!import_node_fs.default.existsSync(backupDir)) {
+        import_node_fs.default.mkdirSync(backupDir, { recursive: true });
+      }
+      const filePath = import_node_path2.default.join(backupDir, `auto_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`);
+      import_node_fs.default.copyFileSync(dbPath, filePath);
+      return { success: true, filePath };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("restore-db", async () => {
+    try {
+      const dbPath = import_node_path2.default.join(import_electron2.app.getPath("userData"), "weighbridge_offline.db");
+      if (!win) return { success: false, error: "No window" };
+      const { canceled, filePaths } = await import_electron2.dialog.showOpenDialog(win, {
+        title: "Restore Database Backup",
+        filters: [{ name: "SQLite Database", extensions: ["db"] }],
+        properties: ["openFile"]
+      });
+      if (canceled || filePaths.length === 0) return { success: false, error: "Cancelled" };
+      const confirm = await import_electron2.dialog.showMessageBox(win, {
+        type: "warning",
+        buttons: ["Yes, Restore", "Cancel"],
+        title: "Confirm Restore",
+        message: "Are you sure you want to overwrite the current database? This action cannot be undone and the application will restart."
+      });
+      if (confirm.response !== 0) return { success: false, error: "Cancelled" };
+      import_node_fs.default.copyFileSync(filePaths[0], dbPath);
+      import_electron2.app.relaunch();
+      import_electron2.app.exit(0);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  createWindow();
+});
+import_electron2.app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    import_electron2.app.quit();
+    win = null;
+  }
+});
+import_electron2.app.on("activate", () => {
+  if (import_electron2.BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
