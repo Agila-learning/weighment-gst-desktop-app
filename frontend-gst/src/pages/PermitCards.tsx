@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileBadge, Plus, FileDown, Copy, Search } from 'lucide-react';
+import { FileBadge, Plus, FileDown, Copy, Search, Eye, XCircle, Edit } from 'lucide-react';
 import apiClient from '../api/client';
 
 const PermitCards = () => {
   const [permits, setPermits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [detailsModalPermit, setDetailsModalPermit] = useState<any | null>(null);
   const navigate = useNavigate();
 
   const ipcRenderer = (window as any).ipcRenderer;
@@ -45,25 +46,33 @@ const PermitCards = () => {
         if (!pdfGen.success) throw new Error('Local PDF Generation Error: ' + pdfGen.error);
 
         const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-          buffer: pdfGen.buffer, 
+          buffer: Array.from(pdfGen.buffer.data || pdfGen.buffer), 
           defaultFilename: `${permit.permitReference}.pdf` 
         });
-        if (!saveResult.success && saveResult.error) {
+        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
           alert('Error saving PDF: ' + saveResult.error);
-        } else if (saveResult.success) {
-          alert('Permit Card PDF Saved Successfully!');
         }
         return;
       }
 
-      // Standard blob download in browser if backend puppeteer succeeded
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${permit.permitReference}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
+      if (ipcRenderer) {
+        const arrayBuffer = await res.data.arrayBuffer();
+        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+          buffer: Array.from(new Uint8Array(arrayBuffer)),
+          defaultFilename: `${permit.permitReference}.pdf`
+        });
+        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+          alert('Error saving PDF: ' + saveResult.error);
+        }
+      } else {
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${permit.permitReference}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+      }
     } catch (error: any) {
       console.error(error);
       alert('Error downloading PDF: ' + (error.message || 'Unknown error'));
@@ -138,6 +147,9 @@ const PermitCards = () => {
                       <div className="text-sm text-gray-500">{permit.purchaserDestination}</div>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
+                      <button onClick={() => setDetailsModalPermit(permit)} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                        <Eye size={18} />
+                      </button>
                       <button onClick={() => navigate(`/permit-cards/create?duplicateId=${permit.id}`)} className="text-indigo-600 hover:text-indigo-900 p-1" title="Duplicate (Create New)">
                         <Copy size={18} />
                       </button>
@@ -152,6 +164,78 @@ const PermitCards = () => {
           </table>
         </div>
       </div>
+
+      {/* PERMIT CARD DETAILS MODAL */}
+      {detailsModalPermit && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Permit Card Details</h2>
+                <p className="text-sm text-slate-500">{detailsModalPermit.permitReference} • {detailsModalPermit.date ? new Date(detailsModalPermit.date).toLocaleDateString() : ''}</p>
+              </div>
+              <button onClick={() => setDetailsModalPermit(null)} className="text-gray-400 hover:text-gray-700"><XCircle size={24} /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Purchaser Info */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Purchaser Info</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Name:</span> <span className="font-semibold text-gray-900">{detailsModalPermit.purchaserName}</span></p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Destination:</span> {detailsModalPermit.purchaserDestination || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Vehicle & Driver Info */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Vehicle & Driver</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Vehicle No:</span> <span className="font-semibold text-gray-900">{detailsModalPermit.vehicleNumber}</span></p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Driver Name:</span> {detailsModalPermit.driverName || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Material Info */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Material Info</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Material:</span> <span className="font-semibold text-gray-900">{detailsModalPermit.materialName}</span></p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Quantity:</span> {detailsModalPermit.quantity} {detailsModalPermit.quantityUnit}</p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Amount:</span> ₹{Number(detailsModalPermit.amount || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Additional Info */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Additional Info</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Security Paper:</span> {detailsModalPermit.securityPaperNumber || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Transit Pass:</span> {detailsModalPermit.transitPassNumber || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Dispatch Time:</span> {detailsModalPermit.dispatchTime || '-'}</p>
+                    <p><span className="text-gray-500 font-medium w-32 inline-block">Time (Start-End):</span> {detailsModalPermit.timeStart} - {detailsModalPermit.timeEnd}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+              <button onClick={() => navigate(`/permit-cards/create?id=${detailsModalPermit.id}`)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <Edit size={16} /> Edit
+              </button>
+              <button onClick={() => navigate(`/permit-cards/create?duplicateId=${detailsModalPermit.id}`)} className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium">
+                <Copy size={16} /> Duplicate
+              </button>
+              <button onClick={() => handleDownloadPdf(detailsModalPermit)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">
+                <FileDown size={16} /> Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

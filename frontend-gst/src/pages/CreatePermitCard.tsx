@@ -69,9 +69,16 @@ const CreatePermitCard = () => {
     try {
       const res = await apiClient.get(`/permit-cards/${id}`);
       if (res.data) {
+        const duplicateData = { ...res.data };
+        // Remove unique identifiers
+        delete duplicateData.id;
+        delete duplicateData.createdAt;
+        delete duplicateData.updatedAt;
+        delete duplicateData.permitReference;
+
         // Reset date/time and numbers but keep relations
         setPermit({
-          ...res.data,
+          ...duplicateData,
           date: new Date().toISOString().split('T')[0],
           dispatchTime: '',
           timeStart: '',
