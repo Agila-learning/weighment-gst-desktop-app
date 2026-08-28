@@ -135,7 +135,7 @@ t.on("window-all-closed", () => {
 			i.close();
 			try {
 				s.unlinkSync(n);
-			} catch {}
+			} catch { }
 			return {
 				success: !0,
 				buffer: o
@@ -149,4 +149,4 @@ t.on("window-all-closed", () => {
 	}), d();
 });
 //#endregion
-export {};
+export { };
