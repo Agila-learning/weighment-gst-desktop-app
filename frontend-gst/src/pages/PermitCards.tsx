@@ -40,9 +40,13 @@ const PermitCards = () => {
         // Fallback to local Electron IPC
         if (!ipcRenderer) throw new Error('PDF Generation failed on server and no local IPC found.');
         const text = await res.data.text();
+        
+        const pdfGen = await ipcRenderer.invoke('generate-pdf', text);
+        if (!pdfGen.success) throw new Error('Local PDF Generation Error: ' + pdfGen.error);
+
         const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-          html: text, 
-          defaultPath: `${permit.permitReference}.pdf` 
+          buffer: pdfGen.buffer, 
+          defaultFilename: `${permit.permitReference}.pdf` 
         });
         if (!saveResult.success && saveResult.error) {
           alert('Error saving PDF: ' + saveResult.error);
