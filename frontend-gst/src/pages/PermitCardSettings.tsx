@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Save, Image as ImageIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Save, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import apiClient from '../api/client';
 
 const PermitCardSettings = () => {
@@ -74,9 +75,13 @@ const PermitCardSettings = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-4 mb-2">
+        <Link to="/permit-cards" className="text-gray-500 hover:text-indigo-600 transition-colors p-2 bg-white rounded-full shadow-sm hover:shadow">
+          <ArrowLeft size={24} />
+        </Link>
         <h1 className="text-2xl font-bold text-gray-800">Permit Card Template Settings</h1>
+        <div className="flex-1"></div>
         <button
           onClick={handleSave}
           disabled={loading}

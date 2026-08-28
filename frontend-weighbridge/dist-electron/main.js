@@ -1,14 +1,121 @@
-import { createRequire as e } from "node:module";
-import { BrowserWindow as t, app as n, dialog as r, ipcMain as i } from "electron";
-import a from "node:path";
-import { fileURLToPath as o } from "node:url";
-import s from "bcryptjs";
-import c from "node:fs";
+import { BrowserWindow, app, dialog, ipcMain } from "electron";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import bcrypt from "bcryptjs";
+import fs from "node:fs";
+import Database from "better-sqlite3";
 //#region electron/database.ts
-var l = e(import.meta.url)("better-sqlite3"), u = null;
-function d() {
-	u = new l(a.join(n.getPath("userData"), "weighbridge_offline.db"), { verbose: console.log }), u.exec("\n    CREATE TABLE IF NOT EXISTS customers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL,\n      gstin TEXT\n    );\n    CREATE TABLE IF NOT EXISTS vehicles (\n      id TEXT PRIMARY KEY,\n      vehicleNumber TEXT NOT NULL,\n      tareWeight REAL\n    );\n    CREATE TABLE IF NOT EXISTS materials (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS drivers (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS transporters (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL\n    );\n    CREATE TABLE IF NOT EXISTS weighments (\n      id TEXT PRIMARY KEY,\n      slipNumber TEXT,\n      vehicleId TEXT,\n      vehicleNumber TEXT,\n      customerId TEXT,\n      customerName TEXT,\n      materialId TEXT,\n      materialName TEXT,\n      driverId TEXT,\n      driverName TEXT,\n      transporterId TEXT,\n      transporterName TEXT,\n      firstWeight REAL,\n      secondWeight REAL,\n      netWeight REAL,\n      status TEXT,\n      syncStatus TEXT,\n      date TEXT,\n      createdAt TEXT,\n      updatedAt TEXT,\n      loadType TEXT,\n      firstWeightDate TEXT,\n      secondWeightDate TEXT,\n      firstWeightSource TEXT,\n      secondWeightSource TEXT\n    );\n    \n    CREATE TABLE IF NOT EXISTS local_sync_queue (\n      id TEXT PRIMARY KEY,\n      entityType TEXT,\n      entityId TEXT,\n      operation TEXT,\n      payload TEXT,\n      status TEXT,\n      retryCount INTEGER DEFAULT 0,\n      errorMessage TEXT,\n      createdAt TEXT,\n      updatedAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS audit_logs (\n      id TEXT PRIMARY KEY,\n      userId TEXT,\n      action TEXT,\n      entity TEXT,\n      entityId TEXT,\n      details TEXT,\n      createdAt TEXT\n    );\n    CREATE TABLE IF NOT EXISTS auth_cache (\n      id TEXT PRIMARY KEY,\n      username TEXT,\n      email TEXT,\n      name TEXT,\n      role TEXT,\n      localHash TEXT,\n      applicationAccess TEXT\n    );\n    CREATE TABLE IF NOT EXISTS customer_material_prices (\n      id TEXT PRIMARY KEY,\n      customerId TEXT NOT NULL,\n      materialId TEXT NOT NULL,\n      pricingType TEXT,\n      billingUnit TEXT,\n      rate REAL,\n      isActive INTEGER DEFAULT 1\n    );\n\n    CREATE TABLE IF NOT EXISTS device_settings (\n      id TEXT PRIMARY KEY,\n      connectionType TEXT,\n      comPort TEXT,\n      baudRate INTEGER,\n      dataBits INTEGER,\n      parity TEXT,\n      stopBits INTEGER,\n      ipAddress TEXT,\n      port INTEGER,\n      readInterval INTEGER,\n      connectionTimeout INTEGER,\n      updatedAt TEXT\n    );\n  ");
-	for (let e of [
+var dbInstance = null;
+function initDatabase() {
+	const dbPath = path.join(app.getPath("userData"), "weighbridge_offline.db");
+	dbInstance = new Database(dbPath, { verbose: console.log });
+	dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      gstin TEXT
+    );
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id TEXT PRIMARY KEY,
+      vehicleNumber TEXT NOT NULL,
+      tareWeight REAL
+    );
+    CREATE TABLE IF NOT EXISTS materials (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS drivers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS transporters (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS weighments (
+      id TEXT PRIMARY KEY,
+      slipNumber TEXT,
+      vehicleId TEXT,
+      vehicleNumber TEXT,
+      customerId TEXT,
+      customerName TEXT,
+      materialId TEXT,
+      materialName TEXT,
+      driverId TEXT,
+      driverName TEXT,
+      transporterId TEXT,
+      transporterName TEXT,
+      firstWeight REAL,
+      secondWeight REAL,
+      netWeight REAL,
+      status TEXT,
+      syncStatus TEXT,
+      date TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      loadType TEXT,
+      firstWeightDate TEXT,
+      secondWeightDate TEXT,
+      firstWeightSource TEXT,
+      secondWeightSource TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS local_sync_queue (
+      id TEXT PRIMARY KEY,
+      entityType TEXT,
+      entityId TEXT,
+      operation TEXT,
+      payload TEXT,
+      status TEXT,
+      retryCount INTEGER DEFAULT 0,
+      errorMessage TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      userId TEXT,
+      action TEXT,
+      entity TEXT,
+      entityId TEXT,
+      details TEXT,
+      createdAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS auth_cache (
+      id TEXT PRIMARY KEY,
+      username TEXT,
+      email TEXT,
+      name TEXT,
+      role TEXT,
+      localHash TEXT,
+      applicationAccess TEXT
+    );
+    CREATE TABLE IF NOT EXISTS customer_material_prices (
+      id TEXT PRIMARY KEY,
+      customerId TEXT NOT NULL,
+      materialId TEXT NOT NULL,
+      pricingType TEXT,
+      billingUnit TEXT,
+      rate REAL,
+      isActive INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS device_settings (
+      id TEXT PRIMARY KEY,
+      connectionType TEXT,
+      comPort TEXT,
+      baudRate INTEGER,
+      dataBits INTEGER,
+      parity TEXT,
+      stopBits INTEGER,
+      ipAddress TEXT,
+      port INTEGER,
+      readInterval INTEGER,
+      connectionTimeout INTEGER,
+      updatedAt TEXT
+    );
+  `);
+	for (const query of [
 		"ALTER TABLE weighments ADD COLUMN loadType TEXT",
 		"ALTER TABLE weighments ADD COLUMN firstWeightDate TEXT",
 		"ALTER TABLE weighments ADD COLUMN secondWeightDate TEXT",
@@ -30,125 +137,145 @@ function d() {
 		"ALTER TABLE customers ADD COLUMN mobile1 TEXT",
 		"ALTER TABLE customers ADD COLUMN mobile2 TEXT"
 	]) try {
-		u.exec(e);
-	} catch {}
-	return u;
+		dbInstance.exec(query);
+	} catch (e) {}
+	return dbInstance;
 }
-function f(e, t = []) {
-	u ||= d();
-	let n = u.prepare(e);
-	return e.trim().toUpperCase().startsWith("SELECT") ? n.all(...t) : n.run(...t);
+function executeQuery(query, params = []) {
+	if (!dbInstance) dbInstance = initDatabase();
+	const stmt = dbInstance.prepare(query);
+	if (query.trim().toUpperCase().startsWith("SELECT")) return stmt.all(...params);
+	else return stmt.run(...params);
 }
 //#endregion
 //#region electron/main.ts
-var p = a.dirname(o(import.meta.url));
-process.env.DIST = a.join(p, "../dist"), process.env.VITE_PUBLIC = n.isPackaged ? process.env.DIST : a.join(process.env.DIST, "../public");
-var m, h = process.env.VITE_DEV_SERVER_URL;
-function g() {
-	m = new t({
+var currentDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+process.env.DIST = path.join(currentDir, "../dist");
+process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, "../public");
+var win;
+var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+function createWindow() {
+	win = new BrowserWindow({
 		width: 1200,
 		height: 800,
-		webPreferences: { preload: a.join(p, "preload.mjs") }
-	}), m.webContents.on("did-finish-load", () => {
-		m?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-	}), h ? m.loadURL(h) : m.loadFile(a.join(process.env.DIST || "", "index.html"));
+		webPreferences: {
+			preload: path.join(currentDir, "preload.cjs"),
+			plugins: true
+		}
+	});
+	win.webContents.on("did-finish-load", () => {
+		win?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+	});
+	if (VITE_DEV_SERVER_URL) win.loadURL(VITE_DEV_SERVER_URL);
+	else win.loadFile(path.join(process.env.DIST || "", "index.html"));
 }
-n.whenReady().then(() => {
-	d(), i.handle("db-query", async (e, t, n = []) => {
+app.whenReady().then(() => {
+	initDatabase();
+	ipcMain.handle("db-query", async (event, query, params = []) => {
 		try {
 			return {
-				success: !0,
-				data: f(t, n)
+				success: true,
+				data: executeQuery(query, params)
 			};
-		} catch (e) {
+		} catch (err) {
 			return {
-				success: !1,
-				error: e.message
+				success: false,
+				error: err.message
 			};
 		}
-	}), i.handle("db-transaction", async (e, t) => {
+	});
+	ipcMain.handle("db-transaction", async (event, queries) => {
 		try {
-			let e = d();
+			const db = initDatabase();
 			return {
-				success: !0,
-				data: e.transaction((t) => {
-					let n = [];
-					for (let r of t) {
-						let t = e.prepare(r.query);
-						r.query.trim().toUpperCase().startsWith("SELECT") ? n.push(t.all(...r.params || [])) : n.push(t.run(...r.params || []));
+				success: true,
+				data: db.transaction((queriesList) => {
+					const results = [];
+					for (const q of queriesList) {
+						const stmt = db.prepare(q.query);
+						if (q.query.trim().toUpperCase().startsWith("SELECT")) results.push(stmt.all(...q.params || []));
+						else results.push(stmt.run(...q.params || []));
 					}
-					return n;
-				})(t)
+					return results;
+				})(queries)
 			};
-		} catch (e) {
+		} catch (err) {
 			return {
-				success: !1,
-				error: e.message
+				success: false,
+				error: err.message
 			};
 		}
-	}), i.handle("verify-password", async (e, t, n) => {
+	});
+	ipcMain.handle("verify-password", async (event, password, hash) => {
 		try {
 			return {
-				success: !0,
-				isValid: await s.compare(t, n)
+				success: true,
+				isValid: await bcrypt.compare(password, hash)
 			};
-		} catch (e) {
+		} catch (err) {
 			return {
-				success: !1,
-				error: e.message
+				success: false,
+				error: err.message
 			};
 		}
-	}), i.handle("backup-db", async () => {
+	});
+	ipcMain.handle("backup-db", async () => {
 		try {
-			let e = a.join(n.getPath("userData"), "weighbridge_offline.db");
-			if (!m) return {
-				success: !1,
+			const dbPath = path.join(app.getPath("userData"), "weighbridge_offline.db");
+			if (!win) return {
+				success: false,
 				error: "No window"
 			};
-			let { canceled: t, filePath: i } = await r.showSaveDialog(m, {
+			const { canceled, filePath } = await dialog.showSaveDialog(win, {
 				title: "Save Database Backup",
-				defaultPath: a.join(n.getPath("documents"), `weighbridge_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`),
+				defaultPath: path.join(app.getPath("documents"), `weighbridge_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`),
 				filters: [{
 					name: "SQLite Database",
 					extensions: ["db"]
 				}]
 			});
-			return t || !i ? {
-				success: !1,
+			if (canceled || !filePath) return {
+				success: false,
 				error: "Cancelled"
-			} : (c.copyFileSync(e, i), {
-				success: !0,
-				filePath: i
-			});
-		} catch (e) {
+			};
+			fs.copyFileSync(dbPath, filePath);
 			return {
-				success: !1,
-				error: e.message
+				success: true,
+				filePath
+			};
+		} catch (err) {
+			return {
+				success: false,
+				error: err.message
 			};
 		}
-	}), i.handle("auto-backup-db", async () => {
+	});
+	ipcMain.handle("auto-backup-db", async () => {
 		try {
-			let e = a.join(n.getPath("userData"), "weighbridge_offline.db"), t = a.join(n.getPath("documents"), "Weighbridge_AutoBackups");
-			c.existsSync(t) || c.mkdirSync(t, { recursive: !0 });
-			let r = a.join(t, `auto_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`);
-			return c.copyFileSync(e, r), {
-				success: !0,
-				filePath: r
-			};
-		} catch (e) {
+			const dbPath = path.join(app.getPath("userData"), "weighbridge_offline.db");
+			const backupDir = path.join(app.getPath("documents"), "Weighbridge_AutoBackups");
+			if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+			const filePath = path.join(backupDir, `auto_backup_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.db`);
+			fs.copyFileSync(dbPath, filePath);
 			return {
-				success: !1,
-				error: e.message
+				success: true,
+				filePath
+			};
+		} catch (err) {
+			return {
+				success: false,
+				error: err.message
 			};
 		}
-	}), i.handle("restore-db", async () => {
+	});
+	ipcMain.handle("restore-db", async () => {
 		try {
-			let e = a.join(n.getPath("userData"), "weighbridge_offline.db");
-			if (!m) return {
-				success: !1,
+			const dbPath = path.join(app.getPath("userData"), "weighbridge_offline.db");
+			if (!win) return {
+				success: false,
 				error: "No window"
 			};
-			let { canceled: t, filePaths: i } = await r.showOpenDialog(m, {
+			const { canceled, filePaths } = await dialog.showOpenDialog(win, {
 				title: "Restore Database Backup",
 				filters: [{
 					name: "SQLite Database",
@@ -156,26 +283,40 @@ n.whenReady().then(() => {
 				}],
 				properties: ["openFile"]
 			});
-			return t || i.length === 0 || (await r.showMessageBox(m, {
+			if (canceled || filePaths.length === 0) return {
+				success: false,
+				error: "Cancelled"
+			};
+			if ((await dialog.showMessageBox(win, {
 				type: "warning",
 				buttons: ["Yes, Restore", "Cancel"],
 				title: "Confirm Restore",
 				message: "Are you sure you want to overwrite the current database? This action cannot be undone and the application will restart."
-			})).response !== 0 ? {
-				success: !1,
+			})).response !== 0) return {
+				success: false,
 				error: "Cancelled"
-			} : (c.copyFileSync(i[0], e), n.relaunch(), n.exit(0), { success: !0 });
-		} catch (e) {
+			};
+			fs.copyFileSync(filePaths[0], dbPath);
+			app.relaunch();
+			app.exit(0);
+			return { success: true };
+		} catch (err) {
 			return {
-				success: !1,
-				error: e.message
+				success: false,
+				error: err.message
 			};
 		}
-	}), g();
-}), n.on("window-all-closed", () => {
-	process.platform !== "darwin" && (n.quit(), m = null);
-}), n.on("activate", () => {
-	t.getAllWindows().length === 0 && g();
+	});
+	createWindow();
+});
+app.on("window-all-closed", () => {
+	if (process.platform !== "darwin") {
+		app.quit();
+		win = null;
+	}
+});
+app.on("activate", () => {
+	if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 //#endregion
 export {};

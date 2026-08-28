@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Save, ArrowLeft } from 'lucide-react';
 import apiClient from '../api/client';
 
 const CreatePermitCard = () => {
@@ -176,10 +176,14 @@ const CreatePermitCard = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center gap-4 mb-2">
+        <Link to="/permit-cards" className="text-gray-500 hover:text-indigo-600 transition-colors p-2 bg-white rounded-full shadow-sm hover:shadow">
+          <ArrowLeft size={24} />
+        </Link>
         <h1 className="text-2xl font-bold text-gray-800">
           {duplicateId ? 'Duplicate Permit Card' : 'Create New Permit Card'}
         </h1>
+        <div className="flex-1"></div>
         <div className="flex gap-4">
           <button
             onClick={handleSave}

@@ -16,14 +16,13 @@ export default defineConfig({
     electron([
       {
         entry: 'electron/main.ts',
-        vite: { build: { rollupOptions: { external: ['better-sqlite3', 'bcryptjs'], output: { format: 'cjs', entryFileNames: '[name].cjs' } } } }
+        vite: { build: { rollupOptions: { external: ['better-sqlite3', 'bcryptjs'] } } }
       },
       {
         entry: 'electron/preload.ts',
         onstart(options) {
           options.reload()
         },
-        vite: { build: { rollupOptions: { output: { format: 'cjs', entryFileNames: '[name].cjs' } } } }
       }
     ]),
     renderer(),
