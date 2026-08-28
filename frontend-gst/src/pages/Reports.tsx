@@ -12,6 +12,7 @@ const Reports = () => {
   const [materialData, setMaterialData] = useState<any[]>([]);
   const [taxData, setTaxData] = useState<any>(null);
   const [outstandingData, setOutstandingData] = useState<any[]>([]);
+  const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -405,13 +406,26 @@ const Reports = () => {
                           <td className="px-6 py-4 text-gray-600">{cust.customerPhone || '-'}</td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col gap-1">
-                              {cust.invoices.slice(0, 3).map((inv: any) => (
+                              {cust.invoices.slice(0, (expandedInvoices[cust.customerId] ? cust.invoices.length : 3)).map((inv: any) => (
                                 <span key={inv.id} className="text-xs text-gray-500">
                                   {inv.invoiceNumber} (₹{inv.balance.toLocaleString('en-IN')})
                                 </span>
                               ))}
-                              {cust.invoices.length > 3 && (
-                                <span className="text-xs font-semibold text-blue-500">+{cust.invoices.length - 3} more...</span>
+                              {cust.invoices.length > 3 && !expandedInvoices[cust.customerId] && (
+                                <button 
+                                  onClick={() => setExpandedInvoices(prev => ({...prev, [cust.customerId]: true}))}
+                                  className="text-xs font-semibold text-blue-500 hover:text-blue-700 text-left"
+                                >
+                                  +{cust.invoices.length - 3} more...
+                                </button>
+                              )}
+                              {cust.invoices.length > 3 && expandedInvoices[cust.customerId] && (
+                                <button 
+                                  onClick={() => setExpandedInvoices(prev => ({...prev, [cust.customerId]: false}))}
+                                  className="text-xs font-semibold text-blue-500 hover:text-blue-700 text-left"
+                                >
+                                  Show less
+                                </button>
                               )}
                             </div>
                           </td>
