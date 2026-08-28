@@ -32,7 +32,9 @@ export async function fetchInvoicePdf(invoiceId: string): Promise<{ blob: Blob, 
         throw new Error('Local PDF Generation failed: ' + result.error);
       }
     } else {
-      throw new Error('PDF Generation failed on server and no local IPC found.');
+      // Provide browser fallback by returning the HTML so we can render it in an iframe/window
+      blob = new Blob([text], { type: 'text/html' });
+      buffer = await blob.arrayBuffer();
     }
   } else {
     blob = await res.blob();

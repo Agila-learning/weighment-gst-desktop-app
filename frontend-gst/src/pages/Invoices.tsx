@@ -339,7 +339,7 @@ const Invoices = () => {
                           <>
                             <button title="Download PDF" onClick={async () => {
                               try {
-                                const { buffer } = await fetchInvoicePdf(inv.id);
+                                const { buffer, blobUrl, blob } = await fetchInvoicePdf(inv.id);
                                 const ipcRenderer = (window as any).ipcRenderer;
                                 if (ipcRenderer && buffer) {
                                   const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
@@ -349,15 +349,22 @@ const Invoices = () => {
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) {
                                     alert('Error saving PDF: ' + saveResult.error);
                                   }
-                                } else if (buffer) {
-                                  const blob = new Blob([buffer], { type: 'application/pdf' });
-                                  const url = window.URL.createObjectURL(blob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  link.parentNode?.removeChild(link);
+                                } else if (blobUrl) {
+                                  if (blob.type === 'text/html') {
+                                    const printWindow = window.open(blobUrl, '_blank');
+                                    if (printWindow) {
+                                      printWindow.onload = () => {
+                                        setTimeout(() => printWindow.print(), 500);
+                                      };
+                                    }
+                                  } else {
+                                    const link = document.createElement('a');
+                                    link.href = blobUrl;
+                                    link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    link.parentNode?.removeChild(link);
+                                  }
                                 }
                               } catch (err: any) {
                                 alert('Error downloading PDF: ' + String(err?.message || err));
@@ -555,7 +562,7 @@ const Invoices = () => {
                   </button>
                   <button onClick={async () => {
                               try {
-                                const { buffer } = await fetchInvoicePdf(detailsModalInvoice.id);
+                                const { buffer, blobUrl, blob } = await fetchInvoicePdf(detailsModalInvoice.id);
                                 const ipcRenderer = (window as any).ipcRenderer;
                                 if (ipcRenderer && buffer) {
                                   const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
@@ -563,15 +570,22 @@ const Invoices = () => {
                                     defaultFilename: `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`
                                   });
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) alert('Error saving PDF: ' + saveResult.error);
-                                } else if (buffer) {
-                                  const blob = new Blob([buffer], { type: 'application/pdf' });
-                                  const url = window.URL.createObjectURL(blob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.setAttribute('download', `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`);
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  link.parentNode?.removeChild(link);
+                                } else if (blobUrl) {
+                                  if (blob.type === 'text/html') {
+                                    const printWindow = window.open(blobUrl, '_blank');
+                                    if (printWindow) {
+                                      printWindow.onload = () => {
+                                        setTimeout(() => printWindow.print(), 500);
+                                      };
+                                    }
+                                  } else {
+                                    const link = document.createElement('a');
+                                    link.href = blobUrl;
+                                    link.setAttribute('download', `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`);
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    link.parentNode?.removeChild(link);
+                                  }
                                 }
                               } catch (err) {
                                 alert('Error downloading PDF');

@@ -38,19 +38,29 @@ const PermitCards = () => {
       const res = await apiClient.post('/permit-cards/generate-pdf', permit, { responseType: 'blob' });
       
       if (res.headers['x-fallback-html'] === 'true') {
-        // Fallback to local Electron IPC
-        if (!ipcRenderer) throw new Error('PDF Generation failed on server and no local IPC found.');
         const text = await res.data.text();
-        
-        const pdfGen = await ipcRenderer.invoke('generate-pdf', text);
-        if (!pdfGen.success) throw new Error('Local PDF Generation Error: ' + pdfGen.error);
+        if (ipcRenderer) {
+          const pdfGen = await ipcRenderer.invoke('generate-pdf', text);
+          if (!pdfGen.success) throw new Error('Local PDF Generation Error: ' + pdfGen.error);
 
-        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
-          buffer: Array.from(pdfGen.buffer.data || pdfGen.buffer), 
-          defaultFilename: `${permit.permitReference}.pdf` 
-        });
-        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
-          alert('Error saving PDF: ' + saveResult.error);
+          const saveResult = await ipcRenderer.invoke('save-pdf-dialog', { 
+            buffer: Array.from(pdfGen.buffer.data || pdfGen.buffer), 
+            defaultFilename: `${permit.permitReference}.pdf` 
+          });
+          if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+            alert('Error saving PDF: ' + saveResult.error);
+          }
+        } else {
+          const blob = new Blob([text], { type: 'text/html' });
+          const url = window.URL.createObjectURL(blob);
+          const printWindow = window.open(url, '_blank');
+          if (printWindow) {
+            printWindow.onload = () => {
+              setTimeout(() => printWindow.print(), 500);
+            };
+          } else {
+             alert('Please allow popups to download this permit card.');
+          }
         }
         return;
       }
