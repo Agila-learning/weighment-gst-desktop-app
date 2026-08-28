@@ -284,9 +284,18 @@ router.delete('/:id', async (req, res) => {
     const invoice = await prisma.invoice.findUnique({ where: { id: req.params.id } });
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
     
-    await prisma.invoice.update({
-      where: { id: req.params.id },
-      data: { isDeleted: true }
+    await prisma.$transaction(async (tx) => {
+      if (invoice.status === 'FINALIZED') {
+        await tx.customerTransaction.deleteMany({ where: { referenceId: invoice.id, type: 'INVOICE' } });
+        await tx.customer.update({
+          where: { id: invoice.customerId },
+          data: { balance: { decrement: invoice.grandTotal } }
+        });
+      }
+      await tx.invoice.update({
+        where: { id: req.params.id },
+        data: { isDeleted: true }
+      });
     });
     res.status(204).send();
   } catch (error) {

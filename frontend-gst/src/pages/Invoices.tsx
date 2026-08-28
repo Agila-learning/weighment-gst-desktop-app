@@ -357,9 +357,7 @@ const Invoices = () => {
                             <button title="Cancel Invoice" onClick={() => { setCancelModalInvoiceId(inv.id); setCancelReason(''); }} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
                           </>
                         )}
-                        {inv.status === 'DRAFT' && (
-                          <button title="Delete Draft" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
-                        )}
+                        <button title="Delete Invoice" onClick={() => handleDeleteInvoice(inv.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
