@@ -349,6 +349,15 @@ const Invoices = () => {
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) {
                                     alert('Error saving PDF: ' + saveResult.error);
                                   }
+                                } else if (buffer) {
+                                  const blob = new Blob([buffer], { type: 'application/pdf' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  link.parentNode?.removeChild(link);
                                 }
                               } catch (err: any) {
                                 alert('Error downloading PDF: ' + String(err?.message || err));
@@ -554,6 +563,15 @@ const Invoices = () => {
                                     defaultFilename: `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`
                                   });
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) alert('Error saving PDF: ' + saveResult.error);
+                                } else if (buffer) {
+                                  const blob = new Blob([buffer], { type: 'application/pdf' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.setAttribute('download', `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`);
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  link.parentNode?.removeChild(link);
                                 }
                               } catch (err) {
                                 alert('Error downloading PDF');
