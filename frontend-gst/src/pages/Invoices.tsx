@@ -27,7 +27,7 @@ const Invoices = () => {
   const [summary, setSummary] = useState({ totalInvoices: 0, todaySales: 0, totalSales: 0, pendingAmount: 0 });
 
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
-  const [previewBuffer, setPreviewBuffer] = useState<Uint8Array | null>(null);
+  const [previewBuffer, setPreviewBuffer] = useState<ArrayBuffer | null>(null);
 
   // Invoice Details Modal
   const [detailsModalInvoice, setDetailsModalInvoice] = useState<any | null>(null);
@@ -343,7 +343,7 @@ const Invoices = () => {
                                 const ipcRenderer = (window as any).ipcRenderer;
                                 if (ipcRenderer && buffer) {
                                   const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-                                    buffer: Array.from(buffer),
+                                    buffer: Array.from(new Uint8Array(buffer)),
                                     defaultFilename: `Invoice_${inv.invoiceNumber}.pdf`
                                   });
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) {
@@ -403,7 +403,7 @@ const Invoices = () => {
             const ipcRenderer = (window as any).ipcRenderer;
             if (ipcRenderer && previewBuffer) {
               const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-                buffer: Array.from(previewBuffer),
+                buffer: Array.from(new Uint8Array(previewBuffer)),
                 defaultFilename: `Invoice_${detailsModalInvoice?.invoiceNumber || ''}.pdf`
               });
               if (!saveResult.success && saveResult.error && !saveResult.canceled) alert('Error saving PDF: ' + saveResult.error);
@@ -552,7 +552,7 @@ const Invoices = () => {
                                 const ipcRenderer = (window as any).ipcRenderer;
                                 if (ipcRenderer && buffer) {
                                   const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-                                    buffer: Array.from(buffer),
+                                    buffer: Array.from(new Uint8Array(buffer)),
                                     defaultFilename: `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`
                                   });
                                   if (!saveResult.success && saveResult.error && !saveResult.canceled) alert('Error saving PDF: ' + saveResult.error);
