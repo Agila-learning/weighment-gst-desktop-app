@@ -114,6 +114,8 @@ async function syncMasterData() {
       const data = Array.isArray(res.data) ? res.data : res.data?.data;
       if (!data || !Array.isArray(data)) continue;
 
+      const validIds = data.map((item: any) => item.id).filter(Boolean);
+
       const queries = data.map((item: any) => {
         let q = '';
         let params: any[] = [];
@@ -138,6 +140,24 @@ async function syncMasterData() {
         }
         return { query: q, params };
       });
+      
+      // Add delete queries for items removed from backend
+      let tableName = '';
+      if (endpoint === 'customers') tableName = 'customers';
+      else if (endpoint === 'vehicles') tableName = 'vehicles';
+      else if (endpoint === 'materials') tableName = 'materials';
+      else if (endpoint === 'drivers') tableName = 'drivers';
+      else if (endpoint === 'transporters') tableName = 'transporters';
+      else if (endpoint === 'customer-material-prices') tableName = 'customer_material_prices';
+
+      if (tableName) {
+        if (validIds.length > 0) {
+          const placeholders = validIds.map(() => '?').join(',');
+          queries.push({ query: `DELETE FROM ${tableName} WHERE id NOT IN (${placeholders})`, params: validIds });
+        } else {
+          queries.push({ query: `DELETE FROM ${tableName}`, params: [] });
+        }
+      }
       
       await ipcRenderer.invoke('db-transaction', queries);
     } catch (e) {

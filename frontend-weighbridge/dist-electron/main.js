@@ -196,7 +196,7 @@ function createWindow() {
 	else win.loadFile(node_path.default.join(process.env.DIST || "", "index.html"));
 }
 async function waitForBackend() {
-	const maxRetries = 15;
+	const maxRetries = 60;
 	let retries = 0;
 	while (retries < maxRetries) {
 		try {
@@ -312,6 +312,67 @@ electron.app.whenReady().then(async () => {
 			return {
 				success: false,
 				error: err.message
+			};
+		}
+	});
+	electron.ipcMain.handle("save-pdf-dialog", async (event, { buffer, defaultFilename }) => {
+		try {
+			const { canceled, filePath } = await electron.dialog.showSaveDialog(win, {
+				title: "Save PDF",
+				defaultPath: defaultFilename || "document.pdf",
+				filters: [{
+					name: "PDF Documents",
+					extensions: ["pdf"]
+				}]
+			});
+			if (canceled || !filePath) return {
+				success: false,
+				canceled: true
+			};
+			node_fs.default.writeFileSync(filePath, Buffer.from(buffer));
+			return {
+				success: true,
+				path: filePath
+			};
+		} catch (err) {
+			console.error("Error in save-pdf-dialog:", err);
+			return {
+				success: false,
+				error: err.message
+			};
+		}
+	});
+	electron.ipcMain.handle("generate-pdf", async (event, htmlContent) => {
+		try {
+			const printWin = new electron.BrowserWindow({
+				show: false,
+				webPreferences: {
+					nodeIntegration: false,
+					contextIsolation: true
+				}
+			});
+			await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+			await new Promise((resolve) => printWin.webContents.once("did-finish-load", () => resolve(null)));
+			const pdfBuffer = await printWin.webContents.printToPDF({
+				printBackground: true,
+				pageSize: "A4",
+				margins: {
+					top: 0,
+					bottom: 0,
+					left: 0,
+					right: 0
+				}
+			});
+			printWin.close();
+			return {
+				success: true,
+				buffer: pdfBuffer
+			};
+		} catch (err) {
+			console.error("Local PDF Generation Error:", err);
+			return {
+				success: false,
+				error: err.message || String(err)
 			};
 		}
 	});

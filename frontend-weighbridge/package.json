@@ -20,7 +20,7 @@
       "output": "release"
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "public/icon.png",
       "target": [
         "nsis"
       ]
