@@ -170,8 +170,6 @@ app.whenReady().then(async () => {
 	});
 	ipcMain.handle("generate-pdf", async (event, htmlContent) => {
 		try {
-			const tempPath = path.join(app.getPath("temp"), `temp_invoice_${Date.now()}.html`);
-			fs.writeFileSync(tempPath, htmlContent, "utf-8");
 			const printWin = new BrowserWindow({
 				show: false,
 				webPreferences: {
@@ -179,7 +177,7 @@ app.whenReady().then(async () => {
 					contextIsolation: true
 				}
 			});
-			await printWin.loadURL(`file://${tempPath}`);
+			await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 			await new Promise((resolve) => printWin.webContents.once("did-finish-load", () => resolve(null)));
 			const pdfBuffer = await printWin.webContents.printToPDF({
 				printBackground: true,
@@ -192,9 +190,6 @@ app.whenReady().then(async () => {
 				}
 			});
 			printWin.close();
-			try {
-				fs.unlinkSync(tempPath);
-			} catch (e) {}
 			return {
 				success: true,
 				buffer: pdfBuffer

@@ -35,7 +35,7 @@ function createWindow() {
 }
 
 async function waitForBackend() {
-  const maxRetries = 15;
+  const maxRetries = 60;
   let retries = 0;
   while (retries < maxRetries) {
     try {
