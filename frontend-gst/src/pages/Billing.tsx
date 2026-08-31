@@ -341,7 +341,7 @@ const Billing = () => {
       if (!material) return item;
       
       const isInterState = company?.stateCode && activeBuyer?.stateCode && company.stateCode !== activeBuyer.stateCode;
-      const totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
+      const totalTaxRate = item.manualTaxRate !== undefined ? item.manualTaxRate : (material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0);
       
       let cgst = 0, sgst = 0, igst = 0;
       if (isInterState) {
@@ -921,15 +921,14 @@ const Billing = () => {
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1">
                               <input type="number" min="0.1" step="0.1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', Number(e.target.value))} readOnly={item.quantitySource === 'WEIGHBRIDGE'} />
-                              {invoiceType === 'IRON_SCRAP' ? (
-                                <select className="text-xs text-gray-700 bg-white border border-gray-300 rounded outline-none px-1 py-1"
-                                  value={item.quantityUnit} onChange={e => handleLineItemChange(item.id, 'quantityUnit', e.target.value)}>
-                                  <option value="TON">TON</option>
-                                  <option value="KG">KG</option>
-                                </select>
-                              ) : (
-                                <span className="text-xs text-gray-500 font-medium">{item.quantityUnit}</span>
-                              )}
+                              <select className="text-xs text-gray-700 bg-white border border-gray-300 rounded outline-none px-1 py-1"
+                                value={item.quantityUnit} onChange={e => handleLineItemChange(item.id, 'quantityUnit', e.target.value)}>
+                                <option value="TON">TON</option>
+                                <option value="KG">KG</option>
+                                <option value="LOAD">LOAD</option>
+                                <option value="CFT">CFT</option>
+                                <option value="UNIT">UNIT</option>
+                              </select>
                             </div>
                             <div className="text-[10px]">
                               {item.quantitySource === 'WEIGHBRIDGE' ? (
@@ -958,6 +957,18 @@ const Billing = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500">
+                          <select 
+                            className="mb-1 text-[10px] font-medium text-gray-600 bg-gray-100 px-1 py-0.5 rounded border-none outline-none cursor-pointer w-full"
+                            value={item.manualTaxRate !== undefined ? item.manualTaxRate : ''}
+                            onChange={e => handleLineItemChange(item.id, 'manualTaxRate', e.target.value ? Number(e.target.value) : undefined)}
+                          >
+                            <option value="">Default</option>
+                            <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                            <option value="28">28%</option>
+                          </select>
                           {item.igstRate > 0 ? (
                             <div>IGST: {item.igstRate}%</div>
                           ) : (
