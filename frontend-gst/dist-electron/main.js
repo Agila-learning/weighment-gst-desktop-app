@@ -27,7 +27,7 @@ async function f() {
 	let e = 0;
 	for (; e < 15;) {
 		try {
-			if ((await fetch("http://localhost:3000/api/health")).ok) return console.log("Backend is ready!"), !0;
+			if ((await fetch("http://127.0.0.1:3000/api/health")).ok) return console.log("Backend is ready!"), !0;
 		} catch {}
 		console.log("Waiting for backend... attempt " + (e + 1)), await new Promise((e) => setTimeout(e, 1e3)), e++;
 	}

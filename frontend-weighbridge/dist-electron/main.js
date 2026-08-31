@@ -215,7 +215,7 @@ async function waitForBackend() {
   let retries = 0;
   while (retries < maxRetries) {
     try {
-      const res = await fetch("http://localhost:3000/api/health");
+      const res = await fetch("http://127.0.0.1:3000/api/health");
       if (res.ok) {
         console.log("Backend is ready!");
         return true;
