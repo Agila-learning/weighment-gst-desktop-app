@@ -115,7 +115,7 @@ const Billing = () => {
   });
   const [weighmentReference, setWeighmentReference] = useState('');
   
-  const [lineItems, setLineItems] = useState([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
+  const [lineItems, setLineItems] = useState<any[]>([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxRate: undefined }]);
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
@@ -385,7 +385,7 @@ const Billing = () => {
   }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode, invoiceType]);
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
+    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxRate: undefined }]);
   };
 
   const handleRemoveLineItem = (id: string) => {
