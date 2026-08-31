@@ -210,7 +210,34 @@ function createWindow() {
     win.loadFile(import_node_path2.default.join(process.env.DIST || "", "index.html"));
   }
 }
-import_electron2.app.whenReady().then(() => {
+async function waitForBackend() {
+  const maxRetries = 15;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const res = await fetch("http://localhost:3000/api/health");
+      if (res.ok) {
+        console.log("Backend is ready!");
+        return true;
+      }
+    } catch (e) {
+    }
+    console.log("Waiting for backend... attempt " + (retries + 1));
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+    retries++;
+  }
+  return false;
+}
+import_electron2.app.whenReady().then(async () => {
+  const isBackendReady = await waitForBackend();
+  if (!isBackendReady) {
+    import_electron2.dialog.showErrorBox(
+      "Startup Error",
+      "Unable to connect to the backend server or database. Please check if the backend is running properly."
+    );
+    import_electron2.app.quit();
+    return;
+  }
   initDatabase();
   import_electron2.ipcMain.handle("db-query", async (event, query, params = []) => {
     try {

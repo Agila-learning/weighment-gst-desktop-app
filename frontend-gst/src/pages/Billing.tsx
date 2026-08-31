@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Trash2, FileCheck, Save, CheckCircle, Loader2, Calculator, ChevronDown, ChevronRight, FileText, Printer, FileSearch } from 'lucide-react';
+import { Search, Plus, Trash2, FileCheck, Save, CheckCircle, Scale, Loader2, Calculator, ChevronDown, ChevronRight, FileText, Printer, FileSearch } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';

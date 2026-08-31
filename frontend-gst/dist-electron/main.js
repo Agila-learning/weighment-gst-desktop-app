@@ -22,7 +22,22 @@ t.on("window-all-closed", () => {
 	process.platform !== "darwin" && (t.quit(), l = null);
 }), t.on("activate", () => {
 	e.getAllWindows().length === 0 && d();
-}), t.whenReady().then(() => {
+});
+async function f() {
+	let e = 0;
+	for (; e < 15;) {
+		try {
+			if ((await fetch("http://localhost:3000/api/health")).ok) return console.log("Backend is ready!"), !0;
+		} catch {}
+		console.log("Waiting for backend... attempt " + (e + 1)), await new Promise((e) => setTimeout(e, 1e3)), e++;
+	}
+	return !1;
+}
+t.whenReady().then(async () => {
+	if (!await f()) {
+		n.showErrorBox("Startup Error", "Unable to connect to the backend server or database. Please check if the backend is running properly."), t.quit();
+		return;
+	}
 	r.handle("choose-folder", async () => {
 		let e = await n.showOpenDialog(l, { properties: ["openDirectory"] });
 		return !e.canceled && e.filePaths.length > 0 ? e.filePaths[0] : null;

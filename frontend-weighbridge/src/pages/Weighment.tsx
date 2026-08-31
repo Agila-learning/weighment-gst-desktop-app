@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Plus, Truck, Scale, CheckCircle, Save, X, Printer, Download, Loader2, AlertTriangle, User, Package, RefreshCw } from 'lucide-react';
+import { Search, Plus, Truck, Scale, FileText, CheckCircle, Save, X, Printer, Download, Loader2, AlertTriangle, User, Package, RefreshCw } from 'lucide-react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
 import api from '../services/api';
