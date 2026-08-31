@@ -32,7 +32,6 @@ const Invoices = () => {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<string | null>(null);
-  const [isFinalizing, setIsFinalizing] = useState<string | null>(null);
 
   // Invoice Details Modal
   const [detailsModalInvoice, setDetailsModalInvoice] = useState<any | null>(null);
@@ -449,11 +448,13 @@ const Invoices = () => {
             }
           }}
           onPrint={() => {
-            const printWindow = window.open(previewBlobUrl);
-            if (printWindow) {
-              printWindow.onload = () => {
-                printWindow.print();
-              };
+            if (previewBlobUrl) {
+              const printWindow = window.open(previewBlobUrl);
+              if (printWindow) {
+                printWindow.onload = () => {
+                  printWindow.print();
+                };
+              }
             }
           }}
         />

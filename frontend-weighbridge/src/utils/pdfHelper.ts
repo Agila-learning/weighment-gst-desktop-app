@@ -9,7 +9,7 @@ export const fetchWeighmentSlipPdf = async (weighmentId: string) => {
       }
     });
 
-    const isFallbackHtml = res.headers['x-fallback-html'] === 'true' || res.headers['content-type']?.includes('text/html');
+    const isFallbackHtml = res.headers['x-fallback-html'] === 'true' || String(res.headers['content-type'] || '').includes('text/html');
     const blobType = isFallbackHtml ? 'text/html' : 'application/pdf';
     
     const blob = new Blob([res.data], { type: blobType });
