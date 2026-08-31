@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, Outlet } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { 
   Truck, Scale, History as HistoryIcon, Settings as SettingsIcon, 
   LayoutDashboard, Users, UserSquare, Package, UserCircle,
@@ -262,6 +263,7 @@ import Login from './pages/Login';
 function App() {
   return (
     <HashRouter>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Layout />}>

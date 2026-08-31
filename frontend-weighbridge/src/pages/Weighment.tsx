@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Save, Printer, Scale, AlertTriangle, Truck, User, Package, Plus, Download, X, CheckCircle, RefreshCw } from 'lucide-react';
+import { Search, Plus, Truck, Scale, FileText, CheckCircle, Save, X, Printer, Download, Loader2, AlertTriangle, User, Package, RefreshCw } from 'lucide-react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
 import api from '../services/api';
+import { fetchWeighmentSlipPdf } from '../utils/pdfHelper';
+import toast from 'react-hot-toast';
 
 export default function Weighment() {
   const { currentWeight, status: hwStatus, connectionType, stable } = useWeighbridgeStore();
@@ -219,15 +221,51 @@ export default function Weighment() {
 
   const downloadSlipPdf = async (id: string, slip: string) => {
     setSlipDownloading(true);
+    const toastId = toast.loading('Generating PDF...');
     try {
-      const res = await api.get('/weighments/' + id + '/slip-pdf', { responseType: 'blob' });
-      const ct = String(res.headers['content-type'] || '');
-      const ext = ct.includes('pdf') ? 'pdf' : 'html';
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: ct }));
-      const a = document.createElement('a');
-      a.href = url; a.setAttribute('download', 'WeighbridgeSlip-' + slip + '.' + ext);
-      document.body.appendChild(a); a.click(); a.parentNode?.removeChild(a); window.URL.revokeObjectURL(url);
-    } catch { setErrorMsg('Could not download slip.'); } finally { setSlipDownloading(false); }
+      const { buffer, blobUrl, blob } = await fetchWeighmentSlipPdf(id);
+      const ipcRenderer = (window as any).ipcRenderer;
+      const filename = `WeighbridgeSlip-${slip}.pdf`;
+
+      if (ipcRenderer && buffer) {
+        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+          buffer: Array.from(new Uint8Array(buffer)),
+          defaultFilename: filename
+        });
+        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+          toast.error('Error saving PDF: ' + saveResult.error, { id: toastId });
+        } else if (saveResult.success) {
+          toast.success('Slip downloaded successfully', { id: toastId });
+        } else {
+          toast.dismiss(toastId);
+        }
+      } else if (blobUrl) {
+        if (blob.type === 'text/html') {
+          const printWindow = window.open(blobUrl, '_blank');
+          if (printWindow) {
+            printWindow.onload = () => {
+              setTimeout(() => printWindow.print(), 500);
+            };
+            toast.success('Slip HTML fallback opened for printing', { id: toastId });
+          } else {
+            toast.error('Popup blocked. Please allow popups to print.', { id: toastId });
+          }
+        } else {
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          link.parentNode?.removeChild(link);
+          toast.success('Slip downloaded successfully', { id: toastId });
+        }
+      }
+    } catch (err: any) {
+      toast.error('Unable to generate slip PDF. Please try again.', { id: toastId });
+      console.error(err);
+    } finally {
+      setSlipDownloading(false);
+    }
   };
 
   useEffect(() => {
@@ -396,7 +434,10 @@ export default function Weighment() {
               <div className="flex gap-2">
                 <button onClick={() => setCompletedWeighment(null)} className="px-3 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50"><X size={15} /></button>
                 <button onClick={() => window.print()} className="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-slate-600"><Printer size={15} /> Print</button>
-                {completedWeighment.id && <button onClick={() => downloadSlipPdf(completedWeighment.id, completedWeighment.slipNumber || completedWeighment.id)} disabled={slipDownloading} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-blue-700 disabled:opacity-50"><Download size={15} /> {slipDownloading ? 'Downloading...' : 'Download PDF'}</button>}
+                {completedWeighment.id && <button onClick={() => downloadSlipPdf(completedWeighment.id, completedWeighment.slipNumber || completedWeighment.id)} disabled={slipDownloading} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-blue-700 disabled:opacity-50">
+                  {slipDownloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                  {slipDownloading ? 'Downloading...' : 'Download PDF'}
+                </button>}
               </div>
             </div>
               <div className="p-6 font-sans text-black relative">

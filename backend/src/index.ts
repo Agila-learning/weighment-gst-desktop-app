@@ -33,6 +33,7 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customersRoutes);
@@ -79,9 +80,18 @@ app.get('/api/health', async (req, res) => {
 
 import { seedDemoData } from './utils/seed-demo';
 
-app.listen(Number(port), '0.0.0.0', async () => {
+const server = app.listen(Number(port), '0.0.0.0', async () => {
   console.log(`Server is running on port ${port}`);
   
   // Seed demo data if it doesn't exist
   await seedDemoData();
+});
+
+server.on('error', (e: any) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Please close any other instances of the backend or another app using this port.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', e);
+  }
 });

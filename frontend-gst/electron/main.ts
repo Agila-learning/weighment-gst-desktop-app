@@ -46,7 +46,37 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(() => {
+async function waitForBackend() {
+  const maxRetries = 15;
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const res = await fetch('http://localhost:3000/api/health');
+      if (res.ok) {
+        console.log('Backend is ready!');
+        return true;
+      }
+    } catch (e) {
+      // expected to fail until backend is up
+    }
+    console.log('Waiting for backend... attempt ' + (retries + 1));
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    retries++;
+  }
+  return false;
+}
+
+app.whenReady().then(async () => {
+  const isBackendReady = await waitForBackend();
+  if (!isBackendReady) {
+    dialog.showErrorBox(
+      'Startup Error',
+      'Unable to connect to the backend server or database. Please check if the backend is running properly.'
+    );
+    app.quit();
+    return;
+  }
+
   // IPC Handlers for Local PDF Storage
   
   ipcMain.handle('choose-folder', async () => {
@@ -179,5 +209,5 @@ app.whenReady().then(() => {
     }
   });
 
-  createWindow();
+  createWindow()
 })

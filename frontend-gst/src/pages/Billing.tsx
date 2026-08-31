@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calculator, Save, FileCheck, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, FileText, Printer, FileSearch } from 'lucide-react';
+import { Search, Plus, Trash2, FileCheck, Save, CheckCircle, Scale, Loader2, Calculator, ChevronDown, ChevronRight, FileText, Printer, FileSearch } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PdfPreviewModal from '../components/PdfPreviewModal';
@@ -413,15 +414,23 @@ const Billing = () => {
 
   const handleSaveInvoice = async (status: 'DRAFT' | 'FINALIZED') => {
     if (!selectedCustomer) {
-      alert('Please select a customer.');
+      toast.error('Please select a customer.');
       return;
     }
     
     const validItems = lineItems.filter(item => item.materialId);
     if (validItems.length === 0) {
-      alert('Please add at least one material.');
+      toast.error('Please add at least one material.');
       return;
     }
+
+    if (status === 'FINALIZED') {
+      if (!window.confirm('Are you sure you want to finalize this invoice?')) {
+        return;
+      }
+    }
+
+    const toastId = toast.loading(status === 'FINALIZED' ? 'Finalizing invoice...' : 'Saving draft...');
 
     try {
       setIsSaving(true);
@@ -477,9 +486,10 @@ const Billing = () => {
           pdfBuffer = buffer;
         } catch (pdfErr) {
           console.error("PDF generation failed:", pdfErr);
-          // Show alert but still show success screen
-          alert("Invoice saved successfully, but PDF generation failed.");
+          toast.error("Invoice finalized, but PDF generation failed.", { id: toastId });
         }
+
+        if (pdfBuffer) toast.success('Invoice finalized successfully.', { id: toastId });
 
         setSuccessData({
           invoiceId: res.data.id,
@@ -488,10 +498,11 @@ const Billing = () => {
           buffer: pdfBuffer
         });
       } else {
+        toast.success('Draft saved successfully', { id: toastId });
         navigate('/invoices');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error saving invoice');
+      toast.error(err.response?.data?.message || 'Error saving invoice', { id: toastId });
     } finally {
       setIsSaving(false);
     }
@@ -629,7 +640,8 @@ const Billing = () => {
             <Save size={18} /> Save Draft
           </button>
           <button onClick={() => handleSaveInvoice('FINALIZED')} disabled={isSaving} className="flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium transition-colors hover:opacity-90 disabled:opacity-50 bg-primary-600 hover:bg-primary-700">
-            <FileCheck size={18} /> Finalize Invoice
+            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
+            {isSaving ? 'Finalizing...' : 'Finalize Invoice'}
           </button>
         </div>
       </div>

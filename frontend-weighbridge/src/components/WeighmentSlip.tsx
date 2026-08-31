@@ -1,6 +1,8 @@
-import { Printer } from 'lucide-react';
+import { Printer, Download, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { fetchWeighmentSlipPdf } from '../utils/pdfHelper';
+import toast from 'react-hot-toast';
 
 export default function WeighmentSlip({ weighment, onClose }: { weighment: any, onClose: () => void }) {
   const [companySettings, setCompanySettings] = useState<any>(null);
@@ -11,8 +13,58 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
 
   if (!weighment) return null;
 
+  const [isDownloading, setIsDownloading] = useState(false);
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    const toastId = toast.loading('Generating PDF...');
+    try {
+      const { buffer, blobUrl, blob } = await fetchWeighmentSlipPdf(weighment.id);
+      const ipcRenderer = (window as any).ipcRenderer;
+      const filename = `WeighbridgeSlip-${weighment.slipNumber || weighment.id}.pdf`;
+
+      if (ipcRenderer && buffer) {
+        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+          buffer: Array.from(new Uint8Array(buffer)),
+          defaultFilename: filename
+        });
+        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+          toast.error('Error saving PDF: ' + saveResult.error, { id: toastId });
+        } else if (saveResult.success) {
+          toast.success('Slip downloaded successfully', { id: toastId });
+        } else {
+          toast.dismiss(toastId);
+        }
+      } else if (blobUrl) {
+        if (blob.type === 'text/html') {
+          const printWindow = window.open(blobUrl, '_blank');
+          if (printWindow) {
+            printWindow.onload = () => {
+              setTimeout(() => printWindow.print(), 500);
+            };
+            toast.success('Slip HTML fallback opened for printing', { id: toastId });
+          } else {
+            toast.error('Popup blocked. Please allow popups to print.', { id: toastId });
+          }
+        } else {
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          link.parentNode?.removeChild(link);
+          toast.success('Slip downloaded successfully', { id: toastId });
+        }
+      }
+    } catch (err: any) {
+      toast.error('Unable to generate slip PDF. Please try again.', { id: toastId });
+      console.error(err);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -26,6 +78,14 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
               className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 flex items-center text-sm font-medium"
             >
               <Printer size={16} className="mr-2" /> Print
+            </button>
+            <button 
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-sm font-medium disabled:opacity-50"
+            >
+              {isDownloading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Download size={16} className="mr-2" />}
+              {isDownloading ? 'Downloading...' : 'Download PDF'}
             </button>
             <button 
               onClick={onClose}

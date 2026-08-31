@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, XCircle, Trash2, FileText, Info } from 'lucide-react';
+import { FileClock, Search, Download, XCircle, Trash2, FileText, Info, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import PdfPreviewModal from '../components/PdfPreviewModal';
 import { fetchInvoicePdf } from '../utils/pdfHelper';
@@ -28,6 +29,10 @@ const Invoices = () => {
 
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [previewBuffer, setPreviewBuffer] = useState<ArrayBuffer | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<string | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState<string | null>(null);
 
   // Invoice Details Modal
   const [detailsModalInvoice, setDetailsModalInvoice] = useState<any | null>(null);
@@ -337,39 +342,60 @@ const Invoices = () => {
                         <button title="View Details" onClick={() => setDetailsModalInvoice(inv)} className="text-gray-400 hover:text-blue-600"><Info size={16} /></button>
                         {inv.status === 'FINALIZED' && (
                           <>
-                            <button title="Download PDF" onClick={async () => {
-                              try {
-                                const { buffer, blobUrl, blob } = await fetchInvoicePdf(inv.id);
-                                const ipcRenderer = (window as any).ipcRenderer;
-                                if (ipcRenderer && buffer) {
-                                  const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-                                    buffer: Array.from(new Uint8Array(buffer)),
-                                    defaultFilename: `Invoice_${inv.invoiceNumber}.pdf`
-                                  });
-                                  if (!saveResult.success && saveResult.error && !saveResult.canceled) {
-                                    alert('Error saving PDF: ' + saveResult.error);
-                                  }
-                                } else if (blobUrl) {
-                                  if (blob.type === 'text/html') {
-                                    const printWindow = window.open(blobUrl, '_blank');
-                                    if (printWindow) {
-                                      printWindow.onload = () => {
-                                        setTimeout(() => printWindow.print(), 500);
-                                      };
+                            <button 
+                              title="Download PDF" 
+                              disabled={isDownloadingPdf === inv.id}
+                              onClick={async () => {
+                                setIsDownloadingPdf(inv.id);
+                                const toastId = toast.loading('Generating PDF...');
+                                try {
+                                  const { buffer, blobUrl, blob } = await fetchInvoicePdf(inv.id);
+                                  const ipcRenderer = (window as any).ipcRenderer;
+                                  const formattedDate = inv.date ? inv.date.split('T')[0] : new Date().toISOString().split('T')[0];
+                                  const filename = `Invoice_${inv.invoiceNumber}_${formattedDate}.pdf`;
+                                  
+                                  if (ipcRenderer && buffer) {
+                                    const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+                                      buffer: Array.from(new Uint8Array(buffer)),
+                                      defaultFilename: filename
+                                    });
+                                    if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+                                      toast.error('Error saving PDF: ' + saveResult.error, { id: toastId });
+                                    } else if (saveResult.success) {
+                                      toast.success('Invoice downloaded successfully', { id: toastId });
+                                    } else {
+                                      toast.dismiss(toastId);
                                     }
-                                  } else {
-                                    const link = document.createElement('a');
-                                    link.href = blobUrl;
-                                    link.setAttribute('download', `Invoice_${inv.invoiceNumber}.pdf`);
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    link.parentNode?.removeChild(link);
+                                  } else if (blobUrl) {
+                                    if (blob.type === 'text/html') {
+                                      const printWindow = window.open(blobUrl, '_blank');
+                                      if (printWindow) {
+                                        printWindow.onload = () => {
+                                          setTimeout(() => printWindow.print(), 500);
+                                        };
+                                        toast.success('Invoice HTML fallback opened for printing', { id: toastId });
+                                      } else {
+                                        toast.error('Popup blocked. Please allow popups to print.', { id: toastId });
+                                      }
+                                    } else {
+                                      const link = document.createElement('a');
+                                      link.href = blobUrl;
+                                      link.setAttribute('download', filename);
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      link.parentNode?.removeChild(link);
+                                      toast.success('Invoice downloaded successfully', { id: toastId });
+                                    }
                                   }
+                                } catch (err: any) {
+                                  toast.error('Unable to generate invoice PDF. Please try again.', { id: toastId });
+                                  console.error(err);
+                                } finally {
+                                  setIsDownloadingPdf(null);
                                 }
-                              } catch (err: any) {
-                                alert('Error downloading PDF: ' + String(err?.message || err));
-                              }
-                            }} className="text-gray-400 hover:text-green-600"><Download size={16} /></button>
+                            }} className={`text-gray-400 hover:text-green-600 ${isDownloadingPdf === inv.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              {isDownloadingPdf === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                            </button>
                             <button title="Cancel Invoice" onClick={() => { setCancelModalInvoiceId(inv.id); setCancelReason(''); }} className="text-gray-400 hover:text-red-600"><XCircle size={16} /></button>
                           </>
                         )}
@@ -407,12 +433,11 @@ const Invoices = () => {
         )}
       </div>
       {/* PDF PREVIEW MODAL */}
-      {previewBlobUrl && (
-        <PdfPreviewModal 
-          isOpen={true}
-          isLoading={false}
+      <PdfPreviewModal 
+          isOpen={isPreviewModalOpen}
+          isLoading={isGeneratingPdf}
           blobUrl={previewBlobUrl} 
-          onClose={() => setPreviewBlobUrl(null)} 
+          onClose={() => { setPreviewBlobUrl(null); setIsPreviewModalOpen(false); }} 
           onDownload={async () => {
             const ipcRenderer = (window as any).ipcRenderer;
             if (ipcRenderer && previewBuffer) {
@@ -432,7 +457,6 @@ const Invoices = () => {
             }
           }}
         />
-      )}
 
       
       {/* INVOICE DETAILS MODAL */}
@@ -549,49 +573,78 @@ const Invoices = () => {
             <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               {detailsModalInvoice.status === 'FINALIZED' && (
                 <>
-                  <button onClick={async () => {
-                              try {
-                                const { blobUrl, buffer } = await fetchInvoicePdf(detailsModalInvoice.id);
-                                setPreviewBlobUrl(blobUrl);
-                                setPreviewBuffer(buffer);
-                              } catch (err: any) {
-                                alert('Error generating PDF: ' + String(err?.message || err));
-                              }
-                            }} className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
-                    <FileText size={16} /> Preview PDF
+                  <button 
+                    disabled={isGeneratingPdf || isDownloadingPdf === detailsModalInvoice.id}
+                    onClick={async () => {
+                      setIsPreviewModalOpen(true);
+                      setIsGeneratingPdf(true);
+                      try {
+                        const { blobUrl, buffer } = await fetchInvoicePdf(detailsModalInvoice.id);
+                        setPreviewBlobUrl(blobUrl);
+                        setPreviewBuffer(buffer);
+                      } catch (err: any) {
+                        toast.error('Unable to generate invoice PDF. Please try again.');
+                        setIsPreviewModalOpen(false);
+                      } finally {
+                        setIsGeneratingPdf(false);
+                      }
+                    }} className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium disabled:opacity-50">
+                    {isGeneratingPdf ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                    {isGeneratingPdf ? 'Generating...' : 'Preview PDF'}
                   </button>
-                  <button onClick={async () => {
-                              try {
-                                const { buffer, blobUrl, blob } = await fetchInvoicePdf(detailsModalInvoice.id);
-                                const ipcRenderer = (window as any).ipcRenderer;
-                                if (ipcRenderer && buffer) {
-                                  const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-                                    buffer: Array.from(new Uint8Array(buffer)),
-                                    defaultFilename: `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`
-                                  });
-                                  if (!saveResult.success && saveResult.error && !saveResult.canceled) alert('Error saving PDF: ' + saveResult.error);
-                                } else if (blobUrl) {
-                                  if (blob.type === 'text/html') {
-                                    const printWindow = window.open(blobUrl, '_blank');
-                                    if (printWindow) {
-                                      printWindow.onload = () => {
-                                        setTimeout(() => printWindow.print(), 500);
-                                      };
-                                    }
-                                  } else {
-                                    const link = document.createElement('a');
-                                    link.href = blobUrl;
-                                    link.setAttribute('download', `Invoice_${detailsModalInvoice.invoiceNumber}.pdf`);
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    link.parentNode?.removeChild(link);
-                                  }
-                                }
-                              } catch (err) {
-                                alert('Error downloading PDF');
-                              }
-                            }} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium shadow-sm">
-                    <Download size={16} /> Download PDF
+                  <button 
+                    disabled={isDownloadingPdf === detailsModalInvoice.id || isGeneratingPdf}
+                    onClick={async () => {
+                      setIsDownloadingPdf(detailsModalInvoice.id);
+                      const toastId = toast.loading('Generating PDF...');
+                      try {
+                        const { buffer, blobUrl, blob } = await fetchInvoicePdf(detailsModalInvoice.id);
+                        const ipcRenderer = (window as any).ipcRenderer;
+                        const formattedDate = detailsModalInvoice.date ? detailsModalInvoice.date.split('T')[0] : new Date().toISOString().split('T')[0];
+                        const filename = `Invoice_${detailsModalInvoice.invoiceNumber}_${formattedDate}.pdf`;
+                        
+                        if (ipcRenderer && buffer) {
+                          const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+                            buffer: Array.from(new Uint8Array(buffer)),
+                            defaultFilename: filename
+                          });
+                          if (!saveResult.success && saveResult.error && !saveResult.canceled) {
+                            toast.error('Error saving PDF: ' + saveResult.error, { id: toastId });
+                          } else if (saveResult.success) {
+                            toast.success('Invoice downloaded successfully', { id: toastId });
+                          } else {
+                            toast.dismiss(toastId);
+                          }
+                        } else if (blobUrl) {
+                          if (blob.type === 'text/html') {
+                            const printWindow = window.open(blobUrl, '_blank');
+                            if (printWindow) {
+                              printWindow.onload = () => {
+                                setTimeout(() => printWindow.print(), 500);
+                              };
+                              toast.success('Invoice HTML fallback opened for printing', { id: toastId });
+                            } else {
+                              toast.error('Popup blocked. Please allow popups to print.', { id: toastId });
+                            }
+                          } else {
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.setAttribute('download', filename);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.parentNode?.removeChild(link);
+                            toast.success('Invoice downloaded successfully', { id: toastId });
+                          }
+                        }
+                      } catch (err: any) {
+                        toast.error('Unable to generate invoice PDF. Please try again.', { id: toastId });
+                        console.error(err);
+                      } finally {
+                        setIsDownloadingPdf(null);
+                      }
+                    }} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50">
+                    {isDownloadingPdf === detailsModalInvoice.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                    Download PDF
                   </button>
                 </>
               )}

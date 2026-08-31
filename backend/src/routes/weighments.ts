@@ -374,6 +374,7 @@ router.get('/:id/slip-pdf', async (req, res) => {
     } catch (pdfErr) {
       // Fallback: return HTML if puppeteer fails
       res.setHeader('Content-Type', 'text/html');
+      res.setHeader('X-Fallback-Html', 'true');
       res.setHeader('Content-Disposition', `attachment; filename="WeighbridgeSlip-${weighment.slipNumber || weighment.id}.html"`);
       res.send(html);
     }
