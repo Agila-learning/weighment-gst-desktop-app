@@ -20,6 +20,36 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get vehicles for customer
+router.get('/:id/vehicles', async (req, res) => {
+  try {
+    // Get vehicles explicitly linked to customer
+    const linkedVehicles = await prisma.vehicle.findMany({
+      where: { customerId: req.params.id, isActive: true }
+    });
+
+    // Get vehicles used in previous invoices by this customer
+    const invoiceVehicles = await prisma.invoice.findMany({
+      where: { customerId: req.params.id, vehicleId: { not: null } },
+      select: { vehicle: true },
+      distinct: ['vehicleId']
+    });
+
+    // Combine and deduplicate
+    const allVehicles = [...linkedVehicles];
+    for (const inv of invoiceVehicles) {
+      if (inv.vehicle && inv.vehicle.isActive && !allVehicles.some(v => v.id === inv.vehicle?.id)) {
+        allVehicles.push(inv.vehicle);
+      }
+    }
+
+    res.json(allVehicles);
+  } catch (error) {
+    console.error('Error fetching customer vehicles:', error);
+    res.status(500).json({ message: 'Error fetching vehicles' });
+  }
+});
+
 // Create customer
 router.post('/', async (req, res) => {
   try {

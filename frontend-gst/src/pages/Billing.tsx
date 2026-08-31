@@ -89,7 +89,12 @@ const Billing = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [customerVehicles, setCustomerVehicles] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
+  
+  const [invoiceType, setInvoiceType] = useState('STANDARD'); // STANDARD, E_INVOICE, IRON_SCRAP
+  const [manualInvoiceNumber, setManualInvoiceNumber] = useState('');
+  const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
   
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customerSummary, setCustomerSummary] = useState<any>(null);
@@ -242,8 +247,16 @@ const Billing = () => {
     if (!selectedCustomer) {
       setCustomerSummary(null);
       setCustomerPrices([]);
+      setCustomerVehicles([]);
     } else {
       apiClient.get(`/customer-material-prices/customer/${selectedCustomer}`).then(res => setCustomerPrices(res.data)).catch(console.error);
+      apiClient.get(`/customers/${selectedCustomer}/vehicles`).then(res => {
+        const v = res.data || [];
+        setCustomerVehicles(v);
+        if (v.length === 1) {
+          setSelectedVehicle(v[0].id);
+        }
+      }).catch(console.error);
     }
   }, [selectedCustomer]);
 
@@ -339,7 +352,9 @@ const Billing = () => {
       }
       
       let calculationQuantity = item.quantity;
-      if (item.pricingType === 'PER_TON' && (item.quantityUnit === 'KG' || item.unit === 'KG')) {
+      if (invoiceType === 'IRON_SCRAP') {
+        calculationQuantity = item.quantity * 1000;
+      } else if (item.pricingType === 'PER_TON' && (item.quantityUnit === 'KG' || item.unit === 'KG')) {
         calculationQuantity = item.quantity / 1000;
       } else if (item.pricingType === 'PER_KG' && (item.quantityUnit === 'TON' || item.unit === 'TON')) {
         calculationQuantity = item.quantity * 1000;
@@ -360,14 +375,14 @@ const Billing = () => {
         igstRate: igst,
         materialName: material.name,
         hsnCode: material.hsnCode,
-        unit: material.unit
+        unit: invoiceType === 'IRON_SCRAP' ? 'TON' : material.unit
       };
     });
   };
 
   useEffect(() => {
     setLineItems(prev => recalculateTaxes(prev, consigneeDetails.stateCode ? consigneeDetails : buyerDetails));
-  }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode]);
+  }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode, invoiceType]);
 
   const handleAddLineItem = () => {
     setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '' }]);
@@ -394,11 +409,7 @@ const Billing = () => {
             }
           }
           
-          if (newItem.pricingType === 'FIXED') {
-            newItem.amount = newItem.rate; // Quantity doesn't affect amount
-          } else {
-            newItem.amount = newItem.quantity * newItem.rate;
-          }
+          // Amount logic is handled inside recalculateTaxes
           
           return newItem;
         }
@@ -415,6 +426,10 @@ const Billing = () => {
   const handleSaveInvoice = async (status: 'DRAFT' | 'FINALIZED') => {
     if (!selectedCustomer) {
       toast.error('Please select a customer.');
+      return;
+    }
+    if (invoiceType === 'E_INVOICE' && !manualInvoiceNumber.trim()) {
+      toast.error('E-Invoice mode requires a manual invoice/reference number.');
       return;
     }
     
@@ -437,6 +452,8 @@ const Billing = () => {
       const vehicleObj = vehicles.find(v => v.id === selectedVehicle);
       
       const payload = {
+        invoiceType,
+        manualInvoiceNumber: manualInvoiceNumber.trim() || undefined,
         customerId: selectedCustomer,
         vehicleId: selectedVehicle || null,
         status,
@@ -456,7 +473,7 @@ const Billing = () => {
         snapshotVehicleNumber: vehicleObj ? vehicleObj.vehicleNumber : undefined,
         items: validItems.map(i => ({ 
           materialId: i.materialId, 
-          quantity: i.quantity, 
+          quantity: invoiceType === 'IRON_SCRAP' ? (i.quantity * 1000) : i.quantity, 
           rate: i.rate,
           cgstRate: i.cgstRate,
           sgstRate: i.sgstRate,
@@ -649,7 +666,28 @@ const Billing = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Primary Details</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Billing Mode</h2>
+            <div className="flex space-x-3 mb-6">
+              {['STANDARD', 'E_INVOICE', 'IRON_SCRAP'].map(type => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setInvoiceType(type);
+                    if (type !== 'E_INVOICE') setManualInvoiceNumber('');
+                  }}
+                  className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                    invoiceType === type 
+                      ? 'bg-indigo-600 text-white border-2 border-indigo-600 shadow-sm'
+                      : 'bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100'
+                  }`}
+                >
+                  {type === 'STANDARD' && 'Standard Tax Invoice'}
+                  {type === 'E_INVOICE' && 'E-Invoice Mode'}
+                  {type === 'IRON_SCRAP' && 'Iron Scrap Invoice'}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Customer *</label>
@@ -666,6 +704,30 @@ const Billing = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date</label>
                 <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
               </div>
+
+              {(invoiceType === 'E_INVOICE' || isManualInvoiceOpen) && (
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {invoiceType === 'E_INVOICE' ? 'E-Invoice Reference Number *' : 'Custom Starting Invoice Number'}
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder={invoiceType === 'E_INVOICE' ? "Enter E-Invoice Reference" : "e.g. 588"}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-indigo-500 outline-none"
+                    value={manualInvoiceNumber} 
+                    onChange={e => setManualInvoiceNumber(e.target.value)} 
+                  />
+                  {invoiceType !== 'E_INVOICE' && <p className="text-xs text-gray-500 mt-1">This will override the auto-generated number and continue the sequence from here.</p>}
+                </div>
+              )}
+
+              {invoiceType !== 'E_INVOICE' && !isManualInvoiceOpen && (
+                <div className="col-span-2 flex justify-end">
+                   <button onClick={() => setIsManualInvoiceOpen(true)} className="text-xs text-indigo-600 font-semibold hover:text-indigo-800">
+                     Customize Start Invoice #
+                   </button>
+                </div>
+              )}
               <div>
                 <div className="flex justify-between items-end mb-1">
                   <label className="block text-sm font-medium text-gray-700">Vehicle Details</label>
@@ -678,12 +740,13 @@ const Billing = () => {
                   </button>
                 </div>
                 <Autocomplete 
-                  options={vehicles} 
+                  options={customerVehicles.length > 0 ? customerVehicles : vehicles} 
                   value={selectedVehicle} 
                   onChange={setSelectedVehicle} 
                   displayKey="vehicleNumber" 
-                  placeholder="Search vehicle..." 
+                  placeholder="Search associated vehicle..." 
                 />
+                {customerVehicles.length > 0 && <p className="text-xs text-green-600 mt-1">Found {customerVehicles.length} associated vehicle(s).</p>}
               </div>
             </div>
             
@@ -858,7 +921,15 @@ const Billing = () => {
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1">
                               <input type="number" min="0.1" step="0.1" className="w-20 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500" value={item.quantity} onChange={e => handleLineItemChange(item.id, 'quantity', Number(e.target.value))} readOnly={item.quantitySource === 'WEIGHBRIDGE'} />
-                              <span className="text-xs text-gray-500 font-medium">{item.quantityUnit}</span>
+                              {invoiceType === 'IRON_SCRAP' ? (
+                                <select className="text-xs text-gray-700 bg-white border border-gray-300 rounded outline-none px-1 py-1"
+                                  value={item.quantityUnit} onChange={e => handleLineItemChange(item.id, 'quantityUnit', e.target.value)}>
+                                  <option value="TON">TON</option>
+                                  <option value="KG">KG</option>
+                                </select>
+                              ) : (
+                                <span className="text-xs text-gray-500 font-medium">{item.quantityUnit}</span>
+                              )}
                             </div>
                             <div className="text-[10px]">
                               {item.quantitySource === 'WEIGHBRIDGE' ? (

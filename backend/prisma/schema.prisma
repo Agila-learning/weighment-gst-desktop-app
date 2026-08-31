@@ -48,6 +48,7 @@ model Customer {
   invoices               Invoice[]
   payments               Payment[]
   weighments             Weighment[]
+  vehicles               Vehicle[]
   customerMaterialPrices CustomerMaterialPrice[]
   transactions           CustomerTransaction[]
   permitCards            PermitCard[]
@@ -117,6 +118,9 @@ model Vehicle {
   driverId String?
   driver   Driver? @relation(fields: [driverId], references: [id])
 
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
   isActive    Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -173,6 +177,9 @@ model Invoice {
   snapshotVehicleNumber String?
   termsOfDelivery       String?
   weighmentReference    String?
+
+  invoiceType         String  @default("STANDARD") // STANDARD, E_INVOICE, IRON_SCRAP
+  manualInvoiceNumber String?
 
   subTotal   Float
   taxTotal   Float
@@ -262,6 +269,7 @@ model CompanySetting {
   authSignatoryDesignation String?
   signatureImageUrl        String?
   sealImageUrl             String?
+  currentInvoiceSequence   Int      @default(0)
   updatedAt                DateTime @updatedAt
 }
 

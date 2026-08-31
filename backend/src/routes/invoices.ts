@@ -119,17 +119,50 @@ router.post('/', async (req, res) => {
       consigneeName, consigneeAddress, consigneeGstin, consigneeState, consigneeStateCode,
       deliveryNote, paymentTerms, referenceNo, referenceDate, buyersOrderNo, buyersOrderDate,
       dispatchDocNo, dispatchDocDate, dispatchedThrough, destination, billOfLading,
-      snapshotVehicleNumber, termsOfDelivery, weighmentReference
+      snapshotVehicleNumber, termsOfDelivery, weighmentReference,
+      invoiceType, manualInvoiceNumber
     } = req.body;
     
     const { invoiceItems, subTotal, taxTotal, grandTotal } = await prepareInvoiceData(items);
     
-    const count = await prisma.invoice.count();
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
-    
+    let invoiceNumber = manualInvoiceNumber;
+    let settings = await prisma.companySetting.findFirst();
+    const prefix = settings?.invoicePrefix || 'INV-';
+    const year = new Date().getFullYear();
+
+    if (invoiceType === 'E_INVOICE' && manualInvoiceNumber) {
+      // E-Invoice uses manual reference exactly as provided, does not update sequence
+      invoiceNumber = manualInvoiceNumber;
+    } else {
+      if (manualInvoiceNumber) {
+        // If user provided a manual number, use it, but check for dupes.
+        const parsed = parseInt(manualInvoiceNumber, 10);
+        if (!isNaN(parsed)) {
+           // Update sequence to match this manual number if it's higher
+           if (settings && parsed > settings.currentInvoiceSequence) {
+             await prisma.companySetting.update({ where: { id: settings.id }, data: { currentInvoiceSequence: parsed } });
+           }
+        }
+        invoiceNumber = `${prefix}${year}-${manualInvoiceNumber}`;
+      } else {
+        // Auto-generate based on sequence
+        let nextSeq = (settings?.currentInvoiceSequence || 0) + 1;
+        if (settings) {
+          await prisma.companySetting.update({ where: { id: settings.id }, data: { currentInvoiceSequence: nextSeq } });
+        }
+        invoiceNumber = `${prefix}${year}-${String(nextSeq).padStart(4, '0')}`;
+      }
+    }
+
+    // Prevent duplicates
+    const existing = await prisma.invoice.findUnique({ where: { invoiceNumber } });
+    if (existing) return res.status(400).json({ message: `Invoice number ${invoiceNumber} already exists!` });
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
+        invoiceType: invoiceType || 'STANDARD',
+        manualInvoiceNumber,
         customerId,
         vehicleId,
         date: date ? new Date(date) : new Date(),

@@ -466,23 +466,42 @@ export default function Weighment() {
                 <div><b>Driver: </b>{completedWeighment.driver?.name || drivers.find(d => d.id === completedWeighment.driverId)?.name || '—'}</div>
                 <div><b>Transporter: </b>{completedWeighment.transporter?.name || transporters.find(t => t.id === completedWeighment.transporterId)?.name || '—'}</div>
               </div>
-              <table className="w-full text-sm border-collapse border border-black mb-4">
-                <thead><tr className="bg-gray-100"><th className="border border-black p-2 text-left">Description</th><th className="border border-black p-2 text-right">Weight (KG)</th><th className="border border-black p-2 text-right">Source</th></tr></thead>
-                <tbody>
-                  <tr><td className="border border-black p-2 font-bold">First Weight</td><td className="border border-black p-2 text-right font-mono">{(completedWeighment.firstWeight||0).toLocaleString('en-IN')}</td><td className="border border-black p-2 text-right text-xs">{completedWeighment.firstWeightSource||'—'}</td></tr>
-                  <tr><td className="border border-black p-2 font-bold">Second Weight</td><td className="border border-black p-2 text-right font-mono">{completedWeighment.secondWeight!=null?(completedWeighment.secondWeight).toLocaleString('en-IN'):'—'}</td><td className="border border-black p-2 text-right text-xs">{completedWeighment.secondWeightSource||'—'}</td></tr>
-                  <tr className="bg-gray-900 text-white"><td className="border border-black p-2 font-bold">NET WEIGHT</td><td className="border border-black p-2 text-right font-mono text-lg font-bold" colSpan={2}>{completedWeighment.netWeight!=null?(completedWeighment.netWeight).toLocaleString('en-IN')+' KG':'—'}</td></tr>
-                </tbody>
-              </table>
-              {completedWeighment.calculatedAmount != null && completedWeighment.calculatedAmount > 0 && (
-                <div className="border-2 border-black p-3 mb-4 bg-gray-50 flex justify-between items-center text-sm">
-                  <div><p className="text-gray-500 text-xs">Rate: ₹{(completedWeighment.rate||0).toFixed(2)}/{completedWeighment.billingUnit} | Qty: {(completedWeighment.calculatedQuantity||0).toFixed(3)} {completedWeighment.billingUnit}</p></div>
-                  <div className="text-right"><p className="text-xs text-gray-500 uppercase">Total Amount</p><p className="text-2xl font-bold">₹{(completedWeighment.calculatedAmount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</p></div>
-                </div>
-              )}
-                <div className="flex justify-end mt-10 pt-4 text-xs text-center">
-                  <div><div className="border-t border-black w-32 pt-1 mx-auto">Authorized Signatory</div></div>
-                </div>
+              <div className="border-t border-b border-dashed border-black py-4 mb-4">
+                {(() => {
+                  let w1Label = 'First Weight';
+                  let w2Label = 'Second Weight';
+                  let w1Val = completedWeighment.firstWeight;
+                  let w2Val = completedWeighment.secondWeight;
+
+                  if (completedWeighment.status === 'COMPLETED' && completedWeighment.firstWeight != null && completedWeighment.secondWeight != null) {
+                    if (completedWeighment.firstWeight < completedWeighment.secondWeight) {
+                      w1Label = 'Empty Weight';
+                      w2Label = 'Load Weight';
+                    } else {
+                      w1Label = 'Empty Weight';
+                      w2Label = 'Load Weight';
+                      w1Val = completedWeighment.secondWeight;
+                      w2Val = completedWeighment.firstWeight;
+                    }
+                  }
+                  return (
+                    <>
+                      <div className="flex justify-between mb-2 text-sm">
+                        <span>{w1Label}:</span>
+                        <strong>{w1Val?.toLocaleString() || '--'} KG</strong>
+                      </div>
+                      <div className="flex justify-between mb-2 text-sm">
+                        <span>{w2Label}:</span>
+                        <strong>{w2Val != null ? w2Val.toLocaleString() : '--'} {w2Val != null ? 'KG' : ''}</strong>
+                      </div>
+                      <div className="flex justify-between mt-4 pt-4 border-t border-black text-lg font-bold">
+                        <span>NET WEIGHT:</span>
+                        <span>{completedWeighment.netWeight?.toLocaleString() || '--'} KG</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
               <p className="text-center text-gray-400 text-xs mt-3 border-t border-gray-200 pt-2">Computer Generated Weighment Slip</p>
             </div>
           </div>
