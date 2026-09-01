@@ -24,7 +24,7 @@ export default function Weighment() {
 
   // Pricing Modal State
   const [showPricingModal, setShowPricingModal] = useState(false);
-  const [pricingDetails, setPricingDetails] = useState({ pricingType: 'PER_UNIT', billingUnit: 'TON', rate: 0, netWeight: 0, ew: 0, ws: '' });
+  const [pricingDetails, setPricingDetails] = useState({ pricingType: 'PER_UNIT', billingUnit: 'TON', rate: 0, netWeight: 0, ew: 0, ws: '', taxPercent: 0 });
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -199,10 +199,13 @@ export default function Weighment() {
         let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
         const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
         const bm = materials.find(m => m.id === selectedMaterial);
+        let taxPercent = 0;
         if (cp) { pricingType = cp.pricingType; billingUnit = cp.billingUnit; rate = cp.rate; }
         else if (bm) { pricingType = bm.pricingType || 'PER_UNIT'; billingUnit = bm.billingUnit || 'TON'; rate = bm.defaultRate || 0; }
         
-        setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew, ws });
+        if (bm && bm.taxRate) { taxPercent = (bm.taxRate.cgst || 0) + (bm.taxRate.sgst || 0) + (bm.taxRate.igst || 0); }
+        
+        setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew, ws, taxPercent });
         setShowPricingModal(true);
         setIsSubmitting(false);
         return;
@@ -217,7 +220,8 @@ export default function Weighment() {
     try {
       let qty = pricingDetails.netWeight;
       if (pricingDetails.billingUnit === 'TON') qty = pricingDetails.netWeight / 1000;
-      const amt = pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
+      const baseAmt = pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
+      const amt = baseAmt * (1 + (pricingDetails.taxPercent || 0) / 100);
       const res = await api.post('/weighments/second-weight', {
         weighmentId: pendingWeighment.id, vehicleId: pendingWeighment.vehicleId, vehicleNumber: pendingWeighment.vehicleNumber,
         secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
@@ -365,7 +369,7 @@ export default function Weighment() {
           )}
         </div>
 
-        <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-opacity ${!selectedVehicle ? 'opacity-40 pointer-events-none' : ''}`}>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
           <h3 className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Transaction Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><User size={12} /> Customer</label>
@@ -478,11 +482,27 @@ export default function Weighment() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rate (₹)</label>
                 <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={pricingDetails.rate} onChange={e => setPricingDetails({ ...pricingDetails, rate: Number(e.target.value) })} />
               </div>
-              <div className="bg-blue-50 p-4 rounded-xl flex justify-between items-center">
-                <span className="text-sm text-blue-800 font-medium">Calculated Amount:</span>
-                <span className="text-xl font-bold text-blue-900">
-                  ₹ {(pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                </span>
+              <div className="bg-blue-50 p-4 rounded-xl flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-blue-800 font-medium">Base Amount:</span>
+                  <span className="text-lg font-bold text-blue-900">
+                    ₹ {((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {pricingDetails.taxPercent > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-800 font-medium">Tax ({pricingDetails.taxPercent}%):</span>
+                    <span className="text-sm font-bold text-blue-900">
+                      + ₹ {(((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * pricingDetails.taxPercent) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center border-t border-blue-200 pt-2 mt-1">
+                  <span className="text-sm text-blue-800 font-bold">Total Amount (incl. Tax):</span>
+                  <span className="text-xl font-bold text-blue-900">
+                    ₹ {((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * (1 + pricingDetails.taxPercent / 100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl border-t border-gray-100">

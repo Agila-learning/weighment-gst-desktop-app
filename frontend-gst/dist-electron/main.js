@@ -136,7 +136,7 @@ t.whenReady().then(async () => {
 					nodeIntegration: !1,
 					contextIsolation: !0
 				}
-			})), await o.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`), await new Promise((e) => o.webContents.once("did-finish-load", () => e(null))), {
+			})), await o.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`), {
 				success: !0,
 				buffer: await o.webContents.printToPDF({
 					printBackground: !0,

@@ -335,7 +335,6 @@ import_electron2.app.whenReady().then(async () => {
         sharedPdfWindow = new import_electron2.BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
       }
       await sharedPdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-      await new Promise((resolve) => sharedPdfWindow.webContents.once("did-finish-load", () => resolve(null)));
       const pdfBuffer = await sharedPdfWindow.webContents.printToPDF({
         printBackground: true,
         pageSize: "A4",

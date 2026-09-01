@@ -196,9 +196,6 @@ app.whenReady().then(async () => {
       
       await sharedPdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
       
-      // Wait for window to load just in case
-      await new Promise(resolve => sharedPdfWindow!.webContents.once('did-finish-load', () => resolve(null)));
-      
       const pdfBuffer = await sharedPdfWindow.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
