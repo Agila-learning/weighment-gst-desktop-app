@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
-import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut, FileBadge } from 'lucide-react';
+import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut } from 'lucide-react';
 import { useAuthStore } from '../services/AuthService';
 
 const Sidebar = () => {
@@ -35,7 +35,6 @@ const Sidebar = () => {
         { name: 'Quick Bill', path: '/billing', icon: FileText },
         { name: 'Invoice Register', path: '/invoices', icon: FileClock },
         { name: 'Payments', path: '/payments', icon: CreditCard },
-        { name: 'Permit Cards', path: '/permit-cards', icon: FileBadge },
       ]
     },
     {
@@ -59,8 +58,9 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className={`bg-blue-900 text-white flex flex-col shadow-lg transition-all duration-300 ${isMinimized ? 'w-20' : 'w-64'}`}>
-      <div className={`p-4 flex items-center ${isMinimized ? 'flex-col justify-center gap-4' : 'justify-between'}`}>
+    <aside className={`bg-blue-900 text-white flex flex-col shadow-lg transition-all duration-300 h-screen sticky top-0 ${isMinimized ? 'w-20' : 'w-64'}`}>
+      {/* Fixed Header */}
+      <div className={`p-4 flex items-center border-b border-white/10 ${isMinimized ? 'flex-col justify-center gap-4' : 'justify-between'}`}>
         <div className={`flex items-center justify-center ${isMinimized ? '' : 'p-2'}`}>
           <img src="./icon.png" alt="Logo" className={`w-8 h-8 object-contain rounded ${isMinimized ? '' : 'mr-3'}`} />
           {!isMinimized && <h1 className="text-xl font-bold tracking-tight truncate">FIC GST</h1>}
@@ -69,7 +69,9 @@ const Sidebar = () => {
           {isMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
-      <nav className="flex-1 mt-2 overflow-y-auto pb-6 sidebar-menu">
+      
+      {/* Scrollable Menu */}
+      <nav className="flex-1 py-4 overflow-y-auto sidebar-scrollable-menu">
         <ul className="space-y-4">
           {categories.map((category) => {
             const isCollapsed = collapsedCategories[category.title];

@@ -459,11 +459,11 @@ router.post('/second-weight', async (req, res) => {
         billingUnit: billingUnit || null,
         calculatedQuantity: calculatedQuantity || null,
         calculatedAmount: calculatedAmount || null,
-        ...(loadType && { loadType }),
-        ...(customerId && { customerId }),
-        ...(materialId && { materialId }),
-        ...(driverId && { driverId }),
-        ...(transporterId && { transporterId })
+        ...(loadType !== undefined && { loadType }),
+        ...(customerId !== undefined && { customerId }),
+        ...(materialId !== undefined && { materialId }),
+        ...(driverId !== undefined && { driverId }),
+        ...(transporterId !== undefined && { transporterId })
       },
       include: { vehicle: true, customer: true, material: true, driver: true, transporter: true }
     });

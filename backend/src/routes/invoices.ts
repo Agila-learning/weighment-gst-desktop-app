@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import prisma from '../prisma';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
-import { Parser } from 'json2csv';
 import { getBrowser } from '../utils/browserManager';
 
 const router = Router();

@@ -13,9 +13,6 @@ import Settings from './pages/Settings';
 import DataCenter from './pages/DataCenter';
 import Drivers from './pages/Drivers';
 import Payments from './pages/Payments';
-import PermitCards from './pages/PermitCards';
-import CreatePermitCard from './pages/CreatePermitCard';
-import PermitCardSettings from './pages/PermitCardSettings';
 
 function App() {
   return (
@@ -32,9 +29,6 @@ function App() {
           <Route path="billing" element={<Billing />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
-          <Route path="permit-cards" element={<PermitCards />} />
-          <Route path="permit-cards/create" element={<CreatePermitCard />} />
-          <Route path="permit-cards/settings" element={<PermitCardSettings />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="data-center" element={<DataCenter />} />
