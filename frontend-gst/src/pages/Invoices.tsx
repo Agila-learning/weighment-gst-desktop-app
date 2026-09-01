@@ -11,6 +11,9 @@ const Invoices = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 10, totalPages: 1 });
   
+  // Tabs
+  const [activeTab, setActiveTab] = useState('ALL');
+
   // Filters
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -55,6 +58,7 @@ const Invoices = () => {
       if (customerId) params.append('customerId', customerId);
       if (materialId) params.append('materialId', materialId);
       if (paymentStatus) params.append('paymentStatus', paymentStatus);
+      if (activeTab !== 'ALL') params.append('invoiceType', activeTab);
       
       const res = await apiClient.get(`/invoices?${params.toString()}`);
       setInvoices(res.data.data);
@@ -78,7 +82,7 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchInvoices(1);
-  }, [search, status, startDate, endDate, customerId, materialId, paymentStatus]);
+  }, [search, status, startDate, endDate, customerId, materialId, paymentStatus, activeTab]);
 
   useEffect(() => {
     const fetchMasters = async () => {
@@ -200,6 +204,23 @@ const Invoices = () => {
           <div className="text-sm font-medium text-gray-500 mb-1">Pending Amount</div>
           <div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.pendingAmount)}</div>
         </div>
+      </div>
+
+      {/* Invoice Type Tabs */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 flex overflow-x-auto">
+        {['ALL', 'STANDARD', 'E_INVOICE', 'IRON_SCRAP'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-1 text-center ${
+              activeTab === tab 
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            {tab === 'ALL' ? 'All Invoices' : tab === 'STANDARD' ? 'Standard Bills' : tab === 'E_INVOICE' ? 'E-Invoices' : 'Iron Scrap Bills'}
+          </button>
+        ))}
       </div>
 
       {/* Filters and Actions */}

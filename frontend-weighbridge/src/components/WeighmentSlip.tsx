@@ -171,9 +171,8 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
             })()}
           </div>
 
-          <div className="flex justify-between items-center text-xs font-semibold mt-4">
+          <div className="flex justify-center items-center text-xs font-semibold mt-4">
             <p className="italic text-gray-600">Thank you for your business! Drive safely.</p>
-            <p>Driver Signature</p>
           </div>
         </div>
       </div>

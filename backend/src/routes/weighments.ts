@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import prisma from '../prisma';
+import { getBrowser } from '../utils/browserManager';
 
 const router = Router();
 router.use(authenticate);
@@ -327,23 +328,18 @@ router.get('/:id/slip-pdf', async (req, res) => {
   </div>
   
   <div class="footer" style="text-align: center; margin-top: 15px;">
-    <i>Thank you for your business! Drive safely.</i><br/><br/>
-    <div style="display: flex; justify-content: space-between; align-items: center; text-align: left;">
-      <span></span>
-      <span>Driver Signature</span>
-    </div>
+    <i>Thank you for your business! Drive safely.</i>
   </div>
 </div>
 </body>
 </html>`;
 
     try {
-      const puppeteer = await import('puppeteer');
-      const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });
       const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' } });
-      await browser.close();
+      await page.close();
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="WeighbridgeSlip-${weighment.slipNumber || weighment.id}.pdf"`);
       res.send(Buffer.from(pdfBuffer));

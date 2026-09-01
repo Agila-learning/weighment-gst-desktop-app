@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import { getBrowser } from './browserManager';
 
 export const generatePermitHtml = (permit: any, template: any) => {
   return `
@@ -195,10 +195,7 @@ export const generatePermitHtml = (permit: any, template: any) => {
 };
 
 export const generatePermitPdf = async (html: string) => {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  const browser = await getBrowser();
   
   try {
     const page = await browser.newPage();
@@ -213,10 +210,9 @@ export const generatePermitPdf = async (html: string) => {
         right: '20px'
       }
     });
-    await browser.close();
+    await page.close();
     return pdfBuffer;
   } catch (error) {
-    await browser.close();
     throw error;
   }
 };

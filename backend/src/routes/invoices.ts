@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import prisma from '../prisma';
 import { generateInvoicePDF } from '../utils/pdfGenerator';
+import { Parser } from 'json2csv';
+import { getBrowser } from '../utils/browserManager';
 
 const router = Router();
 
@@ -10,13 +12,14 @@ router.use(authenticate);
 // Get all invoices with pagination, filtering, searching
 router.get('/', async (req, res) => {
   try {
-    const { page, limit, search, status, startDate, endDate, customerId, vehicleId, materialId, paymentStatus } = req.query;
+    const { page, limit, search, status, startDate, endDate, customerId, vehicleId, materialId, paymentStatus, invoiceType } = req.query;
     
     const take = limit ? Number(limit) : 25;
     const skip = page ? (Number(page) - 1) * take : 0;
     
     const where: any = { isDeleted: false };
     
+    if (invoiceType) where.invoiceType = invoiceType;
     if (status) where.status = status;
     if (paymentStatus) where.paymentStatus = paymentStatus;
     if (startDate && endDate) {
@@ -343,12 +346,11 @@ router.get('/:id/pdf', async (req, res) => {
     const invoice = await prisma.invoice.findUnique({ where: { id: req.params.id } });
     
     try {
-      const puppeteer = await import('puppeteer');
-      const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setContent(htmlContent, { waitUntil: 'load' });
       const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '5mm', bottom: '5mm', left: '5mm', right: '5mm' } });
-      await browser.close();
+      await page.close();
       
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice?.invoiceNumber || req.params.id}.pdf"`);
