@@ -53,7 +53,7 @@ router.get('/:id/vehicles', async (req, res) => {
 // Create customer
 router.post('/', async (req, res) => {
   try {
-    const { name, gstin, phone, email, address, stateName, stateCode, mobile1, mobile2 } = req.body;
+    const { name, gstin, phone, email, address, stateName, stateCode, mobile1, mobile2, vehicleNumber } = req.body;
     
     // Server-side validation
     if (!name || name.length < 3) return res.status(400).json({ message: "Name must be at least 3 characters long." });
@@ -77,6 +77,20 @@ router.post('/', async (req, res) => {
         stateCode: stateCode || null
       }
     });
+
+    if (vehicleNumber) {
+      const formattedVehicle = vehicleNumber.trim().toUpperCase();
+      try {
+        await prisma.vehicle.upsert({
+          where: { vehicleNumber: formattedVehicle },
+          update: { customerId: customer.id },
+          create: { vehicleNumber: formattedVehicle, customerId: customer.id }
+        });
+      } catch (err) {
+        console.error('Failed to link vehicle to new customer', err);
+      }
+    }
+
     res.status(201).json(customer);
   } catch (error: any) {
     if (error.code === 'P2002') {

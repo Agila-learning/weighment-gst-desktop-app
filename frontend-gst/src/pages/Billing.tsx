@@ -115,12 +115,14 @@ const Billing = () => {
   });
   const [weighmentReference, setWeighmentReference] = useState('');
   
-  const [lineItems, setLineItems] = useState<any[]>([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxRate: undefined }]);
+  const [lineItems, setLineItems] = useState<any[]>([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualCgstRate: undefined, manualSgstRate: undefined, manualIgstRate: undefined }]);
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [activeCalculatorItemId, setActiveCalculatorItemId] = useState<string | null>(null);
+  const [calculatorWeights, setCalculatorWeights] = useState<string[]>(['']);
 
   const ipcRenderer = (window as any).ipcRenderer;
 
@@ -253,7 +255,7 @@ const Billing = () => {
       apiClient.get(`/customers/${selectedCustomer}/vehicles`).then(res => {
         const v = res.data || [];
         setCustomerVehicles(v);
-        if (v.length === 1) {
+        if (v.length > 0) {
           setSelectedVehicle(v[0].id);
         }
       }).catch(console.error);
@@ -341,14 +343,23 @@ const Billing = () => {
       if (!material) return item;
       
       const isInterState = company?.stateCode && activeBuyer?.stateCode && company.stateCode !== activeBuyer.stateCode;
-      const totalTaxRate = item.manualTaxRate !== undefined ? item.manualTaxRate : (material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0);
       
       let cgst = 0, sgst = 0, igst = 0;
-      if (isInterState) {
-        igst = totalTaxRate; 
+      let totalTaxRate = 0;
+
+      if (item.manualCgstRate !== undefined || item.manualSgstRate !== undefined || item.manualIgstRate !== undefined) {
+        cgst = item.manualCgstRate !== undefined ? item.manualCgstRate : 0;
+        sgst = item.manualSgstRate !== undefined ? item.manualSgstRate : 0;
+        igst = item.manualIgstRate !== undefined ? item.manualIgstRate : 0;
+        totalTaxRate = cgst + sgst + igst;
       } else {
-        cgst = material.taxRate?.cgst || (totalTaxRate / 2);
-        sgst = material.taxRate?.sgst || (totalTaxRate / 2);
+        totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
+        if (isInterState) {
+          igst = totalTaxRate;
+        } else {
+          cgst = material.taxRate?.cgst || (totalTaxRate / 2);
+          sgst = material.taxRate?.sgst || (totalTaxRate / 2);
+        }
       }
       
       let calculationQuantity = item.quantity;
@@ -381,16 +392,33 @@ const Billing = () => {
   };
 
   useEffect(() => {
-    setLineItems(prev => recalculateTaxes(prev, consigneeDetails.stateCode ? consigneeDetails : buyerDetails));
+    setLineItems(prev => {
+      const newItems = recalculateTaxes(prev, consigneeDetails.stateCode ? consigneeDetails : buyerDetails);
+      // Avoid unnecessary re-renders if taxes haven't changed
+      if (JSON.stringify(prev) === JSON.stringify(newItems)) return prev;
+      return newItems;
+    });
   }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode, invoiceType]);
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxRate: undefined }]);
+    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualCgstRate: undefined, manualSgstRate: undefined, manualIgstRate: undefined }]);
   };
 
   const handleRemoveLineItem = (id: string) => {
     if (lineItems.length === 1) return;
     setLineItems(lineItems.filter(item => item.id !== id));
+  };
+
+  const openCalculator = (itemId: string) => {
+    setActiveCalculatorItemId(itemId);
+    setCalculatorWeights(['']);
+  };
+
+  const applyCalculatorSum = () => {
+    if (!activeCalculatorItemId) return;
+    const sum = calculatorWeights.reduce((acc, val) => acc + (Number(val) || 0), 0);
+    handleLineItemChange(activeCalculatorItemId, 'quantity', sum);
+    setActiveCalculatorItemId(null);
   };
 
   const handleLineItemChange = (id: string, field: string, value: any) => {
@@ -674,6 +702,7 @@ const Billing = () => {
                   onClick={() => {
                     setInvoiceType(type);
                     if (type !== 'E_INVOICE') setManualInvoiceNumber('');
+                    if (type === 'E_INVOICE' && !manualInvoiceNumber) setManualInvoiceNumber('E-Invoice Bill');
                   }}
                   className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors ${
                     invoiceType === type 
@@ -940,6 +969,11 @@ const Billing = () => {
                                 </select>
                               )}
                             </div>
+                            {invoiceType === 'IRON_SCRAP' && (
+                              <button onClick={() => openCalculator(item.id)} className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 flex items-center justify-center gap-1 font-medium">
+                                <Calculator size={12} /> Add Weights
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -957,26 +991,38 @@ const Billing = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500">
-                          <select 
-                            className="mb-1 text-[10px] font-medium text-gray-600 bg-gray-100 px-1 py-0.5 rounded border-none outline-none cursor-pointer w-full"
-                            value={item.manualTaxRate !== undefined ? item.manualTaxRate : ''}
-                            onChange={e => handleLineItemChange(item.id, 'manualTaxRate', e.target.value ? Number(e.target.value) : undefined)}
-                          >
-                            <option value="">Default</option>
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                          </select>
-                          {item.igstRate > 0 ? (
-                            <div>IGST: {item.igstRate}%</div>
-                          ) : (
-                            <>
-                              <div>CGST: {item.cgstRate}%</div>
-                              <div>SGST: {item.sgstRate}%</div>
-                            </>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <span className="w-7">CGST</span>
+                              <input 
+                                type="number" min="0" max="100" placeholder={item.cgstRate} 
+                                className="w-12 px-1 py-0.5 bg-gray-100 rounded border-none outline-none"
+                                value={item.manualCgstRate !== undefined ? item.manualCgstRate : ''}
+                                onChange={e => handleLineItemChange(item.id, 'manualCgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                              <span>%</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-7">SGST</span>
+                              <input 
+                                type="number" min="0" max="100" placeholder={item.sgstRate} 
+                                className="w-12 px-1 py-0.5 bg-gray-100 rounded border-none outline-none"
+                                value={item.manualSgstRate !== undefined ? item.manualSgstRate : ''}
+                                onChange={e => handleLineItemChange(item.id, 'manualSgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                              <span>%</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-7">IGST</span>
+                              <input 
+                                type="number" min="0" max="100" placeholder={item.igstRate} 
+                                className="w-12 px-1 py-0.5 bg-gray-100 rounded border-none outline-none"
+                                value={item.manualIgstRate !== undefined ? item.manualIgstRate : ''}
+                                onChange={e => handleLineItemChange(item.id, 'manualIgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                              <span>%</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">₹ {item.amount.toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
@@ -1018,6 +1064,57 @@ const Billing = () => {
           </div>
         </div>
       </div>
+
+      {activeCalculatorItemId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Iron Scrap Weight Calculator</h2>
+              <button onClick={() => setActiveCalculatorItemId(null)} className="text-gray-400 hover:text-gray-600">x</button>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
+              {calculatorWeights.map((w, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-gray-500 font-mono text-xs w-6">#{idx + 1}</span>
+                  <input 
+                    type="number" min="0" step="any" 
+                    value={w} 
+                    onChange={(e) => {
+                      const newWeights = [...calculatorWeights];
+                      newWeights[idx] = e.target.value;
+                      setCalculatorWeights(newWeights);
+                    }} 
+                    placeholder="Weight (e.g. 5.2)"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-indigo-500"
+                  />
+                  {calculatorWeights.length > 1 && (
+                    <button onClick={() => setCalculatorWeights(calculatorWeights.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button 
+                onClick={() => setCalculatorWeights([...calculatorWeights, ''])}
+                className="w-full mt-2 py-2 border border-dashed border-indigo-300 text-indigo-600 rounded font-medium hover:bg-indigo-50 transition-colors"
+              >
+                + Add Another Weight
+              </button>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Total: <span className="font-bold text-gray-900 text-lg">
+                  {calculatorWeights.reduce((acc, val) => acc + (Number(val) || 0), 0).toFixed(3)}
+                </span>
+              </div>
+              <button onClick={applyCalculatorSum} className="bg-indigo-600 text-white px-4 py-1.5 rounded font-medium hover:bg-indigo-700">
+                Apply Total
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

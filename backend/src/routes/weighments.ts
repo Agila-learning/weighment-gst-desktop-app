@@ -318,11 +318,20 @@ router.get('/:id/slip-pdf', async (req, res) => {
       <span>NET WEIGHT:</span>
       <span>${netWt}</span>
     </div>
+    ${weighment.calculatedAmount ? `
+    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000;">
+      <span>AMOUNT:</span>
+      <span>₹ ${weighment.calculatedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+    </div>
+    ` : ''}
   </div>
   
-  <div class="footer">
-    Thank you.<br/>
-    Operator: ${weighment.operator?.name || 'Admin'}
+  <div class="footer" style="text-align: center; margin-top: 15px;">
+    <i>Thank you for your business! Drive safely.</i><br/><br/>
+    <div style="display: flex; justify-content: space-between; align-items: center; text-align: left;">
+      <span></span>
+      <span>Driver Signature</span>
+    </div>
   </div>
 </div>
 </body>

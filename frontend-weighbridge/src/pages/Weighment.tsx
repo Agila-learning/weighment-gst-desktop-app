@@ -22,6 +22,10 @@ export default function Weighment() {
   const [quickAddVehicle, setQuickAddVehicle] = useState({ vehicleNumber: '', vehicleType: 'Tipper' });
   const [quickAddLoading, setQuickAddLoading] = useState(false);
 
+  // Pricing Modal State
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingDetails, setPricingDetails] = useState({ pricingType: 'PER_UNIT', billingUnit: 'TON', rate: 0, netWeight: 0, ew: 0, ws: '' });
+
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -197,21 +201,37 @@ export default function Weighment() {
         const bm = materials.find(m => m.id === selectedMaterial);
         if (cp) { pricingType = cp.pricingType; billingUnit = cp.billingUnit; rate = cp.rate; }
         else if (bm) { pricingType = bm.pricingType || 'PER_UNIT'; billingUnit = bm.billingUnit || 'TON'; rate = bm.defaultRate || 0; }
-        let qty = netWeight;
-        if (billingUnit === 'TON') qty = netWeight / 1000;
-        const amt = pricingType === 'FIXED' ? rate : qty * rate;
-        const res = await api.post('/weighments/second-weight', {
-          weighmentId: pendingWeighment.id, vehicleId: pendingWeighment.vehicleId, vehicleNumber: pendingWeighment.vehicleNumber,
-          secondWeight: ew, secondWeightSource: ws, pricingType, rate, billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
-          loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: selectedTransporter || null
-        });
-        setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId), transporter: transporters.find(t => t.id === res.data.transporterId) });
-        resetFormState();
-        setSuccessMsg('Weighment complete! Net: ' + netWeight.toLocaleString('en-IN') + ' KG');
+        
+        setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew, ws });
+        setShowPricingModal(true);
+        setIsSubmitting(false);
+        return;
       }
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
     } finally { setIsSubmitting(false); setShowManualConfirm(false); setManualReason(''); }
+  };
+
+  const finalizeSecondWeight = async () => {
+    setIsSubmitting(true);
+    try {
+      let qty = pricingDetails.netWeight;
+      if (pricingDetails.billingUnit === 'TON') qty = pricingDetails.netWeight / 1000;
+      const amt = pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
+      const res = await api.post('/weighments/second-weight', {
+        weighmentId: pendingWeighment.id, vehicleId: pendingWeighment.vehicleId, vehicleNumber: pendingWeighment.vehicleNumber,
+        secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
+        pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
+        billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
+        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: selectedTransporter || null
+      });
+      setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId), transporter: transporters.find(t => t.id === res.data.transporterId) });
+      resetFormState();
+      setShowPricingModal(false);
+      setSuccessMsg('Weighment complete! Net: ' + pricingDetails.netWeight.toLocaleString('en-IN') + ' KG');
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
+    } finally { setIsSubmitting(false); }
   };
 
   const resetFormState = () => {
@@ -426,6 +446,57 @@ export default function Weighment() {
         </div>
       )}
 
+        {/* Pricing Modal */}
+      {showPricingModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-xl font-bold text-gray-800">Adjust Pricing</h2>
+              <button onClick={() => setShowPricingModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Type</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={pricingDetails.pricingType} onChange={e => setPricingDetails({ ...pricingDetails, pricingType: e.target.value })}>
+                    <option value="PER_UNIT">Per Unit</option>
+                    <option value="PER_LOAD">Per Load</option>
+                    <option value="FIXED">Fixed / Manual</option>
+                  </select>
+                </div>
+                {pricingDetails.pricingType === 'PER_UNIT' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Billing Unit</label>
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={pricingDetails.billingUnit} onChange={e => setPricingDetails({ ...pricingDetails, billingUnit: e.target.value })}>
+                      <option value="TON">TON</option>
+                      <option value="KG">KG</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rate (₹)</label>
+                <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={pricingDetails.rate} onChange={e => setPricingDetails({ ...pricingDetails, rate: Number(e.target.value) })} />
+              </div>
+              <div className="bg-blue-50 p-4 rounded-xl flex justify-between items-center">
+                <span className="text-sm text-blue-800 font-medium">Calculated Amount:</span>
+                <span className="text-xl font-bold text-blue-900">
+                  ₹ {(pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl border-t border-gray-100">
+              <button onClick={() => setShowPricingModal(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
+              <button onClick={finalizeSecondWeight} disabled={isSubmitting} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2">
+                {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Printer size={18} />}
+                Confirm & Generate Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slip Display Modal */}
       {completedWeighment && (
         <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-50 overflow-y-auto p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl">
@@ -498,6 +569,12 @@ export default function Weighment() {
                         <span>NET WEIGHT:</span>
                         <span>{completedWeighment.netWeight?.toLocaleString() || '--'} KG</span>
                       </div>
+                      {completedWeighment.calculatedAmount != null && completedWeighment.calculatedAmount > 0 && (
+                        <div className="flex justify-between mt-2 pt-2 border-t border-black text-lg font-bold">
+                          <span>TOTAL AMOUNT:</span>
+                          <span>₹ {completedWeighment.calculatedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
                     </>
                   );
                 })()}

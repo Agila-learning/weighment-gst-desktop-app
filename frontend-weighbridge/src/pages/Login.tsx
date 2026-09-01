@@ -154,9 +154,6 @@ const Login = () => {
           
           <div className="mt-12 text-center text-xs font-semibold text-slate-400 tracking-wider">
             <p>VERSION 1.0.0</p>
-            <div className="mt-2 text-[10px] text-slate-400 font-medium">
-              Powered by <span className="font-bold text-slate-600">FIC GST</span>
-            </div>
           </div>
           
         </div>

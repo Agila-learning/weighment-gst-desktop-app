@@ -17,6 +17,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
     webPreferences: {
       preload: path.join(currentDir, 'preload.cjs'),
       plugins: true,

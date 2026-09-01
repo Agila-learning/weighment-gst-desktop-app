@@ -31,7 +31,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
 
   checkApiConnection: async () => {
     try {
-      await apiClient.get('/settings');
+      await apiClient.get('/health');
       set({ isOnline: true });
       return true;
     } catch {

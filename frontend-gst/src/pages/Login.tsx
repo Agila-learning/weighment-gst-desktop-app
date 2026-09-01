@@ -222,9 +222,6 @@ const Login = () => {
           
           <div className="mt-12 text-center text-sm text-gray-400">
             <p>Version 1.0.0</p>
-            <div className="mt-2 text-xs text-gray-400 font-medium">
-              Powered by <span className="font-semibold text-gray-600">FIC GST</span>
-            </div>
           </div>
           
         </div>

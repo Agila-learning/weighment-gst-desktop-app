@@ -13,7 +13,7 @@ const Customers = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const [showModal, setShowModal] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
+  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '', vehicleNumber: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   
@@ -113,6 +113,7 @@ const Customers = () => {
         stateCode: newCustomer.stateCode.trim() || null,
         mobile1: newCustomer.mobile1.trim() || null,
         mobile2: newCustomer.mobile2.trim() || null,
+        vehicleNumber: newCustomer.vehicleNumber.trim() || null,
       };
 
       const idToEdit = newCustomer.id;
@@ -163,7 +164,8 @@ const Customers = () => {
       email: customer.email || '',
       address: customer.address || '',
       stateName: customer.stateName || '',
-      stateCode: customer.stateCode || ''
+      stateCode: customer.stateCode || '',
+      vehicleNumber: customer.vehicleNumber || ''
     });
     setIsEditing(true);
     setErrorMsg('');
@@ -171,7 +173,7 @@ const Customers = () => {
   };
   
   const openAddModal = () => {
-    setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '' });
+    setNewCustomer({ id: '', name: '', gstin: '', countryCode: '+91', phone: '', mobile1: '', mobile2: '', email: '', address: '', stateName: '', stateCode: '', vehicleNumber: '' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -339,6 +341,11 @@ const Customers = () => {
                       <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none transition-shadow" value={newCustomer.email} onChange={e => setNewCustomer({...newCustomer, email: e.target.value.trim()})} placeholder="contact@company.com" />
                     </div>
                     
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Default Vehicle Number</label>
+                      <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none transition-shadow uppercase font-mono" value={newCustomer.vehicleNumber} onChange={e => setNewCustomer({...newCustomer, vehicleNumber: e.target.value})} placeholder="e.g. TN01AB1234" />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 1 (Optional)</label>
                       <div className="flex">
