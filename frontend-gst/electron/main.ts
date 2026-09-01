@@ -16,7 +16,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
+    icon: path.join(process.env.VITE_PUBLIC || '', 'icon.png'),
     webPreferences: {
       preload: path.join(currentDir, 'preload.cjs'),
       plugins: true,
@@ -186,24 +186,32 @@ app.whenReady().then(async () => {
     }
   });
 
+  let sharedPdfWindow: BrowserWindow | null = null;
+
   ipcMain.handle('generate-pdf', async (event, htmlContent) => {
     try {
-      const printWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
-      await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+      if (!sharedPdfWindow || sharedPdfWindow.isDestroyed()) {
+        sharedPdfWindow = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+      }
+      
+      await sharedPdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
       
       // Wait for window to load just in case
-      await new Promise(resolve => printWin.webContents.once('did-finish-load', () => resolve(null)));
+      await new Promise(resolve => sharedPdfWindow!.webContents.once('did-finish-load', () => resolve(null)));
       
-      const pdfBuffer = await printWin.webContents.printToPDF({
+      const pdfBuffer = await sharedPdfWindow.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
         margins: { top: 0, bottom: 0, left: 0, right: 0 }
       });
-      printWin.close();
+      
+      // We keep the window alive for the next generation!
+      // sharedPdfWindow.close();
+      
       return { success: true, buffer: pdfBuffer };
     } catch (err: any) {
-      console.error('Local PDF Generation Error:', err);
-      return { success: false, error: err.message || String(err) };
+      console.error('Error generating PDF locally:', err);
+      return { success: false, error: err.message };
     }
   });
 

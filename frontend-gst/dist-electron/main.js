@@ -10,7 +10,7 @@ function d() {
 	l = new e({
 		width: 1200,
 		height: 800,
-		icon: a.join(process.env.VITE_PUBLIC, "icon.ico"),
+		icon: a.join(process.env.VITE_PUBLIC || "", "icon.png"),
 		webPreferences: {
 			preload: a.join(c, "preload.cjs"),
 			plugins: !0
@@ -126,34 +126,33 @@ t.whenReady().then(async () => {
 				error: e.message
 			};
 		}
-	}), r.handle("generate-pdf", async (t, n) => {
+	});
+	let o = null;
+	r.handle("generate-pdf", async (t, n) => {
 		try {
-			let t = new e({
+			return (!o || o.isDestroyed()) && (o = new e({
 				show: !1,
 				webPreferences: {
 					nodeIntegration: !1,
 					contextIsolation: !0
 				}
-			});
-			await t.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`), await new Promise((e) => t.webContents.once("did-finish-load", () => e(null)));
-			let r = await t.webContents.printToPDF({
-				printBackground: !0,
-				pageSize: "A4",
-				margins: {
-					top: 0,
-					bottom: 0,
-					left: 0,
-					right: 0
-				}
-			});
-			return t.close(), {
+			})), await o.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(n)}`), await new Promise((e) => o.webContents.once("did-finish-load", () => e(null))), {
 				success: !0,
-				buffer: r
+				buffer: await o.webContents.printToPDF({
+					printBackground: !0,
+					pageSize: "A4",
+					margins: {
+						top: 0,
+						bottom: 0,
+						left: 0,
+						right: 0
+					}
+				})
 			};
 		} catch (e) {
-			return console.error("Local PDF Generation Error:", e), {
+			return console.error("Error generating PDF locally:", e), {
 				success: !1,
-				error: e.message || String(e)
+				error: e.message
 			};
 		}
 	}), d();
