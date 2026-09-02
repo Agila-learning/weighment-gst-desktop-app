@@ -148,6 +148,22 @@ export function initDatabase() {
       
       "ALTER TABLE customers ADD COLUMN mobile1 TEXT",
       "ALTER TABLE customers ADD COLUMN mobile2 TEXT",
+
+      // Master fields fix
+      "ALTER TABLE transporters ADD COLUMN mobile TEXT",
+      "ALTER TABLE transporters ADD COLUMN address TEXT",
+      "ALTER TABLE transporters ADD COLUMN gstin TEXT",
+      
+      "ALTER TABLE drivers ADD COLUMN mobile TEXT",
+      "ALTER TABLE drivers ADD COLUMN licenseNumber TEXT",
+      "ALTER TABLE drivers ADD COLUMN licenseExpiry TEXT",
+      "ALTER TABLE drivers ADD COLUMN address TEXT",
+      "ALTER TABLE drivers ADD COLUMN transporterName TEXT",
+      
+      "ALTER TABLE vehicles ADD COLUMN transporterId TEXT",
+      "ALTER TABLE vehicles ADD COLUMN driverId TEXT",
+      "ALTER TABLE vehicles ADD COLUMN state TEXT",
+      "ALTER TABLE vehicles ADD COLUMN vehicleType TEXT",
     ];
     for (const query of alters) {
       try {

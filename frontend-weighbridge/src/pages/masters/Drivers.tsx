@@ -90,7 +90,8 @@ export default function Drivers() {
       if (ipcRenderer) {
           let q = '';
           let params: any[] = [];
-          q = 'INSERT OR REPLACE INTO drivers (id, name) VALUES (?, ?)'; params = [payload.id, payload.name];
+          q = 'INSERT OR REPLACE INTO drivers (id, name, mobile, licenseNumber, licenseExpiry, address, transporterName) VALUES (?, ?, ?, ?, ?, ?, ?)'; 
+          params = [payload.id, payload.name, payload.mobile || null, payload.licenseNumber || null, payload.licenseExpiry || null, payload.address || null, payload.transporterName || null];
           await ipcRenderer.invoke('db-query', q, params);
       } else if (!serverSaved) {
           // Web Mode (no Electron) and Server Failed!

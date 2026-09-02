@@ -23,6 +23,7 @@ import weighmentExportsRouter from './routes/weighment-exports';
 import customerPricesRouter from './routes/customerPrices';
 import searchRouter from './routes/search';
 import permitCardRoutes from './routes/permitCardRoutes';
+import invoiceSettingsRoutes from './routes/invoice-settings';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -54,6 +55,7 @@ app.use('/api/weighment-exports', weighmentExportsRouter);
 app.use('/api/customer-material-prices', customerPricesRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/permit-cards', permitCardRoutes);
+app.use('/api/invoice-settings', invoiceSettingsRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

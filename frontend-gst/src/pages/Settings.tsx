@@ -14,12 +14,17 @@ const Settings = () => {
   const [invoiceTemplate, setInvoiceTemplate] = useState('standard');
   const [copiesToPrint, setCopiesToPrint] = useState(3);
 
+  const [sequences, setSequences] = useState<any[]>([]);
+  const [isPerTypeSequence, setIsPerTypeSequence] = useState(false);
+  const [seqStatusMsg, setSeqStatusMsg] = useState('');
+
   // Use global ipcRenderer if available (Electron context)
   const ipcRenderer = (window as any).ipcRenderer;
 
   useEffect(() => {
     fetchCompany();
     fetchTaxes();
+    fetchSequences();
     const storedPath = localStorage.getItem('pdfStoragePath');
     if (storedPath) setPdfStoragePath(storedPath);
     
@@ -71,6 +76,28 @@ const Settings = () => {
       const res = await apiClient.get('/settings/taxes');
       setTaxes(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  const fetchSequences = async () => {
+    try {
+      const res = await apiClient.get('/invoice-settings');
+      if (res.data) {
+        setSequences(res.data);
+        if (res.data.length > 1) setIsPerTypeSequence(true);
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleSaveSequences = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirm('Warning: Changing starting numbers might result in sequence jumps. Proceed?')) return;
+    try {
+      await apiClient.put('/invoice-settings', { sequences });
+      setSeqStatusMsg('Saved successfully!');
+      setTimeout(() => setSeqStatusMsg(''), 3000);
+    } catch (err) {
+      alert('Failed to save invoice sequences');
+    }
   };
 
   const handleSaveCompany = async (e: React.FormEvent) => {
@@ -205,14 +232,10 @@ const Settings = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
               <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={company.companyName} onChange={e => setCompany({...company, companyName: e.target.value})} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
                 <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={company.gstin} onChange={e => setCompany({...company, gstin: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Prefix</label>
-                <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={company.invoicePrefix} onChange={e => setCompany({...company, invoicePrefix: e.target.value})} />
               </div>
             </div>
             <div>
@@ -300,6 +323,91 @@ const Settings = () => {
               + Add New Tax Slab
             </button>
           </div>
+        </div>
+
+        {/* Invoice Number Settings */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-yellow-100 text-yellow-600 rounded-lg">
+              <FileText size={24} />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800">Invoice Number Settings</h2>
+          </div>
+          
+          <form onSubmit={handleSaveSequences} className="space-y-4">
+            <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <span className="text-sm font-medium text-gray-700">Separate sequences per invoice type?</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={isPerTypeSequence} onChange={(e) => {
+                  setIsPerTypeSequence(e.target.checked);
+                  if (e.target.checked && sequences.length === 1) {
+                    // split into types
+                    setSequences([
+                      { invoiceType: 'STANDARD', prefix: 'INV-', suffix: '', startingNumber: 1, currentNumber: 0, autoIncrementEnabled: true },
+                      { invoiceType: 'E_INVOICE', prefix: 'E-INV-', suffix: '', startingNumber: 1, currentNumber: 0, autoIncrementEnabled: true },
+                      { invoiceType: 'IRON_SCRAP', prefix: 'IS-', suffix: '', startingNumber: 1, currentNumber: 0, autoIncrementEnabled: true }
+                    ]);
+                  } else if (!e.target.checked) {
+                    setSequences([{ invoiceType: 'ALL', prefix: 'INV-', suffix: '', startingNumber: 1, currentNumber: 0, autoIncrementEnabled: true }]);
+                  }
+                }} />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            {sequences.map((seq, idx) => (
+              <div key={seq.invoiceType} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm mb-4">
+                <h3 className="font-semibold text-gray-800 mb-3 uppercase tracking-wider text-xs">{seq.invoiceType.replace('_', ' ')} Sequence</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Prefix</label>
+                    <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={seq.prefix || ''} onChange={e => {
+                      const newSeqs = [...sequences];
+                      newSeqs[idx].prefix = e.target.value;
+                      setSequences(newSeqs);
+                    }} placeholder="INV-" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Starting Number</label>
+                    <input type="number" min="1" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={seq.startingNumber || 1} onChange={e => {
+                      const newSeqs = [...sequences];
+                      newSeqs[idx].startingNumber = parseInt(e.target.value, 10) || 1;
+                      setSequences(newSeqs);
+                    }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Suffix (Optional)</label>
+                    <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={seq.suffix || ''} onChange={e => {
+                      const newSeqs = [...sequences];
+                      newSeqs[idx].suffix = e.target.value;
+                      setSequences(newSeqs);
+                    }} placeholder="-23-24" />
+                  </div>
+                </div>
+                
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id={`auto-${idx}`} className="w-3.5 h-3.5 text-blue-600 rounded" checked={seq.autoIncrementEnabled} onChange={e => {
+                      const newSeqs = [...sequences];
+                      newSeqs[idx].autoIncrementEnabled = e.target.checked;
+                      setSequences(newSeqs);
+                    }} />
+                    <label htmlFor={`auto-${idx}`} className="text-xs text-gray-700">Auto Increment</label>
+                  </div>
+                  <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono">
+                    Next: {seq.prefix || ''}{Math.max(seq.startingNumber, (seq.currentNumber || 0) + 1)}{seq.suffix || ''}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="pt-2 flex items-center gap-4">
+              <button type="submit" className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90 bg-yellow-600 hover:bg-yellow-700 text-sm font-medium">
+                <Save size={16} /> Save Sequences
+              </button>
+              {seqStatusMsg && <span className="text-green-600 text-sm font-medium">{seqStatusMsg}</span>}
+            </div>
+          </form>
         </div>
 
         {/* Local Storage & PDF Settings */}

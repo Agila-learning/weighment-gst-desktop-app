@@ -123,17 +123,17 @@ async function syncMasterData() {
           q = 'INSERT OR REPLACE INTO customers (id, name, gstin, mobile1, mobile2) VALUES (?, ?, ?, ?, ?)';
           params = [item.id, item.name, item.gstin || null, item.mobile1 || null, item.mobile2 || null];
         } else if (endpoint === 'vehicles') {
-          q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight) VALUES (?, ?, ?)';
-          params = [item.id, item.vehicleNumber, item.tareWeight || 0];
+          q = 'INSERT OR REPLACE INTO vehicles (id, vehicleNumber, tareWeight, transporterId, driverId, state, vehicleType) VALUES (?, ?, ?, ?, ?, ?, ?)';
+          params = [item.id, item.vehicleNumber, item.tareWeight || 0, item.transporterId || null, item.driverId || null, item.state || null, item.vehicleType || null];
         } else if (endpoint === 'materials') {
           q = 'INSERT OR REPLACE INTO materials (id, name, pricingType, billingUnit, defaultRate) VALUES (?, ?, ?, ?, ?)';
           params = [item.id, item.name, item.pricingType || 'PER_TON', item.billingUnit || 'TON', item.defaultRate || 0];
         } else if (endpoint === 'drivers') {
-          q = 'INSERT OR REPLACE INTO drivers (id, name) VALUES (?, ?)';
-          params = [item.id, item.name];
+          q = 'INSERT OR REPLACE INTO drivers (id, name, mobile, licenseNumber, licenseExpiry, address, transporterName) VALUES (?, ?, ?, ?, ?, ?, ?)';
+          params = [item.id, item.name, item.mobile || null, item.licenseNumber || null, item.licenseExpiry || null, item.address || null, item.transporterName || null];
         } else if (endpoint === 'transporters') {
-          q = 'INSERT OR REPLACE INTO transporters (id, name) VALUES (?, ?)';
-          params = [item.id, item.name];
+          q = 'INSERT OR REPLACE INTO transporters (id, name, mobile, address, gstin) VALUES (?, ?, ?, ?, ?)';
+          params = [item.id, item.name, item.mobile || null, item.address || null, item.gstin || null];
         } else if (endpoint === 'customer-material-prices') {
           q = 'INSERT OR REPLACE INTO customer_material_prices (id, customerId, materialId, pricingType, billingUnit, rate, isActive) VALUES (?, ?, ?, ?, ?, ?, ?)';
           params = [item.id, item.customerId, item.materialId, item.pricingType, item.billingUnit, item.rate, item.isActive ? 1 : 0];

@@ -258,7 +258,6 @@ model CompanySetting {
   gstin                    String
   phone                    String?
   email                    String?
-  invoicePrefix            String   @default("INV-")
   bankDetails              String?
   upiDetails               String?
   upiId                    String?
@@ -269,8 +268,18 @@ model CompanySetting {
   authSignatoryDesignation String?
   signatureImageUrl        String?
   sealImageUrl             String?
-  currentInvoiceSequence   Int      @default(0)
   updatedAt                DateTime @updatedAt
+}
+
+model InvoiceSequence {
+  id                    String   @id @default(uuid())
+  invoiceType           String   @unique // "ALL", "STANDARD", "E_INVOICE", "IRON_SCRAP"
+  prefix                String?
+  suffix                String?
+  startingNumber        Int      @default(1)
+  currentNumber         Int      @default(0)
+  autoIncrementEnabled  Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
 }
 
 model AuditLog {

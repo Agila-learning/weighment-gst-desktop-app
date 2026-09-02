@@ -128,32 +128,51 @@ router.post('/', async (req, res) => {
     const { invoiceItems, subTotal, taxTotal, grandTotal } = await prepareInvoiceData(items);
     
     let invoiceNumber = manualInvoiceNumber;
-    let settings = await prisma.companySetting.findFirst();
-    const prefix = settings?.invoicePrefix || 'INV-';
-    const year = new Date().getFullYear();
+    let invType = invoiceType || 'STANDARD';
 
-    if (invoiceType === 'E_INVOICE' && manualInvoiceNumber) {
-      // E-Invoice uses manual reference exactly as provided, does not update sequence
+    // Get sequence settings for this invoice type
+    let seq = await prisma.invoiceSequence.findUnique({ where: { invoiceType: invType } });
+    if (!seq) {
+      seq = await prisma.invoiceSequence.findUnique({ where: { invoiceType: 'ALL' } });
+    }
+
+    if (!seq) {
+      // Fallback
+      seq = { prefix: 'INV-', suffix: '', currentNumber: 0, startingNumber: 1, id: 'fallback', invoiceType: 'ALL', autoIncrementEnabled: true, updatedAt: new Date() };
+    }
+
+    const prefix = seq.prefix || '';
+    const suffix = seq.suffix || '';
+
+    if (manualInvoiceNumber) {
+      // User provided a manual invoice number completely formatted from UI (e.g. INV-588)
+      // Check if it's purely a number to see if we should increment seq.
+      // But actually, manualInvoiceNumber from UI is exactly what the user typed.
       invoiceNumber = manualInvoiceNumber;
-    } else {
-      if (manualInvoiceNumber) {
-        // If user provided a manual number, use it, but check for dupes.
-        const parsed = parseInt(manualInvoiceNumber, 10);
-        if (!isNaN(parsed)) {
-           // Update sequence to match this manual number if it's higher
-           if (settings && parsed > settings.currentInvoiceSequence) {
-             await prisma.companySetting.update({ where: { id: settings.id }, data: { currentInvoiceSequence: parsed } });
-           }
+      
+      // Try to parse the numeric part to update sequence safely if it's higher
+      const numMatch = manualInvoiceNumber.match(/\d+/);
+      if (numMatch && seq.id !== 'fallback') {
+        const parsed = parseInt(numMatch[0], 10);
+        if (!isNaN(parsed) && parsed > seq.currentNumber) {
+          await prisma.invoiceSequence.update({ 
+            where: { id: seq.id }, 
+            data: { currentNumber: parsed } 
+          });
         }
-        invoiceNumber = `${prefix}${year}-${manualInvoiceNumber}`;
-      } else {
-        // Auto-generate based on sequence
-        let nextSeq = (settings?.currentInvoiceSequence || 0) + 1;
-        if (settings) {
-          await prisma.companySetting.update({ where: { id: settings.id }, data: { currentInvoiceSequence: nextSeq } });
-        }
-        invoiceNumber = `${prefix}${year}-${String(nextSeq).padStart(4, '0')}`;
       }
+    } else {
+      // Auto-generate based on sequence
+      let nextSeq = Math.max(seq.startingNumber, seq.currentNumber + 1);
+      
+      if (seq.id !== 'fallback') {
+        await prisma.invoiceSequence.update({ 
+          where: { id: seq.id }, 
+          data: { currentNumber: nextSeq } 
+        });
+      }
+      
+      invoiceNumber = `${prefix}${nextSeq}${suffix}`;
     }
 
     // Prevent duplicates

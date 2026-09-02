@@ -88,7 +88,8 @@ export default function Transporters() {
       if (ipcRenderer) {
           let q = '';
           let params: any[] = [];
-          q = 'INSERT OR REPLACE INTO transporters (id, name) VALUES (?, ?)'; params = [payload.id, payload.name];
+          q = 'INSERT OR REPLACE INTO transporters (id, name, mobile, address, gstin) VALUES (?, ?, ?, ?, ?)'; 
+          params = [payload.id, payload.name, payload.mobile || null, payload.address || null, payload.gstin || null];
           await ipcRenderer.invoke('db-query', q, params);
       } else if (!serverSaved) {
           // Web Mode (no Electron) and Server Failed!

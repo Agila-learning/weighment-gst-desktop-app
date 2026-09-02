@@ -95,6 +95,7 @@ const Billing = () => {
   const [invoiceType, setInvoiceType] = useState('STANDARD'); // STANDARD, E_INVOICE, IRON_SCRAP
   const [manualInvoiceNumber, setManualInvoiceNumber] = useState('');
   const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState('');
   
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customerSummary, setCustomerSummary] = useState<any>(null);
@@ -136,6 +137,12 @@ const Billing = () => {
     apiClient.get('/materials').then(res => setMaterials(res.data)).catch(console.error);
     apiClient.get('/vehicles').then(res => setVehicles(res.data)).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    apiClient.get(`/invoice-settings/next?type=${invoiceType}`)
+      .then(res => setNextInvoiceNumber(res.data.nextInvoiceNumber))
+      .catch(console.error);
+  }, [invoiceType]);
 
   useEffect(() => {
     const fetchId = editId || duplicateId;
@@ -697,7 +704,13 @@ const Billing = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Billing Mode</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Billing Mode</h2>
+              <div className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
+                <span className="text-gray-500 mr-2">Next Auto Invoice #:</span>
+                <span className="font-mono font-bold text-gray-800">{nextInvoiceNumber || '...'}</span>
+              </div>
+            </div>
             <div className="flex space-x-3 mb-6">
               {['STANDARD', 'E_INVOICE', 'IRON_SCRAP'].map(type => (
                 <button
