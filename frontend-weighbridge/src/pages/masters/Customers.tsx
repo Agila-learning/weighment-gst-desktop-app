@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, User, Phone, MapPin, Building, Info, Download } from 'lucide-react';
 import api from '../../services/api';
-
+import toast from 'react-hot-toast';
+import { fetchInvoicePdf } from '../../utils/pdfHelper';
 import { getStateFromGstin, getStateFromName } from '../../utils/indianStates';
 
 const Customers = () => {
@@ -32,18 +33,33 @@ const Customers = () => {
 
   const downloadInvoicePdf = async (invId: string, invNumber: string) => {
     try {
-      const pdfRes = await api.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'text/html' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Invoice-${invNumber}.html`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const { buffer, blobUrl, blob } = await fetchInvoicePdf(invId);
+      const ipcRenderer = (window as any).ipcRenderer;
+      const filename = `Invoice-${invNumber}.pdf`;
+
+      if (ipcRenderer && buffer) {
+        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
+          buffer: Array.from(new Uint8Array(buffer)),
+          defaultFilename: filename
+        });
+        if (saveResult.success) {
+          toast.success('Invoice downloaded successfully');
+        } else if (!saveResult.canceled && saveResult.error) {
+          toast.error('Error saving PDF: ' + saveResult.error);
+        }
+      } else {
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.setAttribute('download', blob.type === 'text/html' ? `Invoice-${invNumber}.html` : filename);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        // Don't revoke immediately in case the browser hasn't started download
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+      }
     } catch (err) {
       console.error('Failed to download PDF', err);
-      alert('Could not download invoice PDF. Please try again.');
+      toast.error('Could not download invoice PDF. Please try again.');
     }
   };
 
