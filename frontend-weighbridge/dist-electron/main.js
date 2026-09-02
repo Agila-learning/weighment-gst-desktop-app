@@ -314,6 +314,17 @@ import_electron2.app.whenReady().then(async () => {
       return { success: false, error: err.message };
     }
   });
+  import_electron2.ipcMain.handle("open-pdf-temp", async (event, { buffer, defaultFilename }) => {
+    try {
+      const tempPath = import_node_path2.default.join(import_electron2.app.getPath("temp"), defaultFilename || `document_${Date.now()}.pdf`);
+      import_node_fs.default.writeFileSync(tempPath, Buffer.from(buffer));
+      import_electron2.shell.openPath(tempPath);
+      return { success: true };
+    } catch (err) {
+      console.error("Error in open-pdf-temp:", err);
+      return { success: false, error: err.message };
+    }
+  });
   let sharedPdfWindow = null;
   import_electron2.ipcMain.handle("generate-pdf", async (event, htmlContent) => {
     try {

@@ -21,8 +21,8 @@ router.get('/', async (req, res) => {
       where.OR = [
         { vehicleNumber: { contains: search as string, mode: 'insensitive' } },
         { slipNumber: { contains: search as string, mode: 'insensitive' } },
-        { customerName: { contains: search as string, mode: 'insensitive' } },
-        { materialName: { contains: search as string, mode: 'insensitive' } }
+        { customer: { name: { contains: search as string, mode: 'insensitive' } } },
+        { material: { name: { contains: search as string, mode: 'insensitive' } } }
       ];
     }
 

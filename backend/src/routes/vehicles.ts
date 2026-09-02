@@ -32,6 +32,7 @@ router.get('/', async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({
       where: { isActive: true },
+      include: { driver: true, transporter: true },
       orderBy: { createdAt: 'desc' }
     });
     res.json(vehicles);

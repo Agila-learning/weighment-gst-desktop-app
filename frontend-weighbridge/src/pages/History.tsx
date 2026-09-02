@@ -284,8 +284,8 @@ export default function History() {
                     <td className="px-4 py-3">{new Date(row.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">{new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                     <td className="px-4 py-3 font-bold text-slate-700">{row.vehicleNumber}</td>
-                    <td className="px-4 py-3 truncate max-w-[150px]">{row.customerName || '-'}</td>
-                    <td className="px-4 py-3">{row.materialName || '-'}</td>
+                    <td className="px-4 py-3 truncate max-w-[150px]">{row.customer?.name || '-'}</td>
+                    <td className="px-4 py-3">{row.material?.name || '-'}</td>
                     <td className="px-4 py-3">{row.loadType || '-'}</td>
                     <td className="px-4 py-3 text-right font-mono">{row.firstWeight || '-'}</td>
                     <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{row.netWeight || '-'}</td>

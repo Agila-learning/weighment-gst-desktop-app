@@ -220,7 +220,11 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(invoice);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'This invoice number already exists. Duplicate invoice numbers are not allowed.' });
+    }
+    console.error(error);
     res.status(500).json({ message: 'Error creating invoice' });
   }
 });
