@@ -2,7 +2,7 @@ import apiClient from '../api/client';
 
 export async function fetchInvoicePdf(invoiceId: string): Promise<{ blob: Blob, blobUrl: string, buffer: ArrayBuffer }> {
   // Using native fetch instead of Axios for binary data to avoid Electron adapter corruption
-  const url = `${apiClient.defaults.baseURL || 'http://localhost:3000/api'}/invoices/${invoiceId}/pdf`;
+  const url = `${apiClient.defaults.baseURL || 'https://weighment-gst-desktop-app.onrender.com/api'}/invoices/${invoiceId}/pdf`;
   const token = localStorage.getItem('token');
   
   const res = await fetch(url, {

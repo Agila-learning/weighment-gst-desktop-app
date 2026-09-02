@@ -260,7 +260,15 @@ import Transporters from './pages/masters/Transporters';
 import Reports from './pages/reports/Reports';
 import Login from './pages/Login';
 
+import StartupScreen from './components/StartupScreen';
+
 function App() {
+  const [isStartupComplete, setIsStartupComplete] = useState(false);
+
+  if (!isStartupComplete) {
+    return <StartupScreen onSuccess={() => setIsStartupComplete(true)} />;
+  }
+
   return (
     <HashRouter>
       <Toaster position="top-right" />

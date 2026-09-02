@@ -14,7 +14,16 @@ import DataCenter from './pages/DataCenter';
 import Drivers from './pages/Drivers';
 import Payments from './pages/Payments';
 
+import { useState } from 'react';
+import StartupScreen from './components/StartupScreen';
+
 function App() {
+  const [isStartupComplete, setIsStartupComplete] = useState(false);
+
+  if (!isStartupComplete) {
+    return <StartupScreen onSuccess={() => setIsStartupComplete(true)} />;
+  }
+
   return (
     <HashRouter>
       <Toaster position="top-right" />
