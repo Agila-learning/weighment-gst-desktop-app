@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
@@ -130,6 +130,18 @@ app.whenReady().then(async () => {
       return { success: true, path: filePath };
     } catch (err: any) {
       console.error('Error in save-pdf-dialog:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('open-pdf-temp', async (event, { buffer, defaultFilename }) => {
+    try {
+      const tempPath = path.join(app.getPath('temp'), defaultFilename || `document_${Date.now()}.pdf`);
+      fs.writeFileSync(tempPath, Buffer.from(buffer));
+      shell.openPath(tempPath);
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error in open-pdf-temp:', err);
       return { success: false, error: err.message };
     }
   });

@@ -253,7 +253,7 @@ export default function Weighment() {
 
       if (ipcRenderer && buffer) {
         const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-          buffer: Array.from(new Uint8Array(buffer)),
+          buffer: buffer,
           defaultFilename: filename
         });
         if (!saveResult.success && saveResult.error && !saveResult.canceled) {

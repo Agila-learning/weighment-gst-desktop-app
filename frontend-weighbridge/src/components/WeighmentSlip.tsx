@@ -14,8 +14,33 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
   if (!weighment) return null;
 
   const [isDownloading, setIsDownloading] = useState(false);
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const toastId = toast.loading('Opening for Print...');
+    try {
+      const { buffer } = await fetchWeighmentSlipPdf(weighment.id);
+      const ipcRenderer = (window as any).ipcRenderer;
+      const filename = `WeighbridgeSlip-${weighment.slipNumber || weighment.id}.pdf`;
+
+      if (ipcRenderer && buffer) {
+        const result = await ipcRenderer.invoke('open-pdf-temp', {
+          buffer: buffer,
+          defaultFilename: filename
+        });
+        if (result.success) {
+          toast.success('Document opened in PDF viewer', { id: toastId });
+        } else {
+          toast.error('Failed to open PDF: ' + result.error, { id: toastId });
+          window.print(); // fallback
+        }
+      } else {
+        toast.dismiss(toastId);
+        window.print(); // fallback
+      }
+    } catch (err) {
+      toast.error('Unable to generate slip PDF for printing.', { id: toastId });
+      console.error(err);
+      window.print(); // fallback
+    }
   };
 
   const handleDownload = async () => {
@@ -28,7 +53,7 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
 
       if (ipcRenderer && buffer) {
         const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-          buffer: Array.from(new Uint8Array(buffer)),
+          buffer: buffer,
           defaultFilename: filename
         });
         if (!saveResult.success && saveResult.error && !saveResult.canceled) {
@@ -108,7 +133,6 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
           <div className="text-center mb-4 border-b border-dashed border-slate-800 pb-4">
             <h1 className="text-lg font-bold uppercase">{companySettings?.companyName || 'WEIGHBRIDGE'}</h1>
             <p className="text-xs">{companySettings?.address}</p>
-            <p className="text-xs">Ph: {companySettings?.phone}</p>
             <div className="mt-2 font-bold uppercase">{weighment.status === 'COMPLETED' ? 'WEIGHBRIDGE SLIP' : 'WEIGHMENT RECEIPT'}</div>
           </div>
 
