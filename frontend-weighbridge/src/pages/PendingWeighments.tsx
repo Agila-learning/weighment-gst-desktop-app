@@ -24,7 +24,7 @@ export default function PendingWeighments() {
     // Navigate to Second Weight with vehicle number prefilled
     // Wait, react-router-dom state could be used, or just storing it in localStorage/zustand.
     // Since we don't have a parameter in route right now, we can just navigate. In a real app we'd pass state.
-    navigate('/second-weight', { state: { vehicleNumber } });
+    navigate('/weighment', { state: { vehicleNumber } });
   };
 
   return (
