@@ -65,7 +65,7 @@ export const generateInvoicePDF = async (invoiceId: string, template: string = '
       <title>Invoice ${invoice.invoiceNumber}</title>
       <style>
         @page { size: A4; margin: 5mm; }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         html { background: #f3f4f6; }
         body { 
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
@@ -132,7 +132,7 @@ export const generateInvoicePDF = async (invoiceId: string, template: string = '
     </head>
     <body>
       <div class="invoice-box">
-        <div class="header-title">TAX INVOICE</div>
+        <div class="header-title">${invoice.invoiceType === 'E_INVOICE' ? 'E-INVOICE' : invoice.invoiceType === 'IRON_SCRAP' ? 'IRON SCRAP INVOICE' : 'TAX INVOICE'}</div>
         
         <div class="grid-2">
           <div>
@@ -271,7 +271,7 @@ export const generateInvoicePDF = async (invoiceId: string, template: string = '
                   <td style="color: ${muteColor};">${item.hsnCode || item.material?.hsnCode || '-'}</td>
                   <td class="text-right font-bold" style="color: ${textColor};">${invoice.invoiceType === 'IRON_SCRAP' ? (item.quantity / 1000).toFixed(2) : item.quantity.toFixed(2)}</td>
                   <td class="text-right">₹${item.rate.toFixed(2)}</td>
-                  <td class="text-center text-xs" style="color: ${labelColor};">${item.unit || item.material?.unit || ''}</td>
+                  <td class="text-center text-xs" style="color: ${labelColor};">${invoice.invoiceType === 'IRON_SCRAP' ? 'TON' : (item.unit || item.material?.unit || '')}</td>
                   <td class="text-right font-bold" style="color: ${textColor};">₹${item.amount.toFixed(2)}</td>
                 </tr>
               `).join('')}

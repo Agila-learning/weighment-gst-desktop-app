@@ -17,8 +17,9 @@
     "appId": "com.forgeindiaconnect.gstbilling",
     "productName": "GST Billing System",
     "directories": {
-      "output": "release"
+      "output": "release-final-v3"
     },
+    "asar": false,
     "win": {
       "icon": "public/icon.png",
       "target": [

@@ -4,3 +4,7 @@
 
 dist-electron
 release
+
+release-build
+release-final-*
+release
