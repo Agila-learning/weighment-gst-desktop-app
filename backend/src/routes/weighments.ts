@@ -258,30 +258,28 @@ router.get('/:id/slip-pdf', async (req, res) => {
 <title>Weighbridge Slip - ${weighment.slipNumber || weighment.id}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: monospace, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 10px; }
+  body { font-family: monospace, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 5px; }
   .slip { width: 300px; margin: 0 auto; border: 1px dashed #000; padding: 10px; }
-  .header { text-align: center; padding-bottom: 8px; border-bottom: 1px dashed #000; }
+  .header { text-align: center; padding-bottom: 4px; border-bottom: 1px dashed #000; }
   .header h1 { font-size: 16px; font-weight: bold; text-transform: uppercase; }
   .header p { font-size: 10px; margin-top: 2px; }
-  .slip-title { text-align: center; font-size: 12px; font-weight: bold; margin: 8px 0; border-bottom: 1px dashed #000; padding-bottom: 8px; }
-  .meta { margin-bottom: 8px; font-size: 11px; }
-  .meta div { display: flex; justify-content: space-between; margin-bottom: 2px; }
-  .section { border-top: 1px dashed #000; padding: 8px 0; }
-  .field { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .slip-title { text-align: center; font-size: 12px; font-weight: bold; margin: 4px 0; border-bottom: 1px dashed #000; padding-bottom: 4px; }
+  .meta { margin-bottom: 4px; font-size: 11px; }
+  .meta div { display: flex; justify-content: space-between; margin-bottom: 1px; }
+  .section { border-top: 1px dashed #000; padding: 4px 0; }
+  .field { display: flex; justify-content: space-between; margin-bottom: 2px; }
   .field label { font-weight: bold; }
   .field span { text-align: right; }
-  .weight-block { text-align: center; padding: 10px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 10px 0; }
-  .weight-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-  .net-wt { font-size: 16px; font-weight: bold; margin-top: 8px; border-top: 1px solid #000; padding-top: 8px; }
-  .footer { text-align: center; font-size: 9px; padding-top: 8px; }
+  .weight-block { text-align: center; padding: 5px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 5px 0; }
+  .weight-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .net-wt { font-size: 16px; font-weight: bold; margin-top: 4px; border-top: 1px solid #000; padding-top: 4px; }
 </style>
 </head>
 <body>
 <div class="slip">
   <div class="header">
     <h1>${companyName}</h1>
-    ${companyAddress ? `<p>${companyAddress}</p>` : ''}
-    ${companyPhone ? `<p>Ph: ${companyPhone}${companyGstin ? ` | GST: ${companyGstin}` : ''}</p>` : ''}
+    ${companyPhone ? `<p>Ph: ${companyPhone}</p>` : ''}
   </div>
   
   <div class="slip-title">${slipTitle}</div>
@@ -296,7 +294,6 @@ router.get('/:id/slip-pdf', async (req, res) => {
     <div class="field"><label>Customer:</label><span>${weighment.customer?.name || '—'}</span></div>
     <div class="field"><label>Material:</label><span>${weighment.material?.name || '—'}</span></div>
     <div class="field"><label>Driver:</label><span>${weighment.driver?.name || '—'}</span></div>
-    <div class="field"><label>Transporter:</label><span>${weighment.transporter?.name || '—'}</span></div>
   </div>
   
   <div class="weight-block">
@@ -304,15 +301,9 @@ router.get('/:id/slip-pdf', async (req, res) => {
       <span>${w1Label}:</span>
       <span><strong>${w1Val} KG</strong></span>
     </div>
-    <div class="weight-row">
-      <span style="font-size: 9px; color: #555;">${w1Dt}</span>
-    </div>
-    <div class="weight-row" style="margin-top: 6px;">
+    <div class="weight-row" style="margin-top: 2px;">
       <span>${w2Label}:</span>
       <span><strong>${w2Val} ${w2Val !== '--' ? 'KG' : ''}</strong></span>
-    </div>
-    <div class="weight-row">
-      <span style="font-size: 9px; color: #555;">${w2Dt}</span>
     </div>
     
     <div class="weight-row net-wt">
@@ -320,15 +311,11 @@ router.get('/:id/slip-pdf', async (req, res) => {
       <span>${netWt}</span>
     </div>
     ${weighment.calculatedAmount ? `
-    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000;">
+    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #000;">
       <span>AMOUNT:</span>
       <span>₹ ${weighment.calculatedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
     </div>
     ` : ''}
-  </div>
-  
-  <div class="footer" style="text-align: center; margin-top: 15px;">
-    <i>Thank you for your business! Drive safely.</i>
   </div>
 </div>
 </body>
