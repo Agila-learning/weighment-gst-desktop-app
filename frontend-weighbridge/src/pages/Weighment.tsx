@@ -19,7 +19,7 @@ export default function Weighment() {
   const [vehicleSearchLoading, setVehicleSearchLoading] = useState(false);
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickAddVehicle, setQuickAddVehicle] = useState({ vehicleNumber: '', vehicleType: 'Tipper' });
+  const [quickAddVehicle, setQuickAddVehicle] = useState({ vehicleNumber: '', vehicleType: 'Tipper', capacityWeight: '' });
   const [quickAddLoading, setQuickAddLoading] = useState(false);
 
   // Pricing Modal State
@@ -35,11 +35,10 @@ export default function Weighment() {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [selectedDriver, setSelectedDriver] = useState('');
-  const [selectedTransporter, setSelectedTransporter] = useState('');
   const [loadType, setLoadType] = useState('LOAD');
   const [manualWeight, setManualWeight] = useState('');
+  const [tareWeight, setTareWeight] = useState('');
 
-  const [pendingWeighment, setPendingWeighment] = useState<any>(null);
   const [completedWeighment, setCompletedWeighment] = useState<any>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,23 +122,12 @@ export default function Weighment() {
     setCompletedWeighment(null);
     if (v.customerId) setSelectedCustomer(v.customerId);
     if (v.driverId) setSelectedDriver(v.driverId);
-    if (v.transporterId) setSelectedTransporter(v.transporterId);
-    try {
-      const res = await api.get('/weighments/active/' + (v.id || v.vehicleNumber));
-      const active = res.data;
-      if (active) {
-        setPendingWeighment(active);
-        if (active.customerId) setSelectedCustomer(active.customerId);
-        if (active.materialId) setSelectedMaterial(active.materialId);
-        if (active.driverId) setSelectedDriver(active.driverId);
-        if (active.transporterId) setSelectedTransporter(active.transporterId);
-        if (active.loadType) setLoadType(active.loadType);
-      } else { setPendingWeighment(null); }
-    } catch { setPendingWeighment(null); }
+    if (v.capacityWeight) setTareWeight(v.capacityWeight.toString());
+    else setTareWeight('');
   };
 
   const handleQuickAdd = () => {
-    setQuickAddVehicle({ vehicleNumber: vehicleSearchTerm.trim().toUpperCase(), vehicleType: 'Tipper' });
+    setQuickAddVehicle({ vehicleNumber: vehicleSearchTerm.trim().toUpperCase(), vehicleType: 'Tipper', capacityWeight: '' });
     setShowQuickAdd(true);
     setShowVehicleDropdown(false);
   };
@@ -148,7 +136,12 @@ export default function Weighment() {
     if (!quickAddVehicle.vehicleNumber) return;
     setQuickAddLoading(true);
     try {
-      const res = await api.post('/vehicles', { vehicleNumber: quickAddVehicle.vehicleNumber, vehicleType: quickAddVehicle.vehicleType });
+      const payload = { 
+        vehicleNumber: quickAddVehicle.vehicleNumber, 
+        vehicleType: quickAddVehicle.vehicleType,
+        capacityWeight: quickAddVehicle.capacityWeight ? Number(quickAddVehicle.capacityWeight) : null
+      };
+      const res = await api.post('/vehicles', payload);
       setShowQuickAdd(false);
       await handleVehicleSelect(res.data);
       setSuccessMsg('Vehicle ' + res.data.vehicleNumber + ' created!');
@@ -177,42 +170,33 @@ export default function Weighment() {
   const executeCapture = async () => {
     setIsSubmitting(true);
     try {
-      const ew = getEffectiveWeight();
+      const grossWeight = getEffectiveWeight();
+      const emptyWeight = Number(tareWeight);
       const ws = connectionType === 'MANUAL' ? 'MANUAL' : 'DEVICE';
-      if (!pendingWeighment) {
-        if (!selectedMaterial) throw new Error('Please select Material before capturing weight.');
-        if (ew <= 0) throw new Error('Weight must be greater than 0.');
-        const res = await api.post('/weighments/first-weight', {
-          vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
-          customerId: selectedCustomer || null, materialId: selectedMaterial || null,
-          driverId: selectedDriver || null, transporterId: selectedTransporter || null,
-          firstWeight: ew, firstWeightSource: ws, loadType, unit: 'KG'
-        });
-        setCompletedWeighment({ ...res.data, status: 'FIRST_WEIGHT' });
-        resetFormState();
-        setSuccessMsg('First weight captured! Slip: ' + res.data.slipNumber);
-      } else {
-        if (ew <= 0) throw new Error('Weight must be > 0.');
-        const fw = Number(pendingWeighment.firstWeight);
-        if (Math.abs(ew - fw) < 1) throw new Error('Second weight cannot be the same as first weight.');
-        const netWeight = Math.abs(ew - fw);
-        let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
-        const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
-        const bm = materials.find(m => m.id === selectedMaterial);
-        let taxPercent = 0;
-        if (cp) { pricingType = cp.pricingType; billingUnit = cp.billingUnit; rate = cp.rate; }
-        else if (bm) { pricingType = bm.pricingType || 'PER_UNIT'; billingUnit = bm.billingUnit || 'TON'; rate = bm.defaultRate || 0; }
-        
-        if (bm && bm.taxRate) { taxPercent = (bm.taxRate.cgst || 0) + (bm.taxRate.sgst || 0) + (bm.taxRate.igst || 0); }
-        
-        setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew, ws, taxPercent });
-        setShowPricingModal(true);
-        setIsSubmitting(false);
-        return;
-      }
+      
+      if (!selectedMaterial) throw new Error('Please select Material before capturing weight.');
+      if (grossWeight <= 0) throw new Error('Gross weight must be greater than 0.');
+      if (emptyWeight <= 0) throw new Error('Empty weight must be greater than 0.');
+      if (grossWeight === emptyWeight) throw new Error('Gross weight cannot be same as empty weight.');
+      
+      const netWeight = Math.abs(grossWeight - emptyWeight);
+      
+      let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
+      const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
+      const bm = materials.find(m => m.id === selectedMaterial);
+      let taxPercent = 0;
+      if (cp) { pricingType = cp.pricingType; billingUnit = cp.billingUnit; rate = cp.rate; }
+      else if (bm) { pricingType = bm.pricingType || 'PER_UNIT'; billingUnit = bm.billingUnit || 'TON'; rate = bm.defaultRate || 0; }
+      
+      if (bm && bm.taxRate) { taxPercent = (bm.taxRate.cgst || 0) + (bm.taxRate.sgst || 0) + (bm.taxRate.igst || 0); }
+      
+      setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew: grossWeight, ws, taxPercent });
+      setShowPricingModal(true);
+      setIsSubmitting(false);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
-    } finally { setIsSubmitting(false); setShowManualConfirm(false); setManualReason(''); }
+      setIsSubmitting(false); setShowManualConfirm(false); setManualReason('');
+    }
   };
 
   const finalizeSecondWeight = async () => {
@@ -222,14 +206,27 @@ export default function Weighment() {
       if (pricingDetails.billingUnit === 'TON') qty = pricingDetails.netWeight / 1000;
       const baseAmt = pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
       const amt = baseAmt * (1 + (pricingDetails.taxPercent || 0) / 100);
+      
+      const emptyWeight = Number(tareWeight);
+
+      // 1. Create first weight (Empty Weight)
+      const fwRes = await api.post('/weighments/first-weight', {
+        vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
+        customerId: selectedCustomer || null, materialId: selectedMaterial || null,
+        driverId: selectedDriver || null, transporterId: null,
+        firstWeight: emptyWeight, firstWeightSource: 'MANUAL', loadType, unit: 'KG'
+      });
+
+      // 2. Complete second weight (Gross Weight)
       const res = await api.post('/weighments/second-weight', {
-        weighmentId: pendingWeighment.id, vehicleId: pendingWeighment.vehicleId, vehicleNumber: pendingWeighment.vehicleNumber,
+        weighmentId: fwRes.data.id, vehicleId: fwRes.data.vehicleId, vehicleNumber: fwRes.data.vehicleNumber,
         secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
         pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
         billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
-        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: selectedTransporter || null
+        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: null
       });
-      setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId), transporter: transporters.find(t => t.id === res.data.transporterId) });
+
+      setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId) });
       resetFormState();
       setShowPricingModal(false);
       setSuccessMsg('Weighment complete! Net: ' + pricingDetails.netWeight.toLocaleString('en-IN') + ' KG');
@@ -240,7 +237,7 @@ export default function Weighment() {
 
   const resetFormState = () => {
     setVehicleSearchTerm(''); setSelectedVehicle(null); setSelectedCustomer(''); setSelectedMaterial('');
-    setSelectedDriver(''); setSelectedTransporter(''); setLoadType('LOAD'); setPendingWeighment(null); setManualWeight('');
+    setSelectedDriver(''); setLoadType('LOAD'); setManualWeight(''); setTareWeight('');
   };
 
   const downloadSlipPdf = async (id: string, slip: string) => {
@@ -304,8 +301,7 @@ export default function Weighment() {
   }, [location.state]);
 
   const ew = getEffectiveWeight();
-  const transactionMode = pendingWeighment ? 'SECOND_WEIGHT' : 'FIRST_WEIGHT';
-  const isCaptureDisabled = !selectedVehicle || isSubmitting || ew <= 0 || (!pendingWeighment && !selectedMaterial) || (!pendingWeighment && connectionType !== 'MANUAL' && !stable);
+  const isCaptureDisabled = !selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || !tareWeight || (connectionType !== 'MANUAL' && !stable);
   const cn = companySettings?.companyName || 'WEIGHBRIDGE';
 
   return (
@@ -314,9 +310,7 @@ export default function Weighment() {
         <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Weighment Operation</h1>
-            {pendingWeighment ? (
-              <div className="flex items-center gap-2 mt-1"><AlertTriangle size={14} className="text-amber-500" /><p className="text-amber-600 font-bold text-sm">Pending — 2nd Weight for {pendingWeighment.vehicleNumber}</p></div>
-            ) : <p className="text-slate-500 text-sm mt-1">New Weighment — First Weight</p>}
+            <p className="text-slate-500 text-sm mt-1">Single-Step Capture</p>
           </div>
           <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${hwStatus === 'CONNECTED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
             <Scale size={13} /> {hwStatus} ({connectionType})
@@ -364,7 +358,7 @@ export default function Weighment() {
             <div className="mt-3 flex items-center gap-3 bg-blue-50 border border-blue-200 px-4 py-2.5 rounded-lg">
               <Truck size={17} className="text-blue-500" />
               <div className="flex-1"><div className="font-bold text-blue-800">{selectedVehicle.vehicleNumber}</div>{selectedVehicle.vehicleType && <div className="text-xs text-blue-600">{selectedVehicle.vehicleType}</div>}</div>
-              {!pendingWeighment && <button onClick={resetFormState} className="text-blue-400 hover:text-blue-600"><X size={15} /></button>}
+              <button onClick={resetFormState} className="text-blue-400 hover:text-blue-600"><X size={15} /></button>
             </div>
           )}
         </div>
@@ -381,9 +375,9 @@ export default function Weighment() {
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><User size={12} /> Driver</label>
               <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Driver --</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-            <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Truck size={12} /> Transporter</label>
-              <select value={selectedTransporter} onChange={e => setSelectedTransporter(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
-                <option value="">-- Select Transporter --</option>{transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+            <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Scale size={12} /> Empty Weight (KG) *</label>
+              <input type="number" value={tareWeight} onChange={e => setTareWeight(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500" placeholder="e.g. 2500" />
+            </div>
           </div>
           <div className="mt-3"><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-2"><Package size={12} /> Load Type</label>
             <div className="flex gap-4 flex-wrap">{['LOAD','EMPTY','RETURN','OTHER'].map(type => (<label key={type} className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="loadType" value={type} checked={loadType === type} onChange={e => setLoadType(e.target.value)} className="text-blue-600" /><span className="text-sm text-slate-700">{type}</span></label>))}</div></div>
@@ -412,15 +406,15 @@ export default function Weighment() {
             <span className="text-2xl text-cyan-600 font-bold mb-1">KG</span>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-3 flex flex-col gap-2">
-            <div className="flex justify-between text-sm"><span className="text-slate-400">First Weight:</span><span className="font-mono text-slate-200">{pendingWeighment ? (pendingWeighment.firstWeight || 0).toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-slate-400">Second Weight:</span><span className="font-mono text-slate-200">{pendingWeighment ? ew.toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-slate-400">Empty Weight:</span><span className="font-mono text-slate-200">{tareWeight ? Number(tareWeight).toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-slate-400">Load Weight:</span><span className="font-mono text-slate-200">{ew > 0 ? ew.toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
             <div className="w-full h-px bg-slate-700 my-0.5" />
-            <div className="flex justify-between font-bold"><span className="text-slate-300">Net Weight:</span><span className="font-mono text-cyan-400 text-lg">{pendingWeighment && ew > 0 ? Math.abs(ew - (pendingWeighment.firstWeight || 0)).toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
+            <div className="flex justify-between font-bold"><span className="text-slate-300">Net Weight:</span><span className="font-mono text-cyan-400 text-lg">{ew > 0 && tareWeight ? Math.abs(ew - Number(tareWeight)).toLocaleString('en-IN') + ' KG' : '-- KG'}</span></div>
           </div>
         </div>
 
-        <button onClick={handleCaptureClick} disabled={isCaptureDisabled} className={`w-full py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${transactionMode === 'FIRST_WEIGHT' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}>
-          <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE ' + transactionMode.replace(/_/g,' ')}
+        <button onClick={handleCaptureClick} disabled={isCaptureDisabled} className={`w-full py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg bg-blue-600 hover:bg-blue-700 text-white`}>
+          <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE WEIGHMENT'}
         </button>
         <div className="text-center text-xs text-slate-400">Weight Source: <span className="font-bold text-slate-600">{connectionType}</span></div>
       </div>
@@ -432,6 +426,7 @@ export default function Weighment() {
             <div className="space-y-3 mb-5">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Vehicle Number *</label><input type="text" value={quickAddVehicle.vehicleNumber} onChange={e => setQuickAddVehicle({...quickAddVehicle, vehicleNumber: e.target.value.toUpperCase()})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg font-bold uppercase focus:ring-2 focus:ring-blue-500" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Vehicle Type</label><select value={quickAddVehicle.vehicleType} onChange={e => setQuickAddVehicle({...quickAddVehicle, vehicleType: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">{['Tipper','Lorry','Mini Truck','Container','Tractor','Other'].map(t => <option key={t}>{t}</option>)}</select></div>
+              <div><label className="block text-xs font-medium text-slate-600 mb-1">Empty Weight (KG)</label><input type="number" value={quickAddVehicle.capacityWeight} onChange={e => setQuickAddVehicle({...quickAddVehicle, capacityWeight: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500" placeholder="e.g. 2500" /></div>
             </div>
             <div className="flex justify-end gap-3"><button onClick={() => setShowQuickAdd(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={handleQuickAddConfirm} disabled={!quickAddVehicle.vehicleNumber || quickAddLoading} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50">{quickAddLoading ? 'Creating...' : 'Create Vehicle'}</button></div>
           </div>

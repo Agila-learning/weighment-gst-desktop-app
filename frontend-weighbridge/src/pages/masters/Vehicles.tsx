@@ -202,8 +202,8 @@ const Vehicles = () => {
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2"><Scale size={16} /> Additional Details</h3>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Capacity / Weight (Tons)</label>
-                      <input type="number" step="0.1" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.capacityWeight} onChange={e => setNewVehicle({...newVehicle, capacityWeight: e.target.value})} placeholder="e.g. 10.5" />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Empty Weight (KG)</label>
+                      <input type="number" step="1" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.capacityWeight} onChange={e => setNewVehicle({...newVehicle, capacityWeight: e.target.value})} placeholder="e.g. 2500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Transporter</label>
