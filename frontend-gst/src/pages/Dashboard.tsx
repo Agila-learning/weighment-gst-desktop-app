@@ -54,15 +54,7 @@ const Dashboard = () => {
           }
         });
 
-        // If we have absolutely 0 sales in the last 7 days, generate some visually pleasing dummy placeholder data
-        // so the dashboard doesn't look dead, but mark it clearly
-        const totalRecentSales = last7Days.reduce((sum, d) => sum + d.sales, 0);
-        if (totalRecentSales === 0) {
-          last7Days.forEach((d, i) => {
-            d.sales = Math.floor(Math.random() * 5000) + 1000 + (i * 1500); // Upward trend placeholder
-          });
-        }
-
+        // Removed dummy placeholder generation to only show real data
         setChartData(last7Days);
       } catch (err) {
         console.error('Error fetching dashboard stats');

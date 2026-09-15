@@ -364,7 +364,8 @@ router.delete('/:id', async (req, res) => {
 // Download actual PDF
 router.get('/:id/pdf', async (req, res) => {
   try {
-    const htmlContent = await generateInvoicePDF(req.params.id);
+    const template = req.query.template as string || 'color';
+    const htmlContent = await generateInvoicePDF(req.params.id, template);
     const invoice = await prisma.invoice.findUnique({ where: { id: req.params.id } });
     
     try {

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "GST Billing Desktop Application",
-  "author": "FIC GST",
+  "author": "SBM Tally",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {

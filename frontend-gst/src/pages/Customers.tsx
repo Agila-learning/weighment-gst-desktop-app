@@ -26,6 +26,7 @@ const Customers = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [ledgerData, setLedgerData] = useState<any>({ summary: {}, transactions: [] });
   const [weighmentsData, setWeighmentsData] = useState<any[]>([]);
+  const [pdfTemplate, setPdfTemplate] = useState('color');
 
   useEffect(() => {
     fetchCustomers();
@@ -33,7 +34,7 @@ const Customers = () => {
 
   const downloadInvoicePdf = async (invId: string, invNumber: string) => {
     try {
-      const { blobUrl } = await fetchInvoicePdf(invId);
+      const { blobUrl } = await fetchInvoicePdf(invId, pdfTemplate);
       const link = document.createElement('a');
       link.href = blobUrl;
       link.setAttribute('download', `Invoice-${invNumber}.pdf`);
@@ -441,7 +442,19 @@ const Customers = () => {
                 )}
                 
                 {activeTab === 'invoices' && (
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
+                      <select
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm bg-white font-medium text-gray-700"
+                        value={pdfTemplate}
+                        onChange={e => setPdfTemplate(e.target.value)}
+                        title="PDF Template Type"
+                      >
+                        <option value="color">Color Template</option>
+                        <option value="bw">B&W Template</option>
+                      </select>
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
                         <tr>
@@ -473,6 +486,7 @@ const Customers = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
                   </div>
                 )}
                 

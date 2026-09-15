@@ -116,7 +116,7 @@ const Billing = () => {
   });
   const [weighmentReference, setWeighmentReference] = useState('');
   
-  const [lineItems, setLineItems] = useState<any[]>([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxSlab: undefined }]);
+  const [lineItems, setLineItems] = useState<any[]>([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxSlab: undefined, manualCgstRate: undefined, manualSgstRate: undefined, manualIgstRate: undefined }]);
   const [isSaving, setIsSaving] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [isFetchingWeighbridge, setIsFetchingWeighbridge] = useState(false);
@@ -124,6 +124,7 @@ const Billing = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeCalculatorItemId, setActiveCalculatorItemId] = useState<string | null>(null);
   const [calculatorWeights, setCalculatorWeights] = useState<string[]>(['']);
+  const [pdfTemplate, setPdfTemplate] = useState('color');
 
   const ipcRenderer = (window as any).ipcRenderer;
 
@@ -354,23 +355,34 @@ const Billing = () => {
       let cgst = 0, sgst = 0, igst = 0;
       let totalTaxRate = 0;
 
+      // Default logic
+      totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
+      if (isInterState) {
+        igst = totalTaxRate;
+      } else {
+        cgst = material.taxRate?.cgst || (totalTaxRate / 2);
+        sgst = material.taxRate?.sgst || (totalTaxRate / 2);
+      }
+
+      // Tax slab override
       if (item.manualTaxSlab !== undefined && item.manualTaxSlab !== '') {
         totalTaxRate = Number(item.manualTaxSlab);
         if (isInterState) {
           igst = totalTaxRate;
+          cgst = 0; sgst = 0;
         } else {
           cgst = totalTaxRate / 2;
           sgst = totalTaxRate / 2;
-        }
-      } else {
-        totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
-        if (isInterState) {
-          igst = totalTaxRate;
-        } else {
-          cgst = material.taxRate?.cgst || (totalTaxRate / 2);
-          sgst = material.taxRate?.sgst || (totalTaxRate / 2);
+          igst = 0;
         }
       }
+
+      // Explicit overrides
+      if (item.manualCgstRate !== undefined) cgst = Number(item.manualCgstRate);
+      if (item.manualSgstRate !== undefined) sgst = Number(item.manualSgstRate);
+      if (item.manualIgstRate !== undefined) igst = Number(item.manualIgstRate);
+
+      totalTaxRate = cgst + sgst + igst;
       
       let calculationQuantity = item.quantity;
       if (invoiceType === 'IRON_SCRAP') {
@@ -411,7 +423,7 @@ const Billing = () => {
   }, [company?.stateCode, buyerDetails.stateCode, consigneeDetails.stateCode, invoiceType]);
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxSlab: undefined }]);
+    setLineItems([...lineItems, { id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxSlab: undefined, manualCgstRate: undefined, manualSgstRate: undefined, manualIgstRate: undefined }]);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -536,7 +548,7 @@ const Billing = () => {
       if (status === 'FINALIZED') {
         let pdfBuffer = null;
         try {
-          const { blobUrl, buffer } = await fetchInvoicePdf(res.data.id);
+          const { blobUrl, buffer } = await fetchInvoicePdf(res.data.id, pdfTemplate);
           setPreviewBlobUrl(blobUrl);
           pdfBuffer = buffer;
         } catch (pdfErr) {
@@ -691,6 +703,15 @@ const Billing = () => {
           <p className="text-gray-500">Generate professional GST bills</p>
         </div>
         <div className="flex gap-3">
+          <select
+            className="px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm bg-white font-medium text-gray-700"
+            value={pdfTemplate}
+            onChange={e => setPdfTemplate(e.target.value)}
+            title="PDF Print Template"
+          >
+            <option value="color">Color</option>
+            <option value="bw">B&W</option>
+          </select>
           <button onClick={() => handleSaveInvoice('DRAFT')} disabled={isSaving} className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors disabled:opacity-50">
             <Save size={18} /> Save Draft
           </button>
@@ -1007,20 +1028,34 @@ const Billing = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          <select 
-                            className="w-24 px-2 py-1.5 border border-gray-300 rounded outline-none focus:ring-2 focus:border-blue-500 bg-white"
-                            value={item.manualTaxSlab !== undefined ? item.manualTaxSlab : ''}
-                            onChange={e => handleLineItemChange(item.id, 'manualTaxSlab', e.target.value !== '' ? Number(e.target.value) : undefined)}
-                          >
-                            <option value="">Default</option>
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                          </select>
-                          <div className="text-[10px] text-gray-400 mt-1">
-                            ({item.cgstRate}% CGST, {item.sgstRate}% SGST, {item.igstRate}% IGST)
+                          <div className="flex flex-col gap-1">
+                            <div className="flex gap-1 items-center">
+                              <span className="text-[10px] text-gray-500 w-8">CGST%</span>
+                              <input 
+                                type="number" step="0.1" min="0" 
+                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                value={item.manualCgstRate !== undefined ? item.manualCgstRate : item.cgstRate}
+                                onChange={e => handleLineItemChange(item.id, 'manualCgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                            </div>
+                            <div className="flex gap-1 items-center">
+                              <span className="text-[10px] text-gray-500 w-8">SGST%</span>
+                              <input 
+                                type="number" step="0.1" min="0" 
+                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                value={item.manualSgstRate !== undefined ? item.manualSgstRate : item.sgstRate}
+                                onChange={e => handleLineItemChange(item.id, 'manualSgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                            </div>
+                            <div className="flex gap-1 items-center">
+                              <span className="text-[10px] text-gray-500 w-8">IGST%</span>
+                              <input 
+                                type="number" step="0.1" min="0" 
+                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                value={item.manualIgstRate !== undefined ? item.manualIgstRate : item.igstRate}
+                                onChange={e => handleLineItemChange(item.id, 'manualIgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                              />
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">₹ {item.amount.toFixed(2)}</td>

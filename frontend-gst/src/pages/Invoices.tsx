@@ -44,6 +44,9 @@ const Invoices = () => {
   const [cancelModalInvoiceId, setCancelModalInvoiceId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState<string>('');
 
+  // Template Preference
+  const [pdfTemplate, setPdfTemplate] = useState('color');
+
   const fetchInvoices = async (page = 1) => {
     try {
       const params = new URLSearchParams();
@@ -291,6 +294,15 @@ const Invoices = () => {
 
           {/* Actions - Span remaining space in grid or push to right */}
           <div className="col-span-1 md:col-span-2 lg:col-span-2 flex gap-2 justify-end items-center">
+            <select
+              className="px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:border-blue-500 text-sm bg-white font-medium text-gray-700"
+              value={pdfTemplate}
+              onChange={e => setPdfTemplate(e.target.value)}
+              title="PDF Template Type"
+            >
+              <option value="color">Color Template</option>
+              <option value="bw">B&W Template</option>
+            </select>
             <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
               <Download size={16} /> Export CSV
             </button>
@@ -369,7 +381,7 @@ const Invoices = () => {
                                 setIsDownloadingPdf(inv.id);
                                 const toastId = toast.loading('Generating PDF...');
                                 try {
-                                  const { buffer, blobUrl, blob } = await fetchInvoicePdf(inv.id);
+                                  const { buffer, blobUrl, blob } = await fetchInvoicePdf(inv.id, pdfTemplate);
                                   const ipcRenderer = (window as any).ipcRenderer;
                                   const formattedDate = inv.date ? inv.date.split('T')[0] : new Date().toISOString().split('T')[0];
                                   const filename = `Invoice_${inv.invoiceNumber}_${formattedDate}.pdf`;
@@ -601,7 +613,7 @@ const Invoices = () => {
                       setIsPreviewModalOpen(true);
                       setIsGeneratingPdf(true);
                       try {
-                        const { blobUrl, buffer } = await fetchInvoicePdf(detailsModalInvoice.id);
+                        const { blobUrl, buffer } = await fetchInvoicePdf(detailsModalInvoice.id, pdfTemplate);
                         setPreviewBlobUrl(blobUrl);
                         setPreviewBuffer(buffer);
                       } catch (err: any) {
@@ -620,7 +632,7 @@ const Invoices = () => {
                       setIsDownloadingPdf(detailsModalInvoice.id);
                       const toastId = toast.loading('Generating PDF...');
                       try {
-                        const { buffer, blobUrl, blob } = await fetchInvoicePdf(detailsModalInvoice.id);
+                        const { buffer, blobUrl, blob } = await fetchInvoicePdf(detailsModalInvoice.id, pdfTemplate);
                         const ipcRenderer = (window as any).ipcRenderer;
                         const formattedDate = detailsModalInvoice.date ? detailsModalInvoice.date.split('T')[0] : new Date().toISOString().split('T')[0];
                         const filename = `Invoice_${detailsModalInvoice.invoiceNumber}_${formattedDate}.pdf`;

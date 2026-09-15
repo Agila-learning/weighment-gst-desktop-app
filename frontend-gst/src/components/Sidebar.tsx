@@ -63,7 +63,7 @@ const Sidebar = () => {
       <div className={`p-4 flex items-center border-b border-white/10 ${isMinimized ? 'flex-col justify-center gap-4' : 'justify-between'}`}>
         <div className={`flex items-center justify-center ${isMinimized ? '' : 'p-2'}`}>
           <img src="./icon.png" alt="Logo" className={`w-8 h-8 object-contain rounded ${isMinimized ? '' : 'mr-3'}`} />
-          {!isMinimized && <h1 className="text-xl font-bold tracking-tight truncate">FIC GST</h1>}
+          {!isMinimized && <h1 className="text-xl font-bold tracking-tight truncate">SBM Tally</h1>}
         </div>
         <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-white/10 rounded flex-shrink-0">
           {isMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}

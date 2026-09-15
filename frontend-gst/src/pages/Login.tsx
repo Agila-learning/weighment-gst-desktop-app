@@ -137,9 +137,9 @@ const Login = () => {
           <div className="mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start space-x-3 mb-6">
               <div className="h-16 w-16 bg-indigo-100 rounded-xl flex items-center justify-center p-2 mb-4">
-                <img src="./icon.png" alt="FIC GST Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
+                <img src="./icon.png" alt="SBM TALLY Billing" className="w-full h-full object-contain rounded-lg shadow-sm" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">FIC GST</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">SBM TALLY</h1>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
             <p className="text-gray-500">Sign in to continue to your billing workspace.</p>
