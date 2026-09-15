@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Eye, XCircle, Printer, Download, ChevronLeft, ChevronRight, Ban } from 'lucide-react';
+import { Search, Filter, Eye, XCircle, Printer, Download, ChevronLeft, ChevronRight, Ban, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import WeighmentSlip from '../components/WeighmentSlip';
 
@@ -146,6 +146,18 @@ export default function History() {
       fetchHistory();
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || "Failed to cancel weighment");
+    }
+  };
+
+  const handleDeleteWeighment = async (id: string) => {
+    if (window.confirm('Are you sure you want to permanently delete this weighment?')) {
+      try {
+        await api.delete(`/weighments/${id}`);
+        fetchHistory();
+      } catch (err) {
+        console.error('Failed to delete weighment', err);
+        alert('Failed to delete weighment. It may be linked to other records.');
+      }
     }
   };
 
@@ -320,6 +332,13 @@ export default function History() {
                           <Printer size={16} className="mr-1.5" /> Print
                         </button>
                       )}
+                      <button 
+                        onClick={() => handleDeleteWeighment(row.id)}
+                        className="inline-flex items-center px-3 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                        title="Delete Weighment"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}

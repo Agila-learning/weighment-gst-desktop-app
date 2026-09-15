@@ -17,8 +17,9 @@
     "appId": "com.forgeindiaconnect.weighbridge",
     "productName": "Weighbridge Desktop",
     "directories": {
-      "output": "release"
+      "output": "release-final-v2"
     },
+    "asar": false,
     "win": {
       "icon": "public/icon.png",
       "target": [

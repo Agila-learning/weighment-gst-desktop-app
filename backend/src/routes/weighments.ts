@@ -571,5 +571,24 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: 'Error syncing weighment', error: error?.message });
   }
 });
+// Delete weighment
+router.delete('/:id', async (req, res) => {
+  try {
+    const weighment = await prisma.weighment.findUnique({
+      where: { id: req.params.id }
+    });
+    
+    if (!weighment) return res.status(404).json({ message: 'Weighment not found' });
+    
+    await prisma.weighment.delete({
+      where: { id: req.params.id }
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting weighment:', error);
+    res.status(500).json({ message: 'Error deleting weighment' });
+  }
+});
 
 export default router;

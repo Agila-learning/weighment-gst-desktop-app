@@ -95,12 +95,18 @@ router.delete('/:id', async (req, res) => {
   try {
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: req.params.id },
-      include: { invoices: true }
+      include: { 
+        invoices: { select: { id: true }, take: 1 },
+        weighments: { select: { id: true }, take: 1 },
+        permitCards: { select: { id: true }, take: 1 }
+      }
     });
     
     if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
     
-    if (vehicle.invoices.length > 0) {
+    const hasRelations = vehicle.invoices.length > 0 || vehicle.weighments.length > 0 || vehicle.permitCards.length > 0;
+
+    if (hasRelations) {
       // Soft delete
       await prisma.vehicle.update({
         where: { id: req.params.id },
