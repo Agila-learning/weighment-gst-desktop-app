@@ -16,8 +16,9 @@
   "build": {
     "appId": "com.forgeindiaconnect.gstbilling",
     "productName": "GST Billing System",
+    "executableName": "GSTBillingApp",
     "directories": {
-      "output": "release-final-v3"
+      "output": "release"
     },
     "asar": false,
     "win": {
@@ -25,6 +26,15 @@
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GST Billing System",
+      "artifactName": "GSTBillingApp_Setup.${ext}"
     },
     "files": [
       "dist/**/*",

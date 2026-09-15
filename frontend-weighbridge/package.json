@@ -16,8 +16,9 @@
   "build": {
     "appId": "com.forgeindiaconnect.weighbridge",
     "productName": "Weighbridge Desktop",
+    "executableName": "WeighbridgeApp",
     "directories": {
-      "output": "release-final-v2"
+      "output": "release"
     },
     "asar": false,
     "win": {
@@ -25,6 +26,15 @@
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Weighbridge App",
+      "artifactName": "WeighbridgeApp_Setup.${ext}"
     },
     "files": [
       "dist/**/*",
