@@ -106,6 +106,7 @@ const Billing = () => {
   // Advanced Invoice Fields
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sameAsBuyer, setSameAsBuyer] = useState(true);
+  const [includeConsignee, setIncludeConsignee] = useState(false);
   
   const [buyerDetails, setBuyerDetails] = useState({ name: '', address: '', gstin: '', stateName: '', stateCode: '' });
   const [consigneeDetails, setConsigneeDetails] = useState({ name: '', address: '', gstin: '', stateName: '', stateCode: '' });
@@ -140,9 +141,7 @@ const Billing = () => {
   }, []);
 
   useEffect(() => {
-    apiClient.get(`/invoice-settings/next?type=${invoiceType}`)
-      .then(res => setNextInvoiceNumber(res.data.nextInvoiceNumber))
-      .catch(console.error);
+    // nextInvoiceNumber logic removed for manual number requirement
   }, [invoiceType]);
 
   useEffect(() => {
@@ -356,12 +355,17 @@ const Billing = () => {
       let totalTaxRate = 0;
 
       // Default logic
-      totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
+      if (invoiceType === 'IRON_SCRAP') {
+        totalTaxRate = 18;
+      } else {
+        totalTaxRate = material.taxRate ? (material.taxRate.cgst + material.taxRate.sgst + material.taxRate.igst) : 0;
+      }
+
       if (isInterState) {
         igst = totalTaxRate;
       } else {
-        cgst = material.taxRate?.cgst || (totalTaxRate / 2);
-        sgst = material.taxRate?.sgst || (totalTaxRate / 2);
+        cgst = invoiceType === 'IRON_SCRAP' ? 9 : (material.taxRate?.cgst || (totalTaxRate / 2));
+        sgst = invoiceType === 'IRON_SCRAP' ? 9 : (material.taxRate?.sgst || (totalTaxRate / 2));
       }
 
       // Tax slab override
@@ -513,11 +517,11 @@ const Billing = () => {
         buyerGstin: buyerDetails.gstin,
         buyerState: buyerDetails.stateName,
         buyerStateCode: buyerDetails.stateCode,
-        consigneeName: consigneeDetails.name,
-        consigneeAddress: consigneeDetails.address,
-        consigneeGstin: consigneeDetails.gstin,
-        consigneeState: consigneeDetails.stateName,
-        consigneeStateCode: consigneeDetails.stateCode,
+        consigneeName: includeConsignee ? consigneeDetails.name : undefined,
+        consigneeAddress: includeConsignee ? consigneeDetails.address : undefined,
+        consigneeGstin: includeConsignee ? consigneeDetails.gstin : undefined,
+        consigneeState: includeConsignee ? consigneeDetails.stateName : undefined,
+        consigneeStateCode: includeConsignee ? consigneeDetails.stateCode : undefined,
         ...headerDetails,
         weighmentReference,
         snapshotVehicleNumber: vehicleObj ? vehicleObj.vehicleNumber : undefined,
@@ -646,9 +650,19 @@ const Billing = () => {
             </button>
             <button onClick={() => {
               setSuccessData(null);
+              navigate('/billing', { replace: true });
               setLineItems([{ id: Date.now().toString(), materialId: '', quantity: 1, rate: 0, taxAmount: 0, amount: 0, totalAmount: 0, cgstRate: 0, sgstRate: 0, igstRate: 0, materialName: '', hsnCode: '', unit: '', pricingType: 'PER_TON', quantityUnit: 'TON', quantitySource: 'MANUAL', weighmentReference: '', manualTaxSlab: undefined }]);
             }} className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               <FileCheck size={18} /> Create New
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 mt-3">
+            <button onClick={() => {
+              navigate(`/billing?editId=${successData.invoiceId}`, { replace: true });
+              setSuccessData(null);
+            }} className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 transition-colors">
+              Continue Editing Invoice
             </button>
           </div>
           
@@ -662,6 +676,11 @@ const Billing = () => {
         <PdfPreviewModal
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
+          onEdit={() => {
+            setIsPreviewOpen(false);
+            navigate(`/billing?editId=${successData.invoiceId}`, { replace: true });
+            setSuccessData(null);
+          }}
           blobUrl={previewBlobUrl}
           isLoading={false}
           title={`Invoice ${successData.invoiceNumber}`}
@@ -727,10 +746,6 @@ const Billing = () => {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-800">Billing Mode</h2>
-              <div className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
-                <span className="text-gray-500 mr-2">Next Auto Invoice #:</span>
-                <span className="font-mono font-bold text-gray-800">{nextInvoiceNumber || '...'}</span>
-              </div>
             </div>
             <div className="flex space-x-3 mb-6">
               {['STANDARD', 'E_INVOICE', 'IRON_SCRAP'].map(type => (
@@ -771,29 +786,18 @@ const Billing = () => {
                 <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
               </div>
 
-              {(invoiceType === 'E_INVOICE' || isManualInvoiceOpen) && (
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {invoiceType === 'E_INVOICE' ? 'E-Invoice Reference Number *' : 'Custom Starting Invoice Number'}
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder={invoiceType === 'E_INVOICE' ? "Enter E-Invoice Reference" : "e.g. 588"}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-indigo-500 outline-none"
-                    value={manualInvoiceNumber} 
-                    onChange={e => setManualInvoiceNumber(e.target.value)} 
-                  />
-                  {invoiceType !== 'E_INVOICE' && <p className="text-xs text-gray-500 mt-1">This will override the auto-generated number and continue the sequence from here.</p>}
-                </div>
-              )}
-
-              {invoiceType !== 'E_INVOICE' && !isManualInvoiceOpen && (
-                <div className="col-span-2 flex justify-end">
-                   <button onClick={() => setIsManualInvoiceOpen(true)} className="text-xs text-indigo-600 font-semibold hover:text-indigo-800">
-                     Customize Start Invoice #
-                   </button>
-                </div>
-              )}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Invoice Number *
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter invoice number manually"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-indigo-500 outline-none"
+                  value={manualInvoiceNumber} 
+                  onChange={e => setManualInvoiceNumber(e.target.value)} 
+                />
+              </div>
               <div>
                 <div className="flex justify-between items-end mb-1">
                   <label className="block text-sm font-medium text-gray-700">Vehicle Details</label>
@@ -876,31 +880,41 @@ const Billing = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center border-b pb-2">
                       <h3 className="font-semibold text-gray-800">Consignee (Ship To)</h3>
-                      <label className="flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" checked={sameAsBuyer} onChange={e => setSameAsBuyer(e.target.checked)} />
-                        Same as Buyer
+                      <label className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <input type="checkbox" checked={includeConsignee} onChange={e => setIncludeConsignee(e.target.checked)} />
+                        Include in Invoice
                       </label>
                     </div>
-                    {!sameAsBuyer && (
+                    {includeConsignee && (
                       <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500">Name</label>
-                          <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={consigneeDetails.name} onChange={e => setConsigneeDetails({...consigneeDetails, name: e.target.value})} />
+                        <div className="flex justify-end mb-1">
+                           <label className="flex items-center gap-2 text-sm text-gray-600">
+                             <input type="checkbox" checked={sameAsBuyer} onChange={e => setSameAsBuyer(e.target.checked)} />
+                             Same as Buyer
+                           </label>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500">Address</label>
-                          <textarea className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" rows={2} value={consigneeDetails.address} onChange={e => setConsigneeDetails({...consigneeDetails, address: e.target.value})}></textarea>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-500">State Code</label>
-                            <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={consigneeDetails.stateCode} onChange={e => handleStateCodeChange(e.target.value, 'consignee')} />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-500">State Name</label>
-                            <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm bg-gray-50" value={consigneeDetails.stateName} readOnly />
-                          </div>
-                        </div>
+                        {!sameAsBuyer && (
+                          <>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Name</label>
+                              <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={consigneeDetails.name} onChange={e => setConsigneeDetails({...consigneeDetails, name: e.target.value})} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Address</label>
+                              <textarea className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" rows={2} value={consigneeDetails.address} onChange={e => setConsigneeDetails({...consigneeDetails, address: e.target.value})}></textarea>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500">State Code</label>
+                                <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm" value={consigneeDetails.stateCode} onChange={e => handleStateCodeChange(e.target.value, 'consignee')} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500">State Name</label>
+                                <input type="text" className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:border-blue-500 outline-none text-sm bg-gray-50" value={consigneeDetails.stateName} readOnly />
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
                   </div>

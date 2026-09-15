@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, UserCircle, X } from 'lucide-react';
+import { Bell, UserCircle, X, RefreshCw } from 'lucide-react';
 import apiClient from '../api/client';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '../services/AuthService';
@@ -60,6 +60,14 @@ const Header = () => {
       </div>
       
       <div className="flex items-center gap-4 text-gray-600">
+        <button 
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          title="Reload Application to unfreeze or fetch latest data"
+        >
+          <RefreshCw size={16} />
+          <span className="hidden sm:inline">Refresh App</span>
+        </button>
         <button 
           onClick={() => setSearchOpen(true)}
           className="hidden md:flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm text-gray-500 transition-colors"

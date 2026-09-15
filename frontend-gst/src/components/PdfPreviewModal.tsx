@@ -8,6 +8,7 @@ interface PdfPreviewModalProps {
   isLoading: boolean;
   onDownload: () => void;
   onPrint: () => void;
+  onEdit?: () => void;
   title?: string;
 }
 
@@ -18,6 +19,7 @@ export default function PdfPreviewModal({
   isLoading, 
   onDownload, 
   onPrint,
+  onEdit,
   title = "PDF Preview" 
 }: PdfPreviewModalProps) {
   const [base64Url, setBase64Url] = useState<string | null>(null);
@@ -62,6 +64,14 @@ export default function PdfPreviewModal({
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h2>
           <div className="flex items-center space-x-3">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="flex items-center px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors shadow-sm text-sm font-medium mr-2"
+              >
+                Edit Invoice
+              </button>
+            )}
             <button
               onClick={onDownload}
               disabled={isLoading || !blobUrl}

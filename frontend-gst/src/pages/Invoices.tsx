@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileClock, Search, Download, XCircle, Trash2, FileText, Info, Loader2 } from 'lucide-react';
+import { FileClock, Search, Download, XCircle, Trash2, FileText, Info, Loader2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import PdfPreviewModal from '../components/PdfPreviewModal';
@@ -61,7 +61,12 @@ const Invoices = () => {
       if (customerId) params.append('customerId', customerId);
       if (materialId) params.append('materialId', materialId);
       if (paymentStatus) params.append('paymentStatus', paymentStatus);
-      if (activeTab !== 'ALL') params.append('invoiceType', activeTab);
+      
+      if (activeTab === 'DRAFTS') {
+        params.append('status', 'DRAFT');
+      } else {
+        if (activeTab !== 'ALL') params.append('invoiceType', activeTab);
+      }
       
       const res = await apiClient.get(`/invoices?${params.toString()}`);
       setInvoices(res.data.data);
@@ -211,7 +216,7 @@ const Invoices = () => {
 
       {/* Invoice Type Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 flex overflow-x-auto">
-        {['ALL', 'STANDARD', 'E_INVOICE', 'IRON_SCRAP'].map((tab) => (
+        {['ALL', 'STANDARD', 'E_INVOICE', 'IRON_SCRAP', 'DRAFTS'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -221,7 +226,7 @@ const Invoices = () => {
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            {tab === 'ALL' ? 'All Invoices' : tab === 'STANDARD' ? 'Standard Bills' : tab === 'E_INVOICE' ? 'E-Invoices' : 'Iron Scrap Bills'}
+            {tab === 'ALL' ? 'All Invoices' : tab === 'STANDARD' ? 'Standard Bills' : tab === 'E_INVOICE' ? 'E-Invoices' : tab === 'DRAFTS' ? 'Drafts' : 'Iron Scrap Bills'}
           </button>
         ))}
       </div>
@@ -371,6 +376,9 @@ const Invoices = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
+                        {inv.status === 'DRAFT' && (
+                          <button title="Edit Draft" onClick={() => navigate(`/billing?editId=${inv.id}`)} className="text-gray-400 hover:text-indigo-600"><Pencil size={16} /></button>
+                        )}
                         <button title="View Details" onClick={() => setDetailsModalInvoice(inv)} className="text-gray-400 hover:text-blue-600"><Info size={16} /></button>
                         {inv.status === 'FINALIZED' && (
                           <>
