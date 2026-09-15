@@ -43,7 +43,6 @@ export default function Weighment() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
-  const [manualReason, setManualReason] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [slipDownloading, setSlipDownloading] = useState(false);
@@ -195,7 +194,7 @@ export default function Weighment() {
       setIsSubmitting(false);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
-      setIsSubmitting(false); setShowManualConfirm(false); setManualReason('');
+      setIsSubmitting(false); setShowManualConfirm(false);
     }
   };
 
@@ -439,8 +438,7 @@ export default function Weighment() {
             <div className="flex items-center gap-3 text-amber-600 mb-4"><AlertTriangle size={22} /><h2 className="text-xl font-bold">Manual Weight Entry</h2></div>
             <p className="text-slate-600 mb-4 text-sm">You are recording a manual weight. This will be logged.</p>
             <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between font-mono"><span className="text-slate-500">Weight:</span><span className="text-2xl font-bold">{ew.toLocaleString('en-IN')} KG</span></div>
-            <div className="mb-5"><label className="block text-sm font-medium text-slate-700 mb-1">Reason *</label><textarea value={manualReason} onChange={e => setManualReason(e.target.value)} placeholder="e.g., Device malfunction..." className="w-full p-3 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-400" rows={3} /></div>
-            <div className="flex justify-end gap-3"><button onClick={() => setShowManualConfirm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={executeCapture} disabled={!manualReason.trim() || isSubmitting} className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50">{isSubmitting ? 'Saving...' : 'Confirm'}</button></div>
+            <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowManualConfirm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={executeCapture} disabled={isSubmitting} className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50">{isSubmitting ? 'Saving...' : 'Confirm'}</button></div>
           </div>
         </div>
       )}
