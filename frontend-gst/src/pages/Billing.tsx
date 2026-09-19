@@ -366,7 +366,7 @@ const Billing = () => {
       }
 
       // Tax slab override
-      if (item.manualTaxSlab !== undefined && item.manualTaxSlab !== '') {
+      if (item.manualTaxSlab !== undefined && item.manualTaxSlab !== '' && invoiceType !== 'IRON_SCRAP') {
         totalTaxRate = Number(item.manualTaxSlab);
         if (isInterState) {
           igst = totalTaxRate;
@@ -379,9 +379,22 @@ const Billing = () => {
       }
 
       // Explicit overrides
-      if (item.manualCgstRate !== undefined) cgst = Number(item.manualCgstRate);
-      if (item.manualSgstRate !== undefined) sgst = Number(item.manualSgstRate);
-      if (item.manualIgstRate !== undefined) igst = Number(item.manualIgstRate);
+      if (invoiceType !== 'IRON_SCRAP') {
+        if (item.manualCgstRate !== undefined) cgst = Number(item.manualCgstRate);
+        if (item.manualSgstRate !== undefined) sgst = Number(item.manualSgstRate);
+        if (item.manualIgstRate !== undefined) igst = Number(item.manualIgstRate);
+      } else {
+        // Force 9% for Iron Scrap and ignore manual overrides
+        if (isInterState) {
+          igst = 18;
+          cgst = 0;
+          sgst = 0;
+        } else {
+          cgst = 9;
+          sgst = 9;
+          igst = 0;
+        }
+      }
 
       totalTaxRate = cgst + sgst + igst;
       
@@ -399,7 +412,7 @@ const Billing = () => {
       const amount = calculationQuantity * item.rate;
       const taxAmount = (amount * totalTaxRate) / 100;
       
-      return {
+      let updatedItem = {
         ...item,
         amount,
         taxAmount,
@@ -411,6 +424,15 @@ const Billing = () => {
         hsnCode: material.hsnCode,
         unit: invoiceType === 'IRON_SCRAP' ? 'TON' : material.unit
       };
+
+      if (invoiceType === 'IRON_SCRAP') {
+        updatedItem.manualCgstRate = undefined;
+        updatedItem.manualSgstRate = undefined;
+        updatedItem.manualIgstRate = undefined;
+        updatedItem.manualTaxSlab = undefined;
+      }
+
+      return updatedItem;
     });
   };
 
@@ -1044,27 +1066,30 @@ const Billing = () => {
                               <span className="text-[10px] text-gray-500 w-8">CGST%</span>
                               <input 
                                 type="number" step="0.1" min="0" 
-                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                className={`w-16 px-1 py-1 border border-gray-300 rounded outline-none text-xs bg-white ${invoiceType === 'IRON_SCRAP' ? 'opacity-50 cursor-not-allowed' : 'focus:ring-1 focus:border-blue-500'}`} 
                                 value={item.manualCgstRate !== undefined ? item.manualCgstRate : item.cgstRate}
                                 onChange={e => handleLineItemChange(item.id, 'manualCgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                                disabled={invoiceType === 'IRON_SCRAP'}
                               />
                             </div>
                             <div className="flex gap-1 items-center">
                               <span className="text-[10px] text-gray-500 w-8">SGST%</span>
                               <input 
                                 type="number" step="0.1" min="0" 
-                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                className={`w-16 px-1 py-1 border border-gray-300 rounded outline-none text-xs bg-white ${invoiceType === 'IRON_SCRAP' ? 'opacity-50 cursor-not-allowed' : 'focus:ring-1 focus:border-blue-500'}`} 
                                 value={item.manualSgstRate !== undefined ? item.manualSgstRate : item.sgstRate}
                                 onChange={e => handleLineItemChange(item.id, 'manualSgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                                disabled={invoiceType === 'IRON_SCRAP'}
                               />
                             </div>
                             <div className="flex gap-1 items-center">
                               <span className="text-[10px] text-gray-500 w-8">IGST%</span>
                               <input 
                                 type="number" step="0.1" min="0" 
-                                className="w-16 px-1 py-1 border border-gray-300 rounded outline-none focus:ring-1 focus:border-blue-500 text-xs bg-white" 
+                                className={`w-16 px-1 py-1 border border-gray-300 rounded outline-none text-xs bg-white ${invoiceType === 'IRON_SCRAP' ? 'opacity-50 cursor-not-allowed' : 'focus:ring-1 focus:border-blue-500'}`} 
                                 value={item.manualIgstRate !== undefined ? item.manualIgstRate : item.igstRate}
                                 onChange={e => handleLineItemChange(item.id, 'manualIgstRate', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                                disabled={invoiceType === 'IRON_SCRAP'}
                               />
                             </div>
                           </div>
