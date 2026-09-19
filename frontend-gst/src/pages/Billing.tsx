@@ -94,9 +94,6 @@ const Billing = () => {
   
   const [invoiceType, setInvoiceType] = useState('STANDARD'); // STANDARD, E_INVOICE, IRON_SCRAP
   const [manualInvoiceNumber, setManualInvoiceNumber] = useState('');
-  const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
-  const [nextInvoiceNumber, setNextInvoiceNumber] = useState('');
-  
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customerSummary, setCustomerSummary] = useState<any>(null);
   const [customerPrices, setCustomerPrices] = useState<any[]>([]);

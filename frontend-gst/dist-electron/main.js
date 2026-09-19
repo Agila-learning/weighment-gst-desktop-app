@@ -15,8 +15,10 @@ function d() {
 			preload: a.join(c, "preload.cjs"),
 			plugins: !0
 		}
-	}), l.webContents.on("did-finish-load", () => {
-		l?.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+	});
+	let t = l;
+	t.webContents.on("did-finish-load", () => {
+		t.isDestroyed() || t.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
 	}), u ? l.loadURL(u) : l.loadFile(a.join(process.env.DIST, "index.html"));
 }
 t.on("window-all-closed", () => {
@@ -140,7 +142,7 @@ t.on("window-all-closed", () => {
 				error: e.message
 			};
 		}
-	}), d();
+	});
 });
 //#endregion
 export {};

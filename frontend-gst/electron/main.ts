@@ -23,8 +23,11 @@ function createWindow() {
     },
   })
 
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  const currentWin = win
+  currentWin.webContents.on('did-finish-load', () => {
+    if (!currentWin.isDestroyed()) {
+      currentWin.webContents.send('main-process-message', (new Date).toLocaleString())
+    }
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -184,5 +187,4 @@ app.whenReady().then(async () => {
     }
   });
 
-  createWindow()
 })
