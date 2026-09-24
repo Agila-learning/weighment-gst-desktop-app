@@ -9,10 +9,9 @@ const Materials = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const [showModal, setShowModal] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', gstRateId: '', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [taxRates, setTaxRates] = useState<any[]>([]);
 
   // Customer-Specific Pricing Modal
   const [showPricesModal, setShowPricesModal] = useState(false);
@@ -28,15 +27,11 @@ const Materials = () => {
 
   const fetchTaxRates = async () => {
     try {
-      const [res, custRes] = await Promise.all([
+      const [, custRes] = await Promise.all([
         apiClient.get('/settings/taxes'),
         apiClient.get('/customers')
       ]);
-      setTaxRates(res.data);
       setCustomers(custRes.data);
-      if (res.data.length > 0) {
-        setNewMaterial(prev => ({...prev, gstRateId: res.data[0].id}));
-      }
     } catch (e) {}
   };
 
@@ -54,10 +49,6 @@ const Materials = () => {
 
   const handleAddOrEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMaterial.gstRateId) {
-      setErrorMsg('Please select a GST rate.');
-      return;
-    }
     setErrorMsg('');
     try {
       const payload = { ...newMaterial, defaultRate: Number(newMaterial.defaultRate) };
@@ -68,7 +59,7 @@ const Materials = () => {
       }
       setShowModal(false);
       setIsEditing(false);
-      setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', gstRateId: taxRates[0]?.id || '', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+      setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
       fetchMaterials();
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || 'Error saving material');
@@ -83,7 +74,6 @@ const Materials = () => {
       hsnCode: material.hsnCode || '',
       defaultRate: material.defaultRate || '',
       unit: material.unit || 'TON',
-      gstRateId: material.gstRateId || (taxRates[0]?.id || ''),
       pricingType: material.pricingType || 'PER_UNIT',
       billingUnit: material.billingUnit || 'TON'
     });
@@ -93,7 +83,7 @@ const Materials = () => {
   };
   
   const openAddModal = () => {
-    setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', gstRateId: taxRates[0]?.id || '', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+    setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -236,15 +226,6 @@ const Materials = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Default Rate (₹) *</label>
                   <input required type="number" step="0.01" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.defaultRate} onChange={e => setNewMaterial({...newMaterial, defaultRate: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Tax Rate *</label>
-                  <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
-                    <option value="">Select Rate</option>
-                    {taxRates.map(tr => (
-                      <option key={tr.id} value={tr.id}>{tr.name} ({tr.cgst + tr.sgst + tr.igst}%)</option>
-                    ))}
-                  </select>
-                </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">Cancel</button>
@@ -345,7 +326,6 @@ const Materials = () => {
                   <th className="px-6 py-4">HSN Code</th>
                   <th className="px-6 py-4">Default Rate (₹)</th>
                   <th className="px-6 py-4">Pricing</th>
-                  <th className="px-6 py-4">GST Rate</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -369,7 +349,6 @@ const Materials = () => {
                       <td className="px-6 py-4">{material.hsnCode || '-'}</td>
                       <td className="px-6 py-4">₹{material.defaultRate}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{material.pricingType} / {material.billingUnit}</td>
-                      <td className="px-6 py-4">{material.taxRate?.name || '-'}</td>
                       <td className="px-6 py-4 text-right">
                         <button onClick={() => openPricesModal(material)} className="text-purple-600 hover:text-purple-800 font-medium mr-4">Custom Prices</button>
                         <button onClick={() => openEditModal(material)} className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>
@@ -410,10 +389,6 @@ const Materials = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">Default Rate:</span>
                       <span className="font-semibold text-gray-900 text-base">₹{material.defaultRate} <span className="text-sm font-normal text-gray-500">/ {material.unit}</span></span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">GST Rate:</span>
-                      <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{material.taxRate?.name || 'N/A'}</span>
                     </div>
                   </div>
                 </div>

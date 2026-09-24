@@ -111,7 +111,7 @@ const Invoices = () => {
   const handleExportCSV = () => {
     if (invoices.length === 0) return;
     
-    const headers = ['Date', 'Invoice Number', 'Customer', 'GSTIN', 'Bill To', 'Vehicle Number', 'Driver', 'Material', 'HSN', 'Quantity', 'Unit', 'Rate', 'Subtotal', 'CGST %', 'CGST Amount', 'SGST %', 'SGST Amount', 'IGST %', 'IGST Amount', 'Tax Total', 'Grand Total', 'Status'];
+    const headers = ['Date', 'Invoice Number', 'Customer', 'GSTIN', 'Bill To', 'Vehicle Number', 'Material', 'HSN', 'Quantity', 'Unit', 'Rate', 'Subtotal', 'CGST %', 'CGST Amount', 'SGST %', 'SGST Amount', 'IGST %', 'IGST Amount', 'Tax Total', 'Grand Total', 'Status'];
     
     const rows: any[] = [];
     invoices.forEach(i => {
@@ -121,8 +121,6 @@ const Invoices = () => {
       const gstin = i.buyerGstin || i.customer?.gstin || '';
       const billTo = i.buyerName || i.customer?.name || '';
       const veh = i.snapshotVehicleNumber || i.vehicle?.vehicleNumber || '';
-      const driver = i.vehicle?.driver?.name || '';
-      
       if (i.items && i.items.length > 0) {
         i.items.forEach((item: any, index: number) => {
           rows.push([
@@ -132,7 +130,6 @@ const Invoices = () => {
             index === 0 ? gstin : '',
             index === 0 ? billTo : '',
             index === 0 ? veh : '',
-            index === 0 ? driver : '',
             item.materialName || item.material?.name || '',
             item.hsnCode || item.material?.hsnCode || '',
             item.quantity || 0,
@@ -151,7 +148,7 @@ const Invoices = () => {
           ]);
         });
       } else {
-        rows.push([date, invNo, cust, gstin, billTo, veh, driver, '', '', 0, '', 0, i.subTotal || 0, 0, 0, 0, 0, 0, 0, i.taxTotal || 0, i.grandTotal || 0, i.status]);
+        rows.push([date, invNo, cust, gstin, billTo, veh, '', '', 0, '', 0, i.subTotal || 0, 0, 0, 0, 0, 0, 0, i.taxTotal || 0, i.grandTotal || 0, i.status]);
       }
     });
     
@@ -328,7 +325,6 @@ const Invoices = () => {
                 <th className="px-4 py-3 font-medium">Invoice No</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium">Vehicle</th>
-                <th className="px-4 py-3 font-medium">Driver</th>
                 <th className="px-4 py-3 font-medium">Material</th>
                 <th className="px-4 py-3 font-medium text-right">Qty</th>
                 <th className="px-4 py-3 font-medium text-right">Rate</th>
@@ -356,7 +352,6 @@ const Invoices = () => {
                     <td className="px-4 py-3 font-medium text-blue-600">{inv.invoiceNumber}</td>
                     <td className="px-4 py-3 truncate max-w-[150px]" title={inv.buyerName || inv.customer?.name}>{inv.buyerName || inv.customer?.name}</td>
                     <td className="px-4 py-3">{inv.snapshotVehicleNumber || inv.vehicle?.vehicleNumber || '-'}</td>
-                    <td className="px-4 py-3 truncate max-w-[100px]" title={inv.vehicle?.driver?.name || '-'}>{inv.vehicle?.driver?.name || '-'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500 truncate max-w-[150px]" title={inv.items?.map((i: any) => i.materialName || i.material?.name).join(', ')}>
                       {inv.items?.map((i: any) => i.materialName || i.material?.name).join(', ') || '-'}
                     </td>
@@ -540,7 +535,6 @@ const Invoices = () => {
                   <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Vehicle / Delivery</h3>
                   <div className="space-y-1 text-sm">
                     <p><span className="text-gray-500 font-medium w-24 inline-block">Vehicle No:</span> <span className="font-semibold text-gray-900">{detailsModalInvoice.snapshotVehicleNumber || detailsModalInvoice.vehicle?.vehicleNumber || '-'}</span></p>
-                    <p><span className="text-gray-500 font-medium w-24 inline-block">Driver:</span> {detailsModalInvoice.vehicle?.driver?.name || '-'}</p>
                     <p><span className="text-gray-500 font-medium w-24 inline-block">Transporter:</span> {detailsModalInvoice.dispatchedThrough || '-'}</p>
                     <p><span className="text-gray-500 font-medium w-24 inline-block">Destination:</span> {detailsModalInvoice.destination || '-'}</p>
                   </div>

@@ -11,9 +11,8 @@ export default function Materials() {
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0, gstRateId: '' });
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
   const [errorMsg, setErrorMsg] = useState('');
-  const [taxRates, setTaxRates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchMaterials();
@@ -22,11 +21,7 @@ export default function Materials() {
 
   const fetchTaxRates = async () => {
     try {
-      const res = await api.get('/settings/taxes');
-      setTaxRates(res.data);
-      if (res.data.length > 0) {
-        setNewMaterial(prev => ({...prev, gstRateId: res.data[0].id}));
-      }
+      await api.get('/settings/taxes');
     } catch (e) {}
   };
 
@@ -40,7 +35,6 @@ export default function Materials() {
 
   const validateForm = () => {
     if (newMaterial.name.length < 2) return "Name must be at least 2 characters.";
-    if (!newMaterial.gstRateId) return "GST Rate is required.";
     return null;
   };
 
@@ -102,7 +96,7 @@ export default function Materials() {
   };
 
   const openAddModal = () => {
-    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0, gstRateId: '' });
+    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -116,10 +110,8 @@ export default function Materials() {
       hsnCode: m.hsnCode || '',
       pricingType: m.pricingType || 'PER_TON',
       billingUnit: m.billingUnit || 'TON',
-      defaultRate: m.defaultRate || 0,
-      gstRateId: m.gstRateId || ''
+      defaultRate: m.defaultRate || 0
     });
-    setIsEditing(true);
     setErrorMsg('');
     setShowModal(true);
   };
@@ -209,15 +201,6 @@ export default function Materials() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Default Rate (₹)</label>
                     <input type="number" min="0" step="0.01" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.defaultRate} onChange={e => setNewMaterial({...newMaterial, defaultRate: parseFloat(e.target.value) || 0})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate *</label>
-                    <select required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.gstRateId} onChange={e => setNewMaterial({...newMaterial, gstRateId: e.target.value})}>
-                      <option value="">Select GST Rate</option>
-                      {taxRates.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.cgst + t.sgst + t.igst}%)</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 

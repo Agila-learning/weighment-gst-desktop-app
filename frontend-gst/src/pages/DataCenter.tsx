@@ -156,7 +156,6 @@ const DataCenter = () => {
           {renderImportCard('Customers', 'Import client details, GSTIN, and billing addresses.', 'customers')}
           {renderImportCard('Materials', 'Import product catalog, HSN/SAC, and tax rates.', 'materials')}
           {renderImportCard('Vehicles', 'Import fleet details, capacities, and transporters.', 'vehicles')}
-          {renderImportCard('Drivers', 'Import driver profiles and license details.', 'drivers')}
         </div>
       )}
 
@@ -274,7 +273,6 @@ const DataCenter = () => {
             {renderExportCard('Customers Register', 'customers')}
             {renderExportCard('Materials Catalog', 'materials')}
             {renderExportCard('Vehicles Fleet', 'vehicles')}
-            {renderExportCard('Drivers Register', 'drivers')}
           </div>
         </div>
       )}

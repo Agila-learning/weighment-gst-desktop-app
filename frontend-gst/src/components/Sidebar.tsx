@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
-import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, UserCircle2, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Box, Truck, FileText, Settings, BarChart, FileClock, Download, ChevronDown, ChevronRight, ChevronLeft, CreditCard, LogOut } from 'lucide-react';
 import { useAuthStore } from '../services/AuthService';
 
 const Sidebar = () => {
@@ -26,7 +26,6 @@ const Sidebar = () => {
         { name: 'Customers', path: '/customers', icon: Users },
         { name: 'Materials', path: '/materials', icon: Box },
         { name: 'Vehicles', path: '/vehicles', icon: Truck },
-        { name: 'Drivers', path: '/drivers', icon: UserCircle2 },
       ]
     },
     {

@@ -11,7 +11,6 @@ import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import DataCenter from './pages/DataCenter';
-import Drivers from './pages/Drivers';
 import Payments from './pages/Payments';
 
 import { useState } from 'react';
@@ -34,7 +33,6 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="materials" element={<Materials />} />
           <Route path="vehicles" element={<Vehicles />} />
-          <Route path="drivers" element={<Drivers />} />
           <Route path="billing" element={<Billing />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
