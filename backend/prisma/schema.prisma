@@ -62,8 +62,8 @@ model Material {
   billingUnit            String                  @default("TON") // TON, KG, LOAD, CFT
   pricingType            String                  @default("PER_TON") // PER_TON, PER_KG, PER_LOAD, PER_CFT, FIXED_AMOUNT
   defaultRate            Float
-  gstRateId              String
-  taxRate                TaxRate                 @relation(fields: [gstRateId], references: [id])
+  gstRateId              String?
+  taxRate                TaxRate?                 @relation(fields: [gstRateId], references: [id])
   isActive               Boolean                 @default(true)
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt

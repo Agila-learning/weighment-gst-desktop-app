@@ -25,7 +25,6 @@ router.post('/', async (req, res) => {
   try {
     const { name, hsnCode, defaultRate, unit, gstRateId, pricingType, billingUnit } = req.body;
     if (!name) return res.status(400).json({ message: "Material name is required." });
-    if (!gstRateId) return res.status(400).json({ message: "GST Rate is required." });
 
     const material = await prisma.material.create({
       data: {
@@ -35,7 +34,7 @@ router.post('/', async (req, res) => {
         pricingType: pricingType || 'PER_TON',
         billingUnit: billingUnit || 'TON',
         defaultRate: Number(defaultRate),
-        gstRateId
+        gstRateId: gstRateId || null
       }
     });
     res.status(201).json(material);
@@ -63,7 +62,7 @@ router.put('/:id', async (req, res) => {
         pricingType: pricingType || 'PER_TON',
         billingUnit: billingUnit || 'TON',
         defaultRate: Number(defaultRate),
-        gstRateId
+        gstRateId: gstRateId || null
       }
     });
     res.json(material);
