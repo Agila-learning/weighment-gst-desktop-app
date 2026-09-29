@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { IWeighbridgeDevice, DeviceConfiguration, ConnectionStatus } from './hardware/IWeighbridgeDevice';
 import { SimulatedWeighbridgeDevice } from './hardware/devices/SimulatedWeighbridgeDevice';
+import { SerialWeighbridgeDevice } from './hardware/devices/SerialWeighbridgeDevice';
 import { v4 as uuidv4 } from 'uuid';
 
 const getIpcRenderer = () => {
@@ -142,9 +143,11 @@ addLog: (event: string) => {
         set({ status: 'CONNECTED', currentWeight: 0, stable: true });
         get().addLog('Connected (Manual Mode)');
         return;
+      } else if (config.connectionType === 'SERIAL') {
+        newDevice = new SerialWeighbridgeDevice();
       } else {
         // Instantiate real device or simulation
-        // Since we don't have real hardware, we use the simulation wrapper
+        // Since we don't have real hardware for TCP/USB yet, we use the simulation wrapper
         newDevice = new SimulatedWeighbridgeDevice();
       }
 

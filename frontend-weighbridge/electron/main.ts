@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import fs from 'node:fs'
 import { initDatabase, executeQuery } from './database'
+import { SerialPort } from 'serialport'
 
 const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
@@ -198,6 +199,60 @@ app.whenReady().then(async () => {
       app.relaunch();
       app.exit(0);
       
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  let currentSerialPort: any = null;
+
+  ipcMain.handle('serial-connect', async (event, config) => {
+    try {
+      if (currentSerialPort && currentSerialPort.isOpen) {
+        currentSerialPort.close();
+      }
+      
+      return new Promise((resolve) => {
+        currentSerialPort = new SerialPort({
+          path: config.path,
+          baudRate: config.baudRate,
+          dataBits: config.dataBits as any,
+          stopBits: config.stopBits as any,
+          parity: config.parity as any,
+          autoOpen: false
+        });
+
+        currentSerialPort.open((err: any) => {
+          if (err) {
+            resolve({ success: false, error: err.message });
+          } else {
+            resolve({ success: true });
+          }
+        });
+
+        currentSerialPort.on('data', (data: Buffer) => {
+          if (win) win.webContents.send('serial-data', data.toString());
+        });
+
+        currentSerialPort.on('error', (err: any) => {
+          if (win) win.webContents.send('serial-error', err.message);
+        });
+
+        currentSerialPort.on('close', () => {
+          if (win) win.webContents.send('serial-close');
+        });
+      });
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('serial-disconnect', async () => {
+    try {
+      if (currentSerialPort && currentSerialPort.isOpen) {
+        currentSerialPort.close();
+      }
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };

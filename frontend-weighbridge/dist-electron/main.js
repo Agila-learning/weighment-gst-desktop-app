@@ -205,6 +205,7 @@ function executeQuery(query, params = []) {
 }
 
 // electron/main.ts
+var import_serialport = require("serialport");
 var import_meta = {};
 var currentDir = typeof __dirname !== "undefined" ? __dirname : import_node_path2.default.dirname((0, import_node_url.fileURLToPath)(import_meta.url));
 process.env.DIST = import_node_path2.default.join(currentDir, "../dist");
@@ -363,6 +364,52 @@ import_electron2.app.whenReady().then(async () => {
       import_node_fs.default.copyFileSync(filePaths[0], dbPath);
       import_electron2.app.relaunch();
       import_electron2.app.exit(0);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  let currentSerialPort = null;
+  import_electron2.ipcMain.handle("serial-connect", async (event, config) => {
+    try {
+      if (currentSerialPort && currentSerialPort.isOpen) {
+        currentSerialPort.close();
+      }
+      return new Promise((resolve) => {
+        currentSerialPort = new import_serialport.SerialPort({
+          path: config.path,
+          baudRate: config.baudRate,
+          dataBits: config.dataBits,
+          stopBits: config.stopBits,
+          parity: config.parity,
+          autoOpen: false
+        });
+        currentSerialPort.open((err) => {
+          if (err) {
+            resolve({ success: false, error: err.message });
+          } else {
+            resolve({ success: true });
+          }
+        });
+        currentSerialPort.on("data", (data) => {
+          if (win) win.webContents.send("serial-data", data.toString());
+        });
+        currentSerialPort.on("error", (err) => {
+          if (win) win.webContents.send("serial-error", err.message);
+        });
+        currentSerialPort.on("close", () => {
+          if (win) win.webContents.send("serial-close");
+        });
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+  import_electron2.ipcMain.handle("serial-disconnect", async () => {
+    try {
+      if (currentSerialPort && currentSerialPort.isOpen) {
+        currentSerialPort.close();
+      }
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
