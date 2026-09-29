@@ -9,7 +9,7 @@ const Materials = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const [showModal, setShowModal] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', category: '', subCategory: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -59,7 +59,7 @@ const Materials = () => {
       }
       setShowModal(false);
       setIsEditing(false);
-      setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+      setNewMaterial({ id: '', name: '', category: '', subCategory: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
       fetchMaterials();
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || 'Error saving material');
@@ -71,6 +71,8 @@ const Materials = () => {
     setNewMaterial({
       id: material.id,
       name: material.name || '',
+      category: material.category || '',
+      subCategory: material.subCategory || '',
       hsnCode: material.hsnCode || '',
       defaultRate: material.defaultRate || '',
       unit: material.unit || 'TON',
@@ -83,7 +85,7 @@ const Materials = () => {
   };
   
   const openAddModal = () => {
-    setNewMaterial({ id: '', name: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
+    setNewMaterial({ id: '', name: '', category: '', subCategory: '', hsnCode: '', defaultRate: '', unit: 'TON', pricingType: 'PER_UNIT', billingUnit: 'TON' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -186,6 +188,16 @@ const Materials = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input required type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.name} onChange={e => setNewMaterial({...newMaterial, name: e.target.value})} placeholder="e.g. M-Sand" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.category} onChange={e => setNewMaterial({...newMaterial, category: e.target.value})} placeholder="e.g. Jelly, M-Sand" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sub Category</label>
+                  <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.subCategory} onChange={e => setNewMaterial({...newMaterial, subCategory: e.target.value})} placeholder="e.g. 2mm, 5mm" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -323,6 +335,8 @@ const Materials = () => {
               <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4">Item Name</th>
+                  <th className="px-6 py-4">Category</th>
+                  <th className="px-6 py-4">Sub Category</th>
                   <th className="px-6 py-4">HSN Code</th>
                   <th className="px-6 py-4">Default Rate (₹)</th>
                   <th className="px-6 py-4">Pricing</th>
@@ -346,6 +360,8 @@ const Materials = () => {
                   materials.filter(m => m.name.toLowerCase().includes(search.toLowerCase())).map((material) => (
                     <tr key={material.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">{material.name}</td>
+                      <td className="px-6 py-4">{material.category || '-'}</td>
+                      <td className="px-6 py-4">{material.subCategory || '-'}</td>
                       <td className="px-6 py-4">{material.hsnCode || '-'}</td>
                       <td className="px-6 py-4">₹{material.defaultRate}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{material.pricingType} / {material.billingUnit}</td>
@@ -380,6 +396,9 @@ const Materials = () => {
                   
                   <div className="mb-3 pr-16">
                     <h3 className="text-lg font-bold text-gray-900">{material.name}</h3>
+                    {(material.category || material.subCategory) && (
+                      <p className="text-sm font-medium text-gray-500 inline-block mt-1 mr-2">{material.category || '-'} {material.subCategory ? `> ${material.subCategory}` : ''}</p>
+                    )}
                     {material.hsnCode && (
                       <p className="text-sm font-medium text-gray-500 inline-block mt-1">HSN: {material.hsnCode}</p>
                     )}

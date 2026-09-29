@@ -11,7 +11,7 @@ export default function Materials() {
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+  const [newMaterial, setNewMaterial] = useState({ id: '', name: '', category: '', subCategory: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function Materials() {
       if (ipcRenderer) {
           let q = '';
           let params: any[] = [];
-          q = 'INSERT OR REPLACE INTO materials (id, name, pricingType, billingUnit, defaultRate) VALUES (?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.pricingType || 'PER_TON', payload.billingUnit || 'TON', payload.defaultRate || 0];
+          q = 'INSERT OR REPLACE INTO materials (id, name, category, subCategory, pricingType, billingUnit, defaultRate) VALUES (?, ?, ?, ?, ?, ?, ?)'; params = [payload.id, payload.name, payload.category || '', payload.subCategory || '', payload.pricingType || 'PER_TON', payload.billingUnit || 'TON', payload.defaultRate || 0];
           await ipcRenderer.invoke('db-query', q, params);
       } else if (!serverSaved) {
           setErrorMsg(serverErrorMsg || "Could not save to server.");
@@ -96,7 +96,7 @@ export default function Materials() {
   };
 
   const openAddModal = () => {
-    setNewMaterial({ id: '', name: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
+    setNewMaterial({ id: '', name: '', category: '', subCategory: '', unit: 'TON', hsnCode: '', pricingType: 'PER_TON', billingUnit: 'TON', defaultRate: 0 });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
@@ -106,6 +106,8 @@ export default function Materials() {
     setNewMaterial({
       id: m.id,
       name: m.name || '',
+      category: m.category || '',
+      subCategory: m.subCategory || '',
       unit: m.unit || 'TON',
       hsnCode: m.hsnCode || '',
       pricingType: m.pricingType || 'PER_TON',
@@ -171,6 +173,16 @@ export default function Materials() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Material Name *</label>
                   <input required type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.name} onChange={e => setNewMaterial({...newMaterial, name: e.target.value})} />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.category} onChange={e => setNewMaterial({...newMaterial, category: e.target.value})} placeholder="e.g. Jelly, M-Sand" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sub Category</label>
+                    <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.subCategory} onChange={e => setNewMaterial({...newMaterial, subCategory: e.target.value})} placeholder="e.g. 2mm, 5mm" />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                   <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.unit} onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}>
@@ -231,7 +243,10 @@ export default function Materials() {
               <thead className="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Sub Category</th>
                   <th className="px-4 py-3">Unit</th>
+                  <th className="px-4 py-3">Rate (₹)</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -239,7 +254,10 @@ export default function Materials() {
                 {filtered.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-bold text-slate-700">{row.name}</td>
+                    <td className="px-4 py-3">{row.category || '-'}</td>
+                    <td className="px-4 py-3">{row.subCategory || '-'}</td>
                     <td className="px-4 py-3">{row.unit || 'TON'}</td>
+                    <td className="px-4 py-3 font-bold text-green-600">₹{row.defaultRate || 0}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => openEditModal(row)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
                         <Edit2 size={16} />
@@ -248,7 +266,7 @@ export default function Materials() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500">No materials found.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No materials found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -262,8 +280,14 @@ export default function Materials() {
                 <div key={row.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative group">
                   <div className="mb-3 pr-8">
                     <h3 className="text-lg font-bold text-slate-800">{row.name}</h3>
-                    <p className="text-sm font-medium text-slate-500 bg-slate-100 inline-block px-2 py-0.5 rounded mt-1">
+                    {(row.category || row.subCategory) && (
+                      <p className="text-xs text-slate-500 mt-1">{row.category || '-'} {row.subCategory ? `> ${row.subCategory}` : ''}</p>
+                    )}
+                    <p className="text-sm font-medium text-slate-500 bg-slate-100 inline-block px-2 py-0.5 rounded mt-1 mr-2">
                       {row.unit || 'TON'}
+                    </p>
+                    <p className="text-sm font-bold text-green-600 inline-block px-2 py-0.5 rounded mt-1">
+                      ₹{row.defaultRate || 0}
                     </p>
                   </div>
                   <button onClick={() => openEditModal(row)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">

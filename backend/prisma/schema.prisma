@@ -57,6 +57,8 @@ model Customer {
 model Material {
   id                     String                  @id @default(uuid())
   name                   String                  @unique
+  category               String?                 // e.g., Jelly, M-Sand
+  subCategory            String?                 // e.g., 2mm, 5mm
   hsnCode                String?
   unit                   String                  @default("TON") // TON, KG, LOAD, CFT
   billingUnit            String                  @default("TON") // TON, KG, LOAD, CFT

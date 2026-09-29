@@ -168,6 +168,8 @@ function initDatabase() {
     "ALTER TABLE materials ADD COLUMN pricingType TEXT",
     "ALTER TABLE materials ADD COLUMN billingUnit TEXT",
     "ALTER TABLE materials ADD COLUMN defaultRate REAL",
+    "ALTER TABLE materials ADD COLUMN category TEXT",
+    "ALTER TABLE materials ADD COLUMN subCategory TEXT",
     "ALTER TABLE customers ADD COLUMN mobile1 TEXT",
     "ALTER TABLE customers ADD COLUMN mobile2 TEXT",
     // Master fields fix

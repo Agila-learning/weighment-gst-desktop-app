@@ -23,12 +23,14 @@ router.get('/', async (req, res) => {
 // Create material
 router.post('/', async (req, res) => {
   try {
-    const { name, hsnCode, defaultRate, unit, gstRateId, pricingType, billingUnit } = req.body;
+    const { name, category, subCategory, hsnCode, defaultRate, unit, gstRateId, pricingType, billingUnit } = req.body;
     if (!name) return res.status(400).json({ message: "Material name is required." });
 
     const material = await prisma.material.create({
       data: {
         name,
+        category: category || null,
+        subCategory: subCategory || null,
         hsnCode: hsnCode || null,
         unit: unit || 'TON',
         pricingType: pricingType || 'PER_TON',
@@ -50,13 +52,15 @@ router.post('/', async (req, res) => {
 // Update material
 router.put('/:id', async (req, res) => {
   try {
-    const { name, hsnCode, defaultRate, unit, gstRateId, pricingType, billingUnit } = req.body;
+    const { name, category, subCategory, hsnCode, defaultRate, unit, gstRateId, pricingType, billingUnit } = req.body;
     if (!name) return res.status(400).json({ message: "Material name is required." });
     
     const material = await prisma.material.update({
       where: { id: req.params.id },
       data: {
         name,
+        category: category || null,
+        subCategory: subCategory || null,
         hsnCode: hsnCode || null,
         unit: unit || 'TON',
         pricingType: pricingType || 'PER_TON',
