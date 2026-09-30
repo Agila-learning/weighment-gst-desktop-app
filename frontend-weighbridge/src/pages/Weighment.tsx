@@ -45,27 +45,23 @@ export default function Weighment() {
   const [showManualConfirm, setShowManualConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [, setSlipDownloading] = useState(false);
-  const [companySettings, setCompanySettings] = useState<any>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchMasters = async () => {
     try {
-      const [cRes, mRes, dRes, tRes, cpRes, sRes] = await Promise.all([
+      const [cRes, mRes, dRes, tRes, cpRes] = await Promise.all([
         api.get('/customers'),
         api.get('/materials'),
         api.get('/drivers'),
         api.get('/transporters'),
         api.get('/customer-material-prices'),
-        api.get('/settings').catch(() => ({ data: null })),
       ]);
       setCustomers(Array.isArray(cRes.data) ? cRes.data : (cRes.data?.data || []));
       setMaterials(Array.isArray(mRes.data) ? mRes.data : (mRes.data?.data || []));
       setDrivers(Array.isArray(dRes.data) ? dRes.data : (dRes.data?.data || []));
       setTransporters(Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []));
       setCustomerPrices(Array.isArray(cpRes.data) ? cpRes.data : (cpRes.data?.data || []));
-      if (sRes.data) setCompanySettings(sRes.data);
     } catch (err) {
       const ipcRenderer = (window as any).ipcRenderer;
       if (ipcRenderer) {
