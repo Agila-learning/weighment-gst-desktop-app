@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Eye, XCircle, Printer, Download, ChevronLeft, ChevronRight, Ban, Trash2 } from 'lucide-react';
 import api from '../services/api';
-import WeighmentSlip from '../components/WeighmentSlip';
+import { fetchWeighmentSlipPdf } from '../utils/pdfHelper';
+import toast from 'react-hot-toast';
 
 export default function History() {
   const [history, setHistory] = useState<any[]>([]);
@@ -38,6 +39,32 @@ export default function History() {
   useEffect(() => {
     fetchHistory();
   }, [page, limit, debouncedSearch, filters]);
+
+  const printSlipPdf = async (id: string, slip: string) => {
+    const toastId = toast.loading('Opening for Print...');
+    try {
+      const { buffer, blobUrl, blob } = await fetchWeighmentSlipPdf(id);
+      const ipcRenderer = (window as any).ipcRenderer;
+      const filename = `WeighbridgeSlip-${slip || id}.pdf`;
+
+      if (ipcRenderer && buffer) {
+        const result = await ipcRenderer.invoke('open-pdf-temp', { buffer, defaultFilename: filename });
+        if (result.success) toast.success('Document opened in PDF viewer', { id: toastId });
+        else throw new Error(result.error);
+      } else if (blobUrl && blob.type === 'text/html') {
+        const printWindow = window.open(blobUrl, '_blank');
+        if (printWindow) {
+          printWindow.onload = () => setTimeout(() => printWindow.print(), 500);
+          toast.success('Slip opened for printing', { id: toastId });
+        }
+      } else if (blobUrl) {
+         window.open(blobUrl, '_blank');
+         toast.success('Document opened', { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error('Unable to generate slip PDF for printing.', { id: toastId });
+    }
+  };
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -324,8 +351,7 @@ export default function History() {
                       {row.status === 'COMPLETED' && (
                         <button 
                           onClick={() => {
-                            setSelectedWeighment(row);
-                            setViewDetails(false); // Make sure details are closed so the direct print modal can show
+                            printSlipPdf(row.id, row.slipNumber);
                           }}
                           className="inline-flex items-center px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors ml-2"
                         >
@@ -433,11 +459,11 @@ export default function History() {
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b pb-2">Vehicle Information</h3>
                     <div className="space-y-3 text-sm">
                       <p><span className="text-slate-500 w-32 inline-block">Vehicle No:</span> <span className="font-bold text-lg">{selectedWeighment.vehicleNumber}</span></p>
-                      <p><span className="text-slate-500 w-32 inline-block">Customer:</span> <span className="font-medium">{selectedWeighment.customerName || 'N/A'}</span></p>
-                      <p><span className="text-slate-500 w-32 inline-block">Material:</span> <span className="font-medium">{selectedWeighment.materialName || 'N/A'}</span></p>
+                      <p><span className="text-slate-500 w-32 inline-block">Customer:</span> <span className="font-medium">{selectedWeighment.customer?.name || 'N/A'}</span></p>
+                      <p><span className="text-slate-500 w-32 inline-block">Material:</span> <span className="font-medium">{selectedWeighment.material?.name || 'N/A'}</span></p>
                       <p><span className="text-slate-500 w-32 inline-block">Load Type:</span> <span className="font-medium">{selectedWeighment.loadType || 'N/A'}</span></p>
-                      <p><span className="text-slate-500 w-32 inline-block">Driver:</span> <span className="font-medium">{selectedWeighment.driverName || 'N/A'}</span></p>
-                      <p><span className="text-slate-500 w-32 inline-block">Transporter:</span> <span className="font-medium">{selectedWeighment.transporterName || 'N/A'}</span></p>
+                      <p><span className="text-slate-500 w-32 inline-block">Driver:</span> <span className="font-medium">{selectedWeighment.driver?.name || 'N/A'}</span></p>
+                      <p><span className="text-slate-500 w-32 inline-block">Transporter:</span> <span className="font-medium">{selectedWeighment.transporter?.name || 'N/A'}</span></p>
                     </div>
                   </div>
                   
@@ -493,7 +519,7 @@ export default function History() {
               <div className="flex space-x-3">
                 <button onClick={() => setViewDetails(false)} className="px-4 py-2 border border-slate-300 bg-white rounded-lg hover:bg-slate-50">Close</button>
                 {selectedWeighment.status === 'COMPLETED' && (
-                  <button onClick={() => { setViewDetails(false); setSelectedWeighment(selectedWeighment); }} className="flex items-center px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-medium">
+                  <button onClick={() => { printSlipPdf(selectedWeighment.id, selectedWeighment.slipNumber); }} className="flex items-center px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-medium">
                     <Printer size={18} className="mr-2" /> Print Slip
                   </button>
                 )}
@@ -503,10 +529,7 @@ export default function History() {
         </div>
       )}
 
-      {/* Slip Print Modal - Separate state to allow direct print popup */}
-      {selectedWeighment && !viewDetails && selectedWeighment.status === 'COMPLETED' && (
-        <WeighmentSlip weighment={selectedWeighment} onClose={() => setSelectedWeighment(null)} />
-      )}
+      {/* No more separate slip modal here, printing triggers directly via PDF system */}
     </div>
   );
 }

@@ -219,8 +219,8 @@ router.get('/:id/slip-pdf', async (req, res) => {
     const companyGstin = settings?.gstin || '';
 
     const fmt = (n: number | null | undefined) => n != null ? n.toLocaleString('en-IN') : '--';
-    const fmtDate = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--';
-    const fmtTime = (d: Date | null | undefined) => d ? new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '--';
+    const fmtDate = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '--';
+    const fmtTime = (d: Date | null | undefined) => d ? new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '--';
     const fmtAmt = (n: number | null | undefined) => n != null ? `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '--';
 
     const slipTitle = weighment.status === 'COMPLETED' ? 'WEIGHBRIDGE SLIP' : 'WEIGHMENT RECEIPT';

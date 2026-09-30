@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Plus, Truck, Scale, CheckCircle, Save, X, Printer, Download, Loader2, AlertTriangle, User, Package, RefreshCw } from 'lucide-react';
+import { Search, Plus, Truck, Scale, CheckCircle, X, Printer, AlertTriangle, User, Package, RefreshCw } from 'lucide-react';
 import { useWeighbridgeStore } from '../services/WeighbridgeDeviceService';
 import { useSyncStore } from '../services/SyncService';
 import api from '../services/api';
@@ -29,7 +29,7 @@ export default function Weighment() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
-  const [transporters, setTransporters] = useState<any[]>([]);
+  const [, setTransporters] = useState<any[]>([]);
   const [customerPrices, setCustomerPrices] = useState<any[]>([]);
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -39,13 +39,13 @@ export default function Weighment() {
   const [manualWeight, setManualWeight] = useState('');
   const [tareWeight, setTareWeight] = useState('');
 
-  const [completedWeighment, setCompletedWeighment] = useState<any>(null);
+  const [, setCompletedWeighment] = useState<any>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [slipDownloading, setSlipDownloading] = useState(false);
+  const [, setSlipDownloading] = useState(false);
   const [companySettings, setCompanySettings] = useState<any>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -225,10 +225,12 @@ export default function Weighment() {
         loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: null
       });
 
-      setCompletedWeighment({ ...res.data, customer: customers.find(c => c.id === res.data.customerId), material: materials.find(m => m.id === res.data.materialId), driver: drivers.find(d => d.id === res.data.driverId) });
       resetFormState();
       setShowPricingModal(false);
       setSuccessMsg('Weighment complete! Net: ' + pricingDetails.netWeight.toLocaleString('en-IN') + ' KG');
+      
+      // Directly print the slip bypassing the preview modal
+      printSlipPdf(res.data.id, res.data.slipNumber);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
     } finally { setIsSubmitting(false); }
@@ -239,52 +241,29 @@ export default function Weighment() {
     setSelectedDriver(''); setLoadType('LOAD'); setManualWeight(''); setTareWeight('');
   };
 
-  const downloadSlipPdf = async (id: string, slip: string) => {
-    setSlipDownloading(true);
-    const toastId = toast.loading('Generating PDF...');
+  const printSlipPdf = async (id: string, slip: string) => {
+    const toastId = toast.loading('Opening for Print...');
     try {
       const { buffer, blobUrl, blob } = await fetchWeighmentSlipPdf(id);
       const ipcRenderer = (window as any).ipcRenderer;
-      const filename = `WeighbridgeSlip-${slip}.pdf`;
+      const filename = `WeighbridgeSlip-${slip || id}.pdf`;
 
       if (ipcRenderer && buffer) {
-        const saveResult = await ipcRenderer.invoke('save-pdf-dialog', {
-          buffer: buffer,
-          defaultFilename: filename
-        });
-        if (!saveResult.success && saveResult.error && !saveResult.canceled) {
-          toast.error('Error saving PDF: ' + saveResult.error, { id: toastId });
-        } else if (saveResult.success) {
-          toast.success('Slip downloaded successfully', { id: toastId });
-        } else {
-          toast.dismiss(toastId);
+        const result = await ipcRenderer.invoke('open-pdf-temp', { buffer, defaultFilename: filename });
+        if (result.success) toast.success('Document opened in PDF viewer', { id: toastId });
+        else throw new Error(result.error);
+      } else if (blobUrl && blob.type === 'text/html') {
+        const printWindow = window.open(blobUrl, '_blank');
+        if (printWindow) {
+          printWindow.onload = () => setTimeout(() => printWindow.print(), 500);
+          toast.success('Slip opened for printing', { id: toastId });
         }
       } else if (blobUrl) {
-        if (blob.type === 'text/html') {
-          const printWindow = window.open(blobUrl, '_blank');
-          if (printWindow) {
-            printWindow.onload = () => {
-              setTimeout(() => printWindow.print(), 500);
-            };
-            toast.success('Slip HTML fallback opened for printing', { id: toastId });
-          } else {
-            toast.error('Popup blocked. Please allow popups to print.', { id: toastId });
-          }
-        } else {
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.setAttribute('download', filename);
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode?.removeChild(link);
-          toast.success('Slip downloaded successfully', { id: toastId });
-        }
+         window.open(blobUrl, '_blank');
+         toast.success('Document opened', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Unable to generate slip PDF. Please try again.', { id: toastId });
-      console.error(err);
-    } finally {
-      setSlipDownloading(false);
+      toast.error('Unable to generate slip PDF for printing.', { id: toastId });
     }
   };
 
@@ -301,7 +280,6 @@ export default function Weighment() {
 
   const ew = getEffectiveWeight();
   const isCaptureDisabled = !selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || !tareWeight || (connectionType !== 'MANUAL' && !stable);
-  const cn = companySettings?.companyName || 'WEIGHBRIDGE';
 
   return (
     <div className="p-6 max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
@@ -509,94 +487,7 @@ export default function Weighment() {
         </div>
       )}
 
-      {/* Slip Display Modal */}
-      {completedWeighment && (
-        <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-50 overflow-y-auto p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-slate-200">
-              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"><Save size={19} className="text-green-600" /></div><div><h2 className="text-lg font-bold text-slate-800">{completedWeighment.status === 'FIRST_WEIGHT' ? 'First Weight Captured' : 'Weighment Complete!'}</h2><p className="text-sm text-slate-500">Slip: {completedWeighment.slipNumber || '—'}</p></div></div>
-              <div className="flex gap-2">
-                <button onClick={() => setCompletedWeighment(null)} className="px-3 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50"><X size={15} /></button>
-                <button onClick={() => window.print()} className="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-slate-600"><Printer size={15} /> Print</button>
-                {completedWeighment.id && <button onClick={() => downloadSlipPdf(completedWeighment.id, completedWeighment.slipNumber || completedWeighment.id)} disabled={slipDownloading} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-1.5 hover:bg-blue-700 disabled:opacity-50">
-                  {slipDownloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                  {slipDownloading ? 'Downloading...' : 'Download PDF'}
-                </button>}
-              </div>
-            </div>
-              <div className="p-6 font-sans text-black relative">
-                {companySettings?.logoUrl && (
-                  <div 
-                    className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-0"
-                    style={{ backgroundImage: `url(${companySettings.logoUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'contain', margin: '20%' }}
-                  />
-                )}
-                <div className="text-center mb-4 pb-4 border-b-2 border-black relative z-10">
-                  {companySettings?.logoUrl && (
-                    <img src={companySettings.logoUrl} alt="Company Logo" className="w-16 h-16 object-contain mx-auto mb-2" />
-                  )}
-                  <h1 className="text-xl font-bold uppercase tracking-widest">{cn}</h1>
-                {companySettings?.address && <p className="text-xs text-gray-600 mt-1">{companySettings.address}</p>}
-                {companySettings?.phone && <p className="text-xs text-gray-600">Tel: {companySettings.phone}</p>}
-                <div className="inline-block bg-black text-white px-6 py-1 mt-2 text-sm font-bold tracking-widest">{completedWeighment.status === 'FIRST_WEIGHT' ? 'FIRST WEIGHT RECEIPT' : 'WEIGHBRIDGE SLIP'}</div>
-              </div>
-              <div className="flex justify-between text-sm mb-4">
-                <div><p><b>Slip No:</b> {completedWeighment.slipNumber || '—'}</p><p><b>Vehicle:</b> {completedWeighment.vehicleNumber}</p><p><b>Load Type:</b> {completedWeighment.loadType || '—'}</p></div>
-                <div className="text-right"><p><b>Date:</b> {new Date(completedWeighment.firstWeightDate || completedWeighment.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</p><p><b>Time:</b> {new Date(completedWeighment.firstWeightDate || completedWeighment.createdAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</p></div>
-              </div>
-              <div className="border border-black p-3 mb-4 grid grid-cols-2 gap-y-1.5 text-sm">
-                <div><b>Customer: </b>{completedWeighment.customer?.name || customers.find(c => c.id === completedWeighment.customerId)?.name || '—'}</div>
-                <div><b>Material: </b>{completedWeighment.material?.name || materials.find(m => m.id === completedWeighment.materialId)?.name || '—'}</div>
-                <div><b>Driver: </b>{completedWeighment.driver?.name || drivers.find(d => d.id === completedWeighment.driverId)?.name || '—'}</div>
-                <div><b>Transporter: </b>{completedWeighment.transporter?.name || transporters.find(t => t.id === completedWeighment.transporterId)?.name || '—'}</div>
-              </div>
-              <div className="border-t border-b border-dashed border-black py-4 mb-4">
-                {(() => {
-                  let w1Label = 'First Weight';
-                  let w2Label = 'Second Weight';
-                  let w1Val = completedWeighment.firstWeight;
-                  let w2Val = completedWeighment.secondWeight;
-
-                  if (completedWeighment.status === 'COMPLETED' && completedWeighment.firstWeight != null && completedWeighment.secondWeight != null) {
-                    if (completedWeighment.firstWeight < completedWeighment.secondWeight) {
-                      w1Label = 'Empty Weight';
-                      w2Label = 'Load Weight';
-                    } else {
-                      w1Label = 'Empty Weight';
-                      w2Label = 'Load Weight';
-                      w1Val = completedWeighment.secondWeight;
-                      w2Val = completedWeighment.firstWeight;
-                    }
-                  }
-                  return (
-                    <>
-                      <div className="flex justify-between mb-2 text-sm">
-                        <span>{w1Label}:</span>
-                        <strong>{w1Val?.toLocaleString() || '--'} KG</strong>
-                      </div>
-                      <div className="flex justify-between mb-2 text-sm">
-                        <span>{w2Label}:</span>
-                        <strong>{w2Val != null ? w2Val.toLocaleString() : '--'} {w2Val != null ? 'KG' : ''}</strong>
-                      </div>
-                      <div className="flex justify-between mt-4 pt-4 border-t border-black text-lg font-bold">
-                        <span>NET WEIGHT:</span>
-                        <span>{completedWeighment.netWeight?.toLocaleString() || '--'} KG</span>
-                      </div>
-                      {completedWeighment.calculatedAmount != null && completedWeighment.calculatedAmount > 0 && (
-                        <div className="flex justify-between mt-2 pt-2 border-t border-black text-lg font-bold">
-                          <span>TOTAL AMOUNT:</span>
-                          <span>₹ {completedWeighment.calculatedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-              <p className="text-center text-gray-400 text-xs mt-3 border-t border-gray-200 pt-2">Computer Generated Weighment Slip</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Direct print implementation bypassing the success modal */}
     </div>
   );
 }
