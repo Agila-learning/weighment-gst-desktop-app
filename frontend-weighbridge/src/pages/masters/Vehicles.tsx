@@ -5,13 +5,12 @@ import api from '../../services/api';
 const Vehicles = () => {
   const [search, setSearch] = useState('');
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
   const [transporters, setTransporters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const [showModal, setShowModal] = useState(false);
-  const [newVehicle, setNewVehicle] = useState({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', driverId: '', state: '', capacityWeight: '' });
+  const [newVehicle, setNewVehicle] = useState({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', state: '', capacityWeight: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -29,11 +28,9 @@ const Vehicles = () => {
 
   const fetchMasters = async () => {
     try {
-      const [dRes, tRes] = await Promise.all([
-        api.get('/drivers'),
+      const [tRes] = await Promise.all([
         api.get('/transporters')
       ]);
-      setDrivers(Array.isArray(dRes.data) ? dRes.data : dRes.data?.data || []);
       setTransporters(Array.isArray(tRes.data) ? tRes.data : tRes.data?.data || []);
     } catch (err) {
       console.error('Error fetching masters', err);
@@ -66,7 +63,6 @@ const Vehicles = () => {
       let payload = {
         ...newVehicle,
         capacityWeight: newVehicle.capacityWeight ? parseFloat(newVehicle.capacityWeight) : null,
-        driverId: newVehicle.driverId || null,
         transporterId: newVehicle.transporterId || null
       };
       
@@ -116,7 +112,7 @@ const Vehicles = () => {
   };
   
   const openAddModal = () => {
-    setNewVehicle({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', driverId: '', state: '', capacityWeight: '' });
+    setNewVehicle({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', state: '', capacityWeight: '' });
     setIsEditing(false);
     setErrorMsg('');
     setShowModal(true);
