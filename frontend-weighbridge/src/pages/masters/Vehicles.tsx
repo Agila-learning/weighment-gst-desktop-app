@@ -342,7 +342,6 @@ const Vehicles = () => {
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4">Capacity</th>
                   <th className="px-6 py-4">Transporter</th>
-                  <th className="px-6 py-4">Driver</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -358,7 +357,6 @@ const Vehicles = () => {
                       <td className="px-6 py-4">{vehicle.vehicleType || '-'}</td>
                       <td className="px-6 py-4">{vehicle.capacityWeight ? `${vehicle.capacityWeight} Tons` : '-'}</td>
                       <td className="px-6 py-4">{vehicle.transporter?.name || '-'}</td>
-                      <td className="px-6 py-4">{vehicle.driver?.name || '-'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex gap-2 justify-end">
                           <button onClick={() => openDetailsModal(vehicle)} className="text-gray-500 hover:text-blue-600 transition-colors p-1" title="Vehicle Details"><Truck size={18} /></button>
@@ -395,10 +393,6 @@ const Vehicles = () => {
                       <div className="pt-2 border-t border-gray-100 mt-2">
                         <span className="block text-xs text-gray-400 mb-0.5">Transporter</span>
                         <span className="font-medium text-gray-800 truncate block">{vehicle.transporter?.name || 'N/A'}</span>
-                      </div>
-                      <div className="pt-1 mt-1">
-                        <span className="block text-xs text-gray-400 mb-0.5">Driver</span>
-                        <span className="font-medium text-gray-800 truncate block">{vehicle.driver?.name || 'N/A'}</span>
                       </div>
                     </div>
                   </div>

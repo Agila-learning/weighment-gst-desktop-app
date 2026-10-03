@@ -1,7 +1,7 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, LayoutList, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
 import api from '../../services/api';
 
 export default function Transporters() {
@@ -107,6 +107,24 @@ export default function Transporters() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this transporter?')) return;
+    try {
+      try {
+        await api.delete(`/transporters/${id}`);
+      } catch (e) {
+        console.warn('Server delete failed, attempting local delete');
+      }
+      const ipcRenderer = (window as any).ipcRenderer;
+      if (ipcRenderer) {
+        await ipcRenderer.invoke('db-query', 'DELETE FROM transporters WHERE id = ?', [id]);
+      }
+      fetchTransporters();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete transporter');
+    }
+  };
+
   const openEditModal = (c: any) => {
     setEditingTransporter(c);
     setName(c.name);
@@ -174,9 +192,14 @@ export default function Transporters() {
                     <td className="px-4 py-3">{row.mobile || '-'}</td>
                     <td className="px-4 py-3 truncate max-w-[150px]" title={row.address}>{row.address || '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <button onClick={() => openEditModal(row)} className="text-slate-400 hover:text-slate-800">
-                        <Edit2 size={16} />
-                      </button>
+                      <div className="flex items-center justify-center space-x-2">
+                        <button onClick={() => openEditModal(row)} className="text-slate-400 hover:text-slate-800">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(row.id)} className="text-red-400 hover:text-red-600">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -190,9 +213,12 @@ export default function Transporters() {
             ) : (
               filtered.map((row) => (
                 <div key={row.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative group">
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                     <button onClick={() => openEditModal(row)} className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="Edit">
                       <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(row.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100" title="Delete">
+                      <Trash2 size={14} />
                     </button>
                   </div>
                   

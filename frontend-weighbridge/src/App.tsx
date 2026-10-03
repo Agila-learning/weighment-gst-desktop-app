@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Link, useLocation, Navigate, Outlet } from '
 import { Toaster } from 'react-hot-toast';
 import { 
   Truck, Scale, History as HistoryIcon, Settings as SettingsIcon, 
-  LayoutDashboard, Users, UserSquare, Package, UserCircle,
+  LayoutDashboard, Users, Package, UserCircle,
   FileSpreadsheet, ClipboardList, RefreshCw
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -44,7 +44,6 @@ function Sidebar() {
         { path: '/masters/vehicles', icon: Truck, label: 'Vehicles' },
         { path: '/masters/customers', icon: Users, label: 'Customers' },
         { path: '/masters/materials', icon: Package, label: 'Materials' },
-        { path: '/masters/drivers', icon: UserSquare, label: 'Drivers' },
         { path: '/masters/transporters', icon: UserCircle, label: 'Transporters' },
       ]
     },
@@ -255,7 +254,6 @@ import AuditLog from './pages/AuditLog';
 import Vehicles from './pages/masters/Vehicles';
 import Customers from './pages/masters/Customers';
 import Materials from './pages/masters/Materials';
-import Drivers from './pages/masters/Drivers';
 import Transporters from './pages/masters/Transporters';
 import Reports from './pages/reports/Reports';
 import Login from './pages/Login';
@@ -284,7 +282,6 @@ function App() {
           <Route path="/masters/vehicles" element={<Vehicles />} />
           <Route path="/masters/customers" element={<Customers />} />
           <Route path="/masters/materials" element={<Materials />} />
-          <Route path="/masters/drivers" element={<Drivers />} />
           <Route path="/masters/transporters" element={<Transporters />} />
           <Route path="/reports" element={<Reports />} />
         </Route>

@@ -1,16 +1,9 @@
 import { Printer, Download, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState } from 'react';
 import { fetchWeighmentSlipPdf } from '../utils/pdfHelper';
 import toast from 'react-hot-toast';
 
 export default function WeighmentSlip({ weighment, onClose }: { weighment: any, onClose: () => void }) {
-  const [companySettings, setCompanySettings] = useState<any>(null);
-
-  useEffect(() => {
-    api.get('/settings/company').then(res => setCompanySettings(res.data)).catch(console.error);
-  }, []);
-
   if (!weighment) return null;
 
   const [isDownloading, setIsDownloading] = useState(false);
@@ -131,9 +124,9 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
           `}</style>
           
           <div className="text-center mb-4 border-b border-dashed border-slate-800 pb-4">
-            <h1 className="text-lg font-bold uppercase">{companySettings?.companyName || 'WEIGHBRIDGE'}</h1>
-            <p className="text-xs">{companySettings?.address}</p>
-            <div className="mt-2 font-bold uppercase">{weighment.status === 'COMPLETED' ? 'WEIGHBRIDGE SLIP' : 'WEIGHMENT RECEIPT'}</div>
+            <h1 className="text-lg font-bold uppercase">Selvi blue metals</h1>
+            <p className="text-xs">Uthangarai (8667688304)</p>
+            <div className="mt-2 font-bold uppercase">Weighbridge slip</div>
           </div>
 
           <div className="mb-4 text-xs">
@@ -145,7 +138,6 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
           <div className="border-t border-dashed border-slate-800 py-3 mb-4 text-xs">
             <div className="flex justify-between mb-1"><span className="font-bold">Customer:</span> <span>{weighment.customer?.name || weighment.customerName || '—'}</span></div>
             <div className="flex justify-between mb-1"><span className="font-bold">Material:</span> <span>{weighment.material?.name || weighment.materialName || '—'}</span></div>
-            <div className="flex justify-between mb-1"><span className="font-bold">Driver:</span> <span>{weighment.driver?.name || weighment.driverName || '—'}</span></div>
             <div className="flex justify-between mb-1"><span className="font-bold">Transporter:</span> <span>{weighment.transporter?.name || weighment.transporterName || '—'}</span></div>
           </div>
 
@@ -190,6 +182,18 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
                     <span>NET WEIGHT:</span>
                     <span>{weighment.netWeight?.toLocaleString() || '--'} KG</span>
                   </div>
+                  {weighment.netWeight != null && (
+                    <div className="flex justify-between mt-1 text-base font-bold">
+                      <span>IN TON:</span>
+                      <span>{(weighment.netWeight / 1000).toFixed(3)} TON</span>
+                    </div>
+                  )}
+                  {weighment.calculatedAmount ? (
+                    <div className="flex justify-between mt-2 pt-2 border-t border-slate-800 text-base font-bold">
+                      <span>TOTAL AMOUNT:</span>
+                      <span>₹ {weighment.calculatedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ) : null}
                 </>
               );
             })()}

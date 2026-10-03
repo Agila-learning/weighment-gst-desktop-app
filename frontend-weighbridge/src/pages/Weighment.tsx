@@ -28,13 +28,11 @@ export default function Weighment() {
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
   const [, setTransporters] = useState<any[]>([]);
   const [customerPrices, setCustomerPrices] = useState<any[]>([]);
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
-  const [selectedDriver, setSelectedDriver] = useState('');
   const [loadType, setLoadType] = useState('LOAD');
   const [manualWeight, setManualWeight] = useState('');
   const [tareWeight, setTareWeight] = useState('');
@@ -50,30 +48,26 @@ export default function Weighment() {
 
   const fetchMasters = async () => {
     try {
-      const [cRes, mRes, dRes, tRes, cpRes] = await Promise.all([
+      const [cRes, mRes, tRes, cpRes] = await Promise.all([
         api.get('/customers'),
         api.get('/materials'),
-        api.get('/drivers'),
         api.get('/transporters'),
         api.get('/customer-material-prices'),
       ]);
       setCustomers(Array.isArray(cRes.data) ? cRes.data : (cRes.data?.data || []));
       setMaterials(Array.isArray(mRes.data) ? mRes.data : (mRes.data?.data || []));
-      setDrivers(Array.isArray(dRes.data) ? dRes.data : (dRes.data?.data || []));
       setTransporters(Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []));
       setCustomerPrices(Array.isArray(cpRes.data) ? cpRes.data : (cpRes.data?.data || []));
     } catch (err) {
       const ipcRenderer = (window as any).ipcRenderer;
       if (ipcRenderer) {
-        const [cRes, mRes, dRes, tRes] = await Promise.all([
+        const [cRes, mRes, tRes] = await Promise.all([
           ipcRenderer.invoke('db-query', 'SELECT * FROM customers'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM materials'),
-          ipcRenderer.invoke('db-query', 'SELECT * FROM drivers'),
           ipcRenderer.invoke('db-query', 'SELECT * FROM transporters'),
         ]);
         if (cRes.success) setCustomers(cRes.data);
         if (mRes.success) setMaterials(mRes.data);
-        if (dRes.success) setDrivers(dRes.data);
         if (tRes.success) setTransporters(tRes.data);
       }
     }
@@ -116,7 +110,6 @@ export default function Weighment() {
     setErrorMsg('');
     setCompletedWeighment(null);
     if (v.customerId) setSelectedCustomer(v.customerId);
-    if (v.driverId) setSelectedDriver(v.driverId);
     if (v.capacityWeight) setTareWeight(v.capacityWeight.toString());
     else setTareWeight('');
   };
@@ -208,7 +201,7 @@ export default function Weighment() {
       const fwRes = await api.post('/weighments/first-weight', {
         vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
         customerId: selectedCustomer || null, materialId: selectedMaterial || null,
-        driverId: selectedDriver || null, transporterId: null,
+        driverId: null, transporterId: null,
         firstWeight: emptyWeight, firstWeightSource: 'MANUAL', loadType, unit: 'KG'
       });
 
@@ -218,7 +211,7 @@ export default function Weighment() {
         secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
         pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
         billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
-        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: selectedDriver || null, transporterId: null
+        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: null, transporterId: null
       });
 
       resetFormState();
@@ -234,7 +227,7 @@ export default function Weighment() {
 
   const resetFormState = () => {
     setVehicleSearchTerm(''); setSelectedVehicle(null); setSelectedCustomer(''); setSelectedMaterial('');
-    setSelectedDriver(''); setLoadType('LOAD'); setManualWeight(''); setTareWeight('');
+    setLoadType('LOAD'); setManualWeight(''); setTareWeight('');
   };
 
   const printSlipPdf = async (id: string, slip: string) => {
@@ -345,9 +338,6 @@ export default function Weighment() {
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Package size={12} /> Material *</label>
               <select value={selectedMaterial} onChange={e => setSelectedMaterial(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Material --</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
-            <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><User size={12} /> Driver</label>
-              <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
-                <option value="">-- Select Driver --</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Scale size={12} /> Empty Weight (KG) *</label>
               <input type="number" value={tareWeight} onChange={e => setTareWeight(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500" placeholder="e.g. 2500" />
             </div>
