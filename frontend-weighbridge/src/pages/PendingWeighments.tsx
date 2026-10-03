@@ -39,7 +39,6 @@ export default function PendingWeighments() {
                 <th className="px-4 py-3">Vehicle</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Material</th>
-                <th className="px-4 py-3">Driver</th>
                 <th className="px-4 py-3 text-right">First (KG)</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Time</th>
@@ -60,7 +59,6 @@ export default function PendingWeighments() {
                     <td className="px-4 py-3 font-bold text-slate-700">{row.vehicleNumber}</td>
                     <td className="px-4 py-3">{row.customer?.name || '-'}</td>
                     <td className="px-4 py-3">{row.material?.name || '-'}</td>
-                    <td className="px-4 py-3">{row.driver?.name || '-'}</td>
                     <td className="px-4 py-3 text-right font-mono font-semibold">{row.firstWeight}</td>
                     <td className="px-4 py-3">{new Date(row.firstWeightDate).toLocaleDateString()}</td>
                     <td className="px-4 py-3">{new Date(row.firstWeightDate).toLocaleTimeString()}</td>

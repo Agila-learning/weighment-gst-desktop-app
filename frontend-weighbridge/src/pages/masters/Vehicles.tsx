@@ -90,7 +90,6 @@ const Vehicles = () => {
       vehicleNumber: vehicle.vehicleNumber || '',
       vehicleType: vehicle.vehicleType || 'Tipper',
       transporterId: vehicle.transporterId || '',
-      driverId: vehicle.driverId || '',
       state: vehicle.state || '',
       capacityWeight: vehicle.capacityWeight ? vehicle.capacityWeight.toString() : ''
     });
@@ -210,13 +209,6 @@ const Vehicles = () => {
                       <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.transporterId} onChange={e => setNewVehicle({...newVehicle, transporterId: e.target.value})}>
                         <option value="">-- No Transporter --</option>
                         {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Default Driver</label>
-                      <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newVehicle.driverId} onChange={e => setNewVehicle({...newVehicle, driverId: e.target.value})}>
-                        <option value="">-- No Driver --</option>
-                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </div>
                   </div>

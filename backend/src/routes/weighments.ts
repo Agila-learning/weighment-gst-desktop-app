@@ -261,8 +261,8 @@ router.get('/:id/slip-pdf', async (req, res) => {
   body { font-family: monospace, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 5px; }
   .slip { width: 300px; margin: 0 auto; border: 1px dashed #000; padding: 10px; }
   .header { text-align: center; padding-bottom: 4px; border-bottom: 1px dashed #000; }
-  .header h1 { font-size: 16px; font-weight: bold; text-transform: uppercase; }
-  .header p { font-size: 10px; margin-top: 2px; }
+  .header h1 { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+  .header p { font-size: 11px; margin-top: 2px; }
   .slip-title { text-align: center; font-size: 12px; font-weight: bold; margin: 4px 0; border-bottom: 1px dashed #000; padding-bottom: 4px; }
   .meta { margin-bottom: 4px; font-size: 11px; }
   .meta div { display: flex; justify-content: space-between; margin-bottom: 1px; }
@@ -278,8 +278,8 @@ router.get('/:id/slip-pdf', async (req, res) => {
 <body>
 <div class="slip">
   <div class="header">
-    <h1>${companyName}</h1>
-    ${companyPhone ? `<p>Ph: ${companyPhone}</p>` : ''}
+    <h1>Selvi blue metals</h1>
+    <p>Uthangarai (8667688304)</p>
   </div>
   
   <div class="slip-title">${slipTitle}</div>
@@ -293,7 +293,6 @@ router.get('/:id/slip-pdf', async (req, res) => {
   <div class="section">
     <div class="field"><label>Customer:</label><span>${weighment.customer?.name || '—'}</span></div>
     <div class="field"><label>Material:</label><span>${weighment.material?.name || '—'}</span></div>
-    <div class="field"><label>Driver:</label><span>${weighment.driver?.name || '—'}</span></div>
   </div>
   
   <div class="weight-block">
@@ -310,10 +309,16 @@ router.get('/:id/slip-pdf', async (req, res) => {
       <span>NET WEIGHT:</span>
       <span>${netWt}</span>
     </div>
+    ${weighment.netWeight != null ? `
+    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px;">
+      <span>IN TON:</span>
+      <span>${(weighment.netWeight / 1000).toFixed(3)} TON</span>
+    </div>
+    ` : ''}
     ${weighment.calculatedAmount ? `
     <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #000;">
       <span>AMOUNT:</span>
-      <span>₹ ${weighment.calculatedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+      <span>₹ ${weighment.calculatedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
     </div>
     ` : ''}
   </div>
@@ -369,9 +374,20 @@ router.post('/first-weight', async (req, res) => {
       return res.status(400).json({ message: 'This vehicle already has an open weighment.', weighment: existingOpen });
     }
 
-    // Generate sequential slip number
-    const count = await prisma.weighment.count();
-    const slipNumber = `WB-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    // Generate sequential slip number safely by finding the last slip number for the current year
+    const currentYear = new Date().getFullYear();
+    const lastWeighment = await prisma.weighment.findFirst({
+      where: { slipNumber: { startsWith: `WB-${currentYear}-` } },
+      orderBy: { slipNumber: 'desc' }
+    });
+    let seq = 1;
+    if (lastWeighment && lastWeighment.slipNumber) {
+      const parts = lastWeighment.slipNumber.split('-');
+      if (parts.length === 3) {
+        seq = parseInt(parts[2], 10) + 1;
+      }
+    }
+    const slipNumber = `WB-${currentYear}-${String(seq).padStart(5, '0')}`;
 
     const weighment = await prisma.weighment.create({
       data: {
