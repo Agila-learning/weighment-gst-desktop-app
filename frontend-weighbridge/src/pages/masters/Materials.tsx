@@ -115,6 +115,7 @@ export default function Materials() {
       defaultRate: m.defaultRate || 0
     });
     setErrorMsg('');
+    setIsEditing(true);
     setShowModal(true);
   };
 
