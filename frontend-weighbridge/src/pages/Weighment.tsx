@@ -192,7 +192,7 @@ export default function Weighment() {
     try {
       let qty = pricingDetails.netWeight;
       if (pricingDetails.billingUnit === 'TON') qty = pricingDetails.netWeight / 1000;
-      const baseAmt = pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
+      const baseAmt = pricingDetails.pricingType === 'FIXED' ? pricingDetails.rate : qty * pricingDetails.rate;
       const amt = baseAmt * (1 + (pricingDetails.taxPercent || 0) / 100);
       
       const emptyWeight = Number(tareWeight);
@@ -421,8 +421,7 @@ export default function Weighment() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Type</label>
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={pricingDetails.pricingType} onChange={e => setPricingDetails({ ...pricingDetails, pricingType: e.target.value })}>
                     <option value="PER_UNIT">Per Unit</option>
-                    <option value="PER_LOAD">Per Load</option>
-                    <option value="FIXED">Fixed / Manual</option>
+                    <option value="FIXED">Fixed</option>
                   </select>
                 </div>
                 {pricingDetails.pricingType === 'PER_UNIT' && (
@@ -443,21 +442,21 @@ export default function Weighment() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-blue-800 font-medium">Base Amount:</span>
                   <span className="text-lg font-bold text-blue-900">
-                    ₹ {((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                    ₹ {((pricingDetails.pricingType === 'FIXED' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 {pricingDetails.taxPercent > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-blue-800 font-medium">Tax ({pricingDetails.taxPercent}%):</span>
                     <span className="text-sm font-bold text-blue-900">
-                      + ₹ {(((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * pricingDetails.taxPercent) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                      + ₹ {(((pricingDetails.pricingType === 'FIXED' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * pricingDetails.taxPercent) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center border-t border-blue-200 pt-2 mt-1">
                   <span className="text-sm text-blue-800 font-bold">Total Amount (incl. Tax):</span>
                   <span className="text-xl font-bold text-blue-900">
-                    ₹ {((pricingDetails.pricingType === 'FIXED' || pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * (1 + pricingDetails.taxPercent / 100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                    ₹ {((pricingDetails.pricingType === 'FIXED' ? pricingDetails.rate : (pricingDetails.billingUnit === 'TON' ? pricingDetails.netWeight / 1000 : pricingDetails.netWeight) * pricingDetails.rate) * (1 + pricingDetails.taxPercent / 100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
