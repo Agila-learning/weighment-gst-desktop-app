@@ -189,6 +189,8 @@ export default function Materials() {
                   <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.unit} onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}>
                     <option value="TON">TON</option>
                     <option value="KG">KG</option>
+                    <option value="LOAD">LOAD</option>
+                    <option value="CFT">CFT</option>
                     <option value="NOS">NOS</option>
                   </select>
                 </div>
@@ -198,7 +200,7 @@ export default function Materials() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Type</label>
                     <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.pricingType} onChange={e => setNewMaterial({...newMaterial, pricingType: e.target.value})}>
                       <option value="PER_UNIT">Per Unit</option>
-                      <option value="FIXED">Fixed</option>
+                      <option value="PER_LOAD">Per Load</option>
                     </select>
                   </div>
                   <div>
@@ -206,6 +208,8 @@ export default function Materials() {
                     <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500 outline-none" value={newMaterial.billingUnit} onChange={e => setNewMaterial({...newMaterial, billingUnit: e.target.value})}>
                       <option value="TON">TON</option>
                       <option value="KG">KG</option>
+                      <option value="LOAD">LOAD</option>
+                      <option value="CFT">CFT</option>
                     </select>
                   </div>
                 </div>
