@@ -196,6 +196,23 @@ export default function Weighment() {
         finalNetWeight = Math.abs(scaleWeight - emptyWeight);
       }
       
+      if (type === 'EMPTY_ONLY') {
+        // Bypass pricing completely for Empty Weight slip
+        const finalRes = await api.post('/weighments/first-weight', {
+          vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
+          customerId: selectedCustomer || null, materialId: selectedMaterial || null,
+          driverId: null, transporterId: null,
+          firstWeight: finalEw, firstWeightSource: ws, loadType, unit: 'KG'
+        });
+        resetFormState();
+        setSuccessMsg('Empty weight slip generated!');
+        if (finalRes && finalRes.data && finalRes.data.id) {
+          printSlipPdf(finalRes.data.id, finalRes.data.slipNumber);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+      
       let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
       const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
       const bm = materials.find(m => m.id === selectedMaterial);
@@ -241,14 +258,6 @@ export default function Weighment() {
           pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
           billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
           loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null
-        });
-      } else if (captureType === 'EMPTY_ONLY') {
-        finalRes = await api.post('/weighments/empty-weight-bill', {
-          vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
-          customerId: selectedCustomer || null, materialId: selectedMaterial || null,
-          firstWeight: pricingDetails.ew, firstWeightSource: pricingDetails.ws, loadType, unit: 'KG',
-          pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
-          billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt
         });
       } else if (captureType === 'LOADED') {
         finalRes = await api.post('/weighments/second-weight', {
@@ -426,19 +435,19 @@ export default function Weighment() {
 
         {pendingWeighment ? (
           <button onClick={() => { setCaptureType('LOADED'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('LOADED'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg bg-blue-600 hover:bg-blue-700 text-white`}>
-            <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE LOADED WEIGHT'}
+            <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE GROSS WEIGHT & BILL (STEP 2)'}
           </button>
         ) : (
           <div className="flex flex-col gap-3">
             <button onClick={() => { setCaptureType('EMPTY_ONLY'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('EMPTY_ONLY'); }} disabled={!selectedVehicle || isSubmitting || (ew <= 0 && (!tareWeight || Number(tareWeight) <= 0)) || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-emerald-600 hover:bg-emerald-700 text-white`}>
-              <Scale size={18} /> CAPTURE EMPTY WEIGHT (BILL)
+              <Scale size={18} /> PRINT EMPTY WEIGHT SLIP (STEP 1)
             </button>
             <div className="relative flex items-center justify-center py-2">
               <div className="border-t border-slate-700 w-full absolute"></div>
               <span className="bg-slate-900 px-3 text-xs font-medium text-slate-500 relative z-10">OR</span>
             </div>
             <button onClick={() => { setCaptureType('SINGLE'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('SINGLE'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || !tareWeight || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-blue-600 hover:bg-blue-700 text-white`}>
-              <Scale size={18} /> CAPTURE SINGLE-STEP
+              <Scale size={18} /> WEIGH & BILL (MANUAL TARE)
             </button>
           </div>
         )}
