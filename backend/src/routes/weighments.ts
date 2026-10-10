@@ -251,6 +251,38 @@ router.get('/:id/slip-pdf', async (req, res) => {
       }
     }
 
+    let weightBlockHtml = '';
+    if (weighment.status === 'COMPLETED' && weighment.firstWeight != null && weighment.secondWeight != null) {
+      weightBlockHtml = `
+    <div class="weight-row">
+      <span>${w1Label}:</span>
+      <span><strong>${w1Val} KG</strong></span>
+    </div>
+    <div class="weight-row" style="margin-top: 2px;">
+      <span>${w2Label}:</span>
+      <span><strong>${w2Val} KG</strong></span>
+    </div>
+    
+    <div class="weight-row net-wt">
+      <span>NET WEIGHT:</span>
+      <span>${netWt}</span>
+    </div>
+    ${weighment.netWeight != null ? `
+    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px;">
+      <span>IN TON:</span>
+      <span>${(weighment.netWeight / 1000).toFixed(3)} TON</span>
+    </div>
+    ` : ''}
+      `;
+    } else {
+      weightBlockHtml = `
+    <div class="weight-row">
+      <span style="font-size: 14px; font-weight: bold;">Empty Weight:</span>
+      <span style="font-size: 14px; font-weight: bold;">${fmt(weighment.firstWeight)} KG</span>
+    </div>
+      `;
+    }
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -296,25 +328,7 @@ router.get('/:id/slip-pdf', async (req, res) => {
   </div>
   
   <div class="weight-block">
-    <div class="weight-row">
-      <span>${w1Label}:</span>
-      <span><strong>${w1Val} KG</strong></span>
-    </div>
-    <div class="weight-row" style="margin-top: 2px;">
-      <span>${w2Label}:</span>
-      <span><strong>${w2Val} ${w2Val !== '--' ? 'KG' : ''}</strong></span>
-    </div>
-    
-    <div class="weight-row net-wt">
-      <span>NET WEIGHT:</span>
-      <span>${netWt}</span>
-    </div>
-    ${weighment.netWeight != null ? `
-    <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px;">
-      <span>IN TON:</span>
-      <span>${(weighment.netWeight / 1000).toFixed(3)} TON</span>
-    </div>
-    ` : ''}
+    ${weightBlockHtml}
     ${weighment.calculatedAmount ? `
     <div class="weight-row" style="font-size: 14px; font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #000;">
       <span>AMOUNT:</span>
