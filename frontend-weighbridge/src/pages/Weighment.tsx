@@ -185,8 +185,10 @@ export default function Weighment() {
         if (scaleWeight === emptyWeight) throw new Error('Gross weight cannot be same as empty weight.');
         finalNetWeight = Math.abs(scaleWeight - emptyWeight);
       } else if (type === 'EMPTY_ONLY') {
-        if (scaleWeight <= 0) throw new Error('Empty weight must be greater than 0.');
-        finalNetWeight = scaleWeight; // Use scale weight for empty bill pricing calc
+        const fallbackWeight = scaleWeight > 0 ? scaleWeight : Number(tareWeight);
+        if (fallbackWeight <= 0) throw new Error('Empty weight must be greater than 0.');
+        finalNetWeight = fallbackWeight; // Use scale weight for empty bill pricing calc
+        finalEw = fallbackWeight;
       } else if (type === 'LOADED') {
         const emptyWeight = pendingWeighment.firstWeight;
         if (scaleWeight <= 0) throw new Error('Gross weight must be greater than 0.');
@@ -241,7 +243,7 @@ export default function Weighment() {
           loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null
         });
       } else if (captureType === 'EMPTY_ONLY') {
-        finalRes = await api.post('/weighments/first-weight', {
+        finalRes = await api.post('/weighments/empty-weight-bill', {
           vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
           customerId: selectedCustomer || null, materialId: selectedMaterial || null,
           firstWeight: pricingDetails.ew, firstWeightSource: pricingDetails.ws, loadType, unit: 'KG',
@@ -428,7 +430,7 @@ export default function Weighment() {
           </button>
         ) : (
           <div className="flex flex-col gap-3">
-            <button onClick={() => { setCaptureType('EMPTY_ONLY'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('EMPTY_ONLY'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-emerald-600 hover:bg-emerald-700 text-white`}>
+            <button onClick={() => { setCaptureType('EMPTY_ONLY'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('EMPTY_ONLY'); }} disabled={!selectedVehicle || isSubmitting || (ew <= 0 && (!tareWeight || Number(tareWeight) <= 0)) || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-emerald-600 hover:bg-emerald-700 text-white`}>
               <Scale size={18} /> CAPTURE EMPTY WEIGHT (BILL)
             </button>
             <div className="relative flex items-center justify-center py-2">
@@ -462,7 +464,7 @@ export default function Weighment() {
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
             <div className="flex items-center gap-3 text-amber-600 mb-4"><AlertTriangle size={22} /><h2 className="text-xl font-bold">Manual Weight Entry</h2></div>
             <p className="text-slate-600 mb-4 text-sm">You are recording a manual weight. This will be logged.</p>
-            <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between font-mono"><span className="text-slate-500">Weight:</span><span className="text-2xl font-bold">{ew.toLocaleString('en-IN')} KG</span></div>
+            <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between font-mono"><span className="text-slate-500">Weight:</span><span className="text-2xl font-bold">{(captureType === 'EMPTY_ONLY' && ew <= 0 ? Number(tareWeight) : ew).toLocaleString('en-IN')} KG</span></div>
             <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowManualConfirm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={() => executeCapture(captureType)} disabled={isSubmitting} className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50">{isSubmitting ? 'Saving...' : 'Confirm'}</button></div>
           </div>
         </div>

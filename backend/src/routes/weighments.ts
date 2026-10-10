@@ -421,6 +421,70 @@ router.post('/first-weight', async (req, res) => {
   }
 });
 
+// Create Empty Weight Bill (standalone completed bill)
+router.post('/empty-weight-bill', async (req, res) => {
+  try {
+    const { vehicleId, vehicleNumber, customerId, materialId, driverId, transporterId, firstWeight, unit, firstWeightSource, loadType, pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount } = req.body;
+    
+    if (!vehicleNumber) return res.status(400).json({ message: 'Vehicle number is required.' });
+
+    let resolvedVehicleId = vehicleId;
+    if (!resolvedVehicleId) {
+      let vehicle = await prisma.vehicle.findUnique({ where: { vehicleNumber } });
+      if (!vehicle) {
+        vehicle = await prisma.vehicle.create({ data: { vehicleNumber } });
+      }
+      resolvedVehicleId = vehicle.id;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const lastWeighment = await prisma.weighment.findFirst({
+      where: { slipNumber: { startsWith: `WB-${currentYear}-` } },
+      orderBy: { slipNumber: 'desc' }
+    });
+    let seq = 1;
+    if (lastWeighment && lastWeighment.slipNumber) {
+      const parts = lastWeighment.slipNumber.split('-');
+      if (parts.length === 3) {
+        seq = parseInt(parts[2], 10) + 1;
+      }
+    }
+    const slipNumber = `WB-${currentYear}-${String(seq).padStart(5, '0')}`;
+
+    const weighment = await prisma.weighment.create({
+      data: {
+        vehicleId: resolvedVehicleId,
+        vehicleNumber,
+        customerId: customerId || null,
+        materialId: materialId || null,
+        driverId: driverId || null,
+        transporterId: transporterId || null,
+        firstWeight,
+        firstWeightDate: new Date(),
+        netWeight: firstWeight,
+        unit: unit || 'KG',
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        firstWeightSource: firstWeightSource || 'MANUAL',
+        loadType: loadType || 'EMPTY',
+        pricingType: pricingType || null,
+        rate: rate || null,
+        billingUnit: billingUnit || null,
+        calculatedQuantity: calculatedQuantity || null,
+        calculatedAmount: calculatedAmount || null,
+        slipNumber,
+        // @ts-ignore
+        operatorId: req.user?.id
+      },
+      include: { vehicle: true, customer: true, material: true, driver: true, transporter: true }
+    });
+    res.status(201).json(weighment);
+  } catch (error: any) {
+    console.error('Empty weight bill error:', error);
+    res.status(500).json({ message: 'Error creating empty weight bill', error: error?.message });
+  }
+});
+
 // Update Second Weight and Complete
 router.post('/second-weight', async (req, res) => {
   try {
