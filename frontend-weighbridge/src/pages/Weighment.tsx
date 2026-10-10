@@ -37,7 +37,8 @@ export default function Weighment() {
   const [manualWeight, setManualWeight] = useState('');
   const [tareWeight, setTareWeight] = useState('');
 
-  const [, setCompletedWeighment] = useState<any>(null);
+  const [pendingWeighment, setPendingWeighment] = useState<any>(null);
+  const [captureType, setCaptureType] = useState('SINGLE');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
@@ -108,10 +109,26 @@ export default function Weighment() {
     setSelectedVehicle(v);
     setShowVehicleDropdown(false);
     setErrorMsg('');
-    setCompletedWeighment(null);
+    setPendingWeighment(null);
     if (v.customerId) setSelectedCustomer(v.customerId);
-    if (v.capacityWeight) setTareWeight(v.capacityWeight.toString());
-    else setTareWeight('');
+    
+    try {
+      const activeRes = await api.get(`/weighments/active/${v.id || v.vehicleNumber}`);
+      if (activeRes.data) {
+        setPendingWeighment(activeRes.data);
+        if (activeRes.data.customerId) setSelectedCustomer(activeRes.data.customerId);
+        if (activeRes.data.materialId) setSelectedMaterial(activeRes.data.materialId);
+        setTareWeight(activeRes.data.firstWeight.toString());
+      } else {
+        setPendingWeighment(null);
+        if (v.capacityWeight) setTareWeight(v.capacityWeight.toString());
+        else setTareWeight('');
+      }
+    } catch {
+      setPendingWeighment(null);
+      if (v.capacityWeight) setTareWeight(v.capacityWeight.toString());
+      else setTareWeight('');
+    }
   };
 
   const handleQuickAdd = () => {
@@ -148,26 +165,34 @@ export default function Weighment() {
 
   const getEffectiveWeight = () => connectionType === 'MANUAL' && manualWeight ? parseFloat(manualWeight) : currentWeight;
 
-  const handleCaptureClick = () => {
-    if (!selectedVehicle) return;
-    setErrorMsg('');
-    if (connectionType === 'MANUAL') setShowManualConfirm(true);
-    else executeCapture();
-  };
 
-  const executeCapture = async () => {
+
+  const executeCapture = async (type = captureType) => {
     setIsSubmitting(true);
     try {
-      const grossWeight = getEffectiveWeight();
-      const emptyWeight = Number(tareWeight);
+      const scaleWeight = getEffectiveWeight();
       const ws = connectionType === 'MANUAL' ? 'MANUAL' : 'DEVICE';
       
       if (!selectedMaterial) throw new Error('Please select Material before capturing weight.');
-      if (grossWeight <= 0) throw new Error('Gross weight must be greater than 0.');
-      if (emptyWeight <= 0) throw new Error('Empty weight must be greater than 0.');
-      if (grossWeight === emptyWeight) throw new Error('Gross weight cannot be same as empty weight.');
       
-      const netWeight = Math.abs(grossWeight - emptyWeight);
+      let finalNetWeight = 0;
+      let finalEw = scaleWeight;
+
+      if (type === 'SINGLE') {
+        const emptyWeight = Number(tareWeight);
+        if (scaleWeight <= 0) throw new Error('Gross weight must be greater than 0.');
+        if (emptyWeight <= 0) throw new Error('Empty weight must be greater than 0.');
+        if (scaleWeight === emptyWeight) throw new Error('Gross weight cannot be same as empty weight.');
+        finalNetWeight = Math.abs(scaleWeight - emptyWeight);
+      } else if (type === 'EMPTY_ONLY') {
+        if (scaleWeight <= 0) throw new Error('Empty weight must be greater than 0.');
+        finalNetWeight = scaleWeight; // Use scale weight for empty bill pricing calc
+      } else if (type === 'LOADED') {
+        const emptyWeight = pendingWeighment.firstWeight;
+        if (scaleWeight <= 0) throw new Error('Gross weight must be greater than 0.');
+        if (scaleWeight === emptyWeight) throw new Error('Gross weight cannot be same as empty weight.');
+        finalNetWeight = Math.abs(scaleWeight - emptyWeight);
+      }
       
       let pricingType = 'PER_UNIT', billingUnit = 'TON', rate = 0;
       const cp = customerPrices.find(p => p.customerId === selectedCustomer && p.materialId === selectedMaterial && p.isActive);
@@ -181,7 +206,7 @@ export default function Weighment() {
       
       if (bm && bm.taxRate) { taxPercent = (bm.taxRate.cgst || 0) + (bm.taxRate.sgst || 0) + (bm.taxRate.igst || 0); }
       
-      setPricingDetails({ pricingType, billingUnit, rate, netWeight, ew: grossWeight, ws, taxPercent });
+      setPricingDetails({ pricingType, billingUnit, rate, netWeight: finalNetWeight, ew: finalEw, ws, taxPercent });
       setShowPricingModal(true);
       setIsSubmitting(false);
     } catch (err: any) {
@@ -198,31 +223,49 @@ export default function Weighment() {
       const baseAmt = pricingDetails.pricingType === 'PER_LOAD' ? pricingDetails.rate : qty * pricingDetails.rate;
       const amt = baseAmt * (1 + (pricingDetails.taxPercent || 0) / 100);
       
-      const emptyWeight = Number(tareWeight);
+      let finalRes;
 
-      // 1. Create first weight (Empty Weight)
-      const fwRes = await api.post('/weighments/first-weight', {
-        vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
-        customerId: selectedCustomer || null, materialId: selectedMaterial || null,
-        driverId: null, transporterId: null,
-        firstWeight: emptyWeight, firstWeightSource: 'MANUAL', loadType, unit: 'KG'
-      });
-
-      // 2. Complete second weight (Gross Weight)
-      const res = await api.post('/weighments/second-weight', {
-        weighmentId: fwRes.data.id, vehicleId: fwRes.data.vehicleId, vehicleNumber: fwRes.data.vehicleNumber,
-        secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
-        pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
-        billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
-        loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null, driverId: null, transporterId: null
-      });
+      if (captureType === 'SINGLE') {
+        const emptyWeight = Number(tareWeight);
+        const fwRes = await api.post('/weighments/first-weight', {
+          vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
+          customerId: selectedCustomer || null, materialId: selectedMaterial || null,
+          driverId: null, transporterId: null,
+          firstWeight: emptyWeight, firstWeightSource: 'MANUAL', loadType, unit: 'KG'
+        });
+        finalRes = await api.post('/weighments/second-weight', {
+          weighmentId: fwRes.data.id, 
+          secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
+          pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
+          billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
+          loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null
+        });
+      } else if (captureType === 'EMPTY_ONLY') {
+        finalRes = await api.post('/weighments/first-weight', {
+          vehicleId: selectedVehicle.id, vehicleNumber: selectedVehicle.vehicleNumber,
+          customerId: selectedCustomer || null, materialId: selectedMaterial || null,
+          firstWeight: pricingDetails.ew, firstWeightSource: pricingDetails.ws, loadType, unit: 'KG',
+          pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
+          billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt
+        });
+      } else if (captureType === 'LOADED') {
+        finalRes = await api.post('/weighments/second-weight', {
+          weighmentId: pendingWeighment.id, 
+          secondWeight: pricingDetails.ew, secondWeightSource: pricingDetails.ws, 
+          pricingType: pricingDetails.pricingType, rate: pricingDetails.rate, 
+          billingUnit: pricingDetails.billingUnit, calculatedQuantity: qty, calculatedAmount: amt,
+          loadType, customerId: selectedCustomer || null, materialId: selectedMaterial || null
+        });
+      }
 
       resetFormState();
       setShowPricingModal(false);
-      setSuccessMsg('Weighment complete! Net: ' + pricingDetails.netWeight.toLocaleString('en-IN') + ' KG');
+      setSuccessMsg('Weighment complete!');
       
       // Directly print the slip bypassing the preview modal
-      printSlipPdf(res.data.id, res.data.slipNumber);
+      if (finalRes && finalRes.data && finalRes.data.id) {
+        printSlipPdf(finalRes.data.id, finalRes.data.slipNumber);
+      }
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Failed to capture weight');
     } finally { setIsSubmitting(false); }
@@ -230,7 +273,7 @@ export default function Weighment() {
 
   const resetFormState = () => {
     setVehicleSearchTerm(''); setSelectedVehicle(null); setSelectedCustomer(''); setSelectedMaterial('');
-    setLoadType('LOAD'); setManualWeight(''); setTareWeight('');
+    setLoadType('LOAD'); setManualWeight(''); setTareWeight(''); setPendingWeighment(null);
   };
 
   const printSlipPdf = async (id: string, slip: string) => {
@@ -271,7 +314,7 @@ export default function Weighment() {
   }, [location.state]);
 
   const ew = getEffectiveWeight();
-  const isCaptureDisabled = !selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || !tareWeight || (connectionType !== 'MANUAL' && !stable);
+
 
   return (
     <div className="p-6 max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
@@ -279,7 +322,7 @@ export default function Weighment() {
         <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Weighment Operation</h1>
-            <p className="text-slate-500 text-sm mt-1">Single-Step Capture</p>
+            <p className="text-slate-500 text-sm mt-1">{pendingWeighment ? 'Step 2: Capture Loaded Weight' : 'Step 1 / Single-Step Capture'}</p>
           </div>
           <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${hwStatus === 'CONNECTED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
             <Scale size={13} /> {hwStatus} ({connectionType})
@@ -341,8 +384,8 @@ export default function Weighment() {
             <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Package size={12} /> Material *</label>
               <select value={selectedMaterial} onChange={e => setSelectedMaterial(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50">
                 <option value="">-- Select Material --</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
-            <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Scale size={12} /> Empty Weight (KG) *</label>
-              <input type="number" value={tareWeight} onChange={e => setTareWeight(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500" placeholder="e.g. 2500" />
+            <div><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1.5"><Scale size={12} /> Empty Weight (KG) {pendingWeighment ? '(From Step 1)' : '*'}</label>
+              <input type="number" value={tareWeight} onChange={e => setTareWeight(e.target.value)} disabled={!!pendingWeighment} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400" placeholder="e.g. 2500" />
             </div>
           </div>
           <div className="mt-3"><label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-2"><Package size={12} /> Load Type</label>
@@ -379,10 +422,25 @@ export default function Weighment() {
           </div>
         </div>
 
-        <button onClick={handleCaptureClick} disabled={isCaptureDisabled} className={`w-full py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg bg-blue-600 hover:bg-blue-700 text-white`}>
-          <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE WEIGHMENT'}
-        </button>
-        <div className="text-center text-xs text-slate-400">Weight Source: <span className="font-bold text-slate-600">{connectionType}</span></div>
+        {pendingWeighment ? (
+          <button onClick={() => { setCaptureType('LOADED'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('LOADED'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg bg-blue-600 hover:bg-blue-700 text-white`}>
+            <Scale size={22} />{isSubmitting ? 'PROCESSING...' : 'CAPTURE LOADED WEIGHT'}
+          </button>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <button onClick={() => { setCaptureType('EMPTY_ONLY'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('EMPTY_ONLY'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-emerald-600 hover:bg-emerald-700 text-white`}>
+              <Scale size={18} /> CAPTURE EMPTY WEIGHT (BILL)
+            </button>
+            <div className="relative flex items-center justify-center py-2">
+              <div className="border-t border-slate-700 w-full absolute"></div>
+              <span className="bg-slate-900 px-3 text-xs font-medium text-slate-500 relative z-10">OR</span>
+            </div>
+            <button onClick={() => { setCaptureType('SINGLE'); if(connectionType==='MANUAL') setShowManualConfirm(true); else executeCapture('SINGLE'); }} disabled={!selectedVehicle || isSubmitting || ew <= 0 || !selectedMaterial || !tareWeight || (connectionType !== 'MANUAL' && !stable)} className={`w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow bg-blue-600 hover:bg-blue-700 text-white`}>
+              <Scale size={18} /> CAPTURE SINGLE-STEP
+            </button>
+          </div>
+        )}
+        <div className="text-center text-xs text-slate-400 mt-2">Weight Source: <span className="font-bold text-slate-600">{connectionType}</span></div>
       </div>
 
       {showQuickAdd && (
@@ -405,7 +463,7 @@ export default function Weighment() {
             <div className="flex items-center gap-3 text-amber-600 mb-4"><AlertTriangle size={22} /><h2 className="text-xl font-bold">Manual Weight Entry</h2></div>
             <p className="text-slate-600 mb-4 text-sm">You are recording a manual weight. This will be logged.</p>
             <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between font-mono"><span className="text-slate-500">Weight:</span><span className="text-2xl font-bold">{ew.toLocaleString('en-IN')} KG</span></div>
-            <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowManualConfirm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={executeCapture} disabled={isSubmitting} className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50">{isSubmitting ? 'Saving...' : 'Confirm'}</button></div>
+            <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowManualConfirm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button><button onClick={() => executeCapture(captureType)} disabled={isSubmitting} className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50">{isSubmitting ? 'Saving...' : 'Confirm'}</button></div>
           </div>
         </div>
       )}

@@ -351,7 +351,7 @@ router.get('/:id/slip-pdf', async (req, res) => {
 // Create First Weight (API-first, direct to PostgreSQL)
 router.post('/first-weight', async (req, res) => {
   try {
-    const { vehicleId, vehicleNumber, customerId, materialId, driverId, transporterId, firstWeight, unit, firstWeightSource, loadType } = req.body;
+    const { vehicleId, vehicleNumber, customerId, materialId, driverId, transporterId, firstWeight, unit, firstWeightSource, loadType, pricingType, rate, billingUnit, calculatedQuantity, calculatedAmount } = req.body;
     
     if (!vehicleNumber) return res.status(400).json({ message: 'Vehicle number is required.' });
 
@@ -403,6 +403,11 @@ router.post('/first-weight', async (req, res) => {
         status: 'WAITING_FOR_SECOND_WEIGHT',
         firstWeightSource: firstWeightSource || 'MANUAL',
         loadType: loadType || 'LOAD',
+        pricingType: pricingType || null,
+        rate: rate || null,
+        billingUnit: billingUnit || null,
+        calculatedQuantity: calculatedQuantity || null,
+        calculatedAmount: calculatedAmount || null,
         slipNumber,
         // @ts-ignore
         operatorId: req.user?.id
