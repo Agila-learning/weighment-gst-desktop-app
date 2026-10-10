@@ -162,40 +162,50 @@ export default function WeighmentSlip({ weighment, onClose }: { weighment: any, 
                   dt1 = new Date(weighment.secondWeightDate).toLocaleString();
                   dt2 = new Date(weighment.firstWeightDate).toLocaleString();
                 }
+                
+                return (
+                  <>
+                    <div className="flex justify-between mb-1">
+                      <span>{w1Label}:</span>
+                      <strong>{w1Val?.toLocaleString() || '--'} KG</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-right mb-3">{dt1}</div>
+  
+                    <div className="flex justify-between mb-1">
+                      <span>{w2Label}:</span>
+                      <strong>{w2Val?.toLocaleString() || '--'} KG</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-right mb-3">{dt2}</div>
+  
+                    <div className="flex justify-between mt-4 pt-4 border-t border-slate-800 text-base font-bold">
+                      <span>NET WEIGHT:</span>
+                      <span>{weighment.netWeight?.toLocaleString() || '--'} KG</span>
+                    </div>
+                    {weighment.netWeight != null && (
+                      <div className="flex justify-between mt-1 text-base font-bold">
+                        <span>IN TON:</span>
+                        <span>{(weighment.netWeight / 1000).toFixed(3)} TON</span>
+                      </div>
+                    )}
+                    {weighment.calculatedAmount ? (
+                      <div className="flex justify-between mt-2 pt-2 border-t border-slate-800 text-base font-bold">
+                        <span>TOTAL AMOUNT:</span>
+                        <span>₹ {weighment.calculatedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    ) : null}
+                  </>
+                );
+              } else {
+                return (
+                  <>
+                    <div className="flex justify-between mb-1 text-sm font-bold">
+                      <span>Empty Weight:</span>
+                      <strong>{weighment.firstWeight?.toLocaleString() || '--'} KG</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-right mb-3">{dt1}</div>
+                  </>
+                );
               }
-
-              return (
-                <>
-                  <div className="flex justify-between mb-1">
-                    <span>{w1Label}:</span>
-                    <strong>{w1Val?.toLocaleString() || '--'} KG</strong>
-                  </div>
-                  <div className="text-[10px] text-slate-500 text-right mb-3">{dt1}</div>
-
-                  <div className="flex justify-between mb-1">
-                    <span>{w2Label}:</span>
-                    <strong>{w2Val?.toLocaleString() || '--'} KG</strong>
-                  </div>
-                  <div className="text-[10px] text-slate-500 text-right mb-3">{dt2}</div>
-
-                  <div className="flex justify-between mt-4 pt-4 border-t border-slate-800 text-base font-bold">
-                    <span>NET WEIGHT:</span>
-                    <span>{weighment.netWeight?.toLocaleString() || '--'} KG</span>
-                  </div>
-                  {weighment.netWeight != null && (
-                    <div className="flex justify-between mt-1 text-base font-bold">
-                      <span>IN TON:</span>
-                      <span>{(weighment.netWeight / 1000).toFixed(3)} TON</span>
-                    </div>
-                  )}
-                  {weighment.calculatedAmount ? (
-                    <div className="flex justify-between mt-2 pt-2 border-t border-slate-800 text-base font-bold">
-                      <span>TOTAL AMOUNT:</span>
-                      <span>₹ {weighment.calculatedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  ) : null}
-                </>
-              );
             })()}
           </div>
 
