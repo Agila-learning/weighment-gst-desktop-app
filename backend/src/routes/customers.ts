@@ -83,8 +83,8 @@ router.post('/', async (req, res) => {
       try {
         await prisma.vehicle.upsert({
           where: { vehicleNumber: formattedVehicle },
-          update: { customerId: customer.id },
-          create: { vehicleNumber: formattedVehicle, customerId: customer.id }
+          update: { customerId: customer.id, isActive: true },
+          create: { vehicleNumber: formattedVehicle, customerId: customer.id, isActive: true }
         });
       } catch (err) {
         console.error('Failed to link vehicle to new customer', err);

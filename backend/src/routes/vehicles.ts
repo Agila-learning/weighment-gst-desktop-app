@@ -11,56 +11,139 @@ router.get('/search', async (req, res) => {
   try {
     const q = (req.query.q as string || '').trim().replace(/\s+/g, '').toUpperCase();
     if (!q) return res.json([]);
+    const { includeInactive } = req.query;
+
+    const whereClause: any = {
+      vehicleNumber: { contains: q, mode: 'insensitive' }
+    };
+    if (includeInactive !== 'true') {
+      whereClause.isActive = true;
+    }
 
     const vehicles = await prisma.vehicle.findMany({
-      where: {
-        isActive: true,
-        vehicleNumber: { contains: q, mode: 'insensitive' }
-      },
+      where: whereClause,
       include: { driver: true, transporter: true },
       take: 10,
       orderBy: { vehicleNumber: 'asc' }
     });
-    res.json(vehicles);
+
+    const formatted = vehicles.map(v => ({
+      ...v,
+      transporterInfo: v.transporter?.name || null
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ message: 'Error searching vehicles' });
   }
 });
 
-// Get all vehicles
+// Get all vehicles with optional status filter
 router.get('/', async (req, res) => {
   try {
+    const { status, includeInactive } = req.query;
+    let whereClause: any = {};
+    if (includeInactive === 'true' || status === 'all') {
+      // return both active and inactive
+    } else if (status === 'inactive') {
+      whereClause.isActive = false;
+    } else {
+      whereClause.isActive = true;
+    }
+
     const vehicles = await prisma.vehicle.findMany({
-      where: { isActive: true },
+      where: whereClause,
       include: { driver: true, transporter: true },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(vehicles);
+
+    const formatted = vehicles.map(v => ({
+      ...v,
+      transporterInfo: v.transporter?.name || null
+    }));
+
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching vehicles' });
   }
 });
 
-// Create vehicle
+// Create or reactivate vehicle
 router.post('/', async (req, res) => {
   try {
-    const { vehicleNumber, vehicleType, transporterId, state, capacityWeight } = req.body;
+    const { vehicleNumber, vehicleType, transporterId, transporterName, state, capacityWeight } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle number is required." });
-    
+
+    const cleanNumber = vehicleNumber.trim().replace(/\s+/g, '').toUpperCase();
+    if (!cleanNumber) return res.status(400).json({ message: "Invalid vehicle number." });
+
+    let finalTransporterId = transporterId || null;
+    if (!finalTransporterId && transporterName && typeof transporterName === 'string' && transporterName.trim()) {
+      const tName = transporterName.trim();
+      let existingTransporter = await prisma.transporter.findFirst({
+        where: { name: { equals: tName, mode: 'insensitive' } }
+      });
+      if (!existingTransporter) {
+        existingTransporter = await prisma.transporter.create({
+          data: { name: tName }
+        });
+      }
+      finalTransporterId = existingTransporter.id;
+    }
+
+    // Check if vehicle with this number already exists
+    const existingVehicle = await prisma.vehicle.findFirst({
+      where: { vehicleNumber: { equals: cleanNumber, mode: 'insensitive' } }
+    });
+
+    if (existingVehicle) {
+      if (existingVehicle.isActive) {
+        return res.status(400).json({ message: "A vehicle with this number already exists." });
+      }
+
+      // Previously soft-deleted vehicle: Reactivate & update with new data
+      const updated = await prisma.vehicle.update({
+        where: { id: existingVehicle.id },
+        data: {
+          vehicleNumber: cleanNumber,
+          vehicleType: vehicleType || 'Tipper',
+          transporterId: finalTransporterId || null,
+          state: state || null,
+          capacityWeight: capacityWeight ? Number(capacityWeight) : null,
+          isActive: true
+        },
+        include: { driver: true, transporter: true }
+      });
+
+      return res.status(200).json({
+        ...updated,
+        transporterInfo: updated.transporter?.name || null,
+        restored: true,
+        message: "Vehicle reactivated and updated successfully."
+      });
+    }
+
+    // Create new vehicle
     const vehicle = await prisma.vehicle.create({
       data: {
-        vehicleNumber,
-        vehicleType: vehicleType || null,
-        transporterId: transporterId || null,
+        vehicleNumber: cleanNumber,
+        vehicleType: vehicleType || 'Tipper',
+        transporterId: finalTransporterId,
         state: state || null,
-        capacityWeight: capacityWeight ? Number(capacityWeight) : null
-      }
+        capacityWeight: capacityWeight ? Number(capacityWeight) : null,
+        isActive: true
+      },
+      include: { driver: true, transporter: true }
     });
-    res.status(201).json(vehicle);
+
+    res.status(201).json({
+      ...vehicle,
+      transporterInfo: vehicle.transporter?.name || null
+    });
   } catch (error: any) {
     if (error.code === 'P2002') {
       return res.status(400).json({ message: "A vehicle with this number already exists." });
     }
+    console.error('Error creating vehicle:', error);
     res.status(500).json({ message: 'Error creating vehicle' });
   }
 });
@@ -68,25 +151,87 @@ router.post('/', async (req, res) => {
 // Update vehicle
 router.put('/:id', async (req, res) => {
   try {
-    const { vehicleNumber, vehicleType, transporterId, state, capacityWeight } = req.body;
+    const { vehicleNumber, vehicleType, transporterId, transporterName, state, capacityWeight, isActive } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle number is required." });
+
+    const cleanNumber = vehicleNumber.trim().replace(/\s+/g, '').toUpperCase();
+
+    // Check if another active vehicle has this number
+    const duplicate = await prisma.vehicle.findFirst({
+      where: {
+        vehicleNumber: { equals: cleanNumber, mode: 'insensitive' },
+        id: { not: req.params.id }
+      }
+    });
+
+    if (duplicate && duplicate.isActive) {
+      return res.status(400).json({ message: "A vehicle with this number already exists." });
+    }
+
+    let finalTransporterId = transporterId !== undefined ? transporterId : undefined;
+    if (!finalTransporterId && transporterName && typeof transporterName === 'string' && transporterName.trim()) {
+      const tName = transporterName.trim();
+      let existingTransporter = await prisma.transporter.findFirst({
+        where: { name: { equals: tName, mode: 'insensitive' } }
+      });
+      if (!existingTransporter) {
+        existingTransporter = await prisma.transporter.create({
+          data: { name: tName }
+        });
+      }
+      finalTransporterId = existingTransporter.id;
+    }
+
+    const updateData: any = {
+      vehicleNumber: cleanNumber,
+      vehicleType: vehicleType || null,
+      state: state || null,
+      capacityWeight: capacityWeight ? Number(capacityWeight) : null
+    };
+
+    if (finalTransporterId !== undefined) {
+      updateData.transporterId = finalTransporterId || null;
+    }
+
+    if (isActive !== undefined) {
+      updateData.isActive = Boolean(isActive);
+    }
 
     const vehicle = await prisma.vehicle.update({
       where: { id: req.params.id },
-      data: {
-        vehicleNumber,
-        vehicleType: vehicleType || null,
-        transporterId: transporterId || null,
-        state: state || null,
-        capacityWeight: capacityWeight ? Number(capacityWeight) : null
-      }
+      data: updateData,
+      include: { driver: true, transporter: true }
     });
-    res.json(vehicle);
+
+    res.json({
+      ...vehicle,
+      transporterInfo: vehicle.transporter?.name || null
+    });
   } catch (error: any) {
     if (error.code === 'P2002') {
       return res.status(400).json({ message: "A vehicle with this number already exists." });
     }
+    console.error('Error updating vehicle:', error);
     res.status(500).json({ message: 'Error updating vehicle' });
+  }
+});
+
+// Restore soft-deleted vehicle
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const vehicle = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: { isActive: true },
+      include: { driver: true, transporter: true }
+    });
+    res.json({
+      ...vehicle,
+      transporterInfo: vehicle.transporter?.name || null,
+      message: "Vehicle restored successfully."
+    });
+  } catch (error) {
+    console.error('Error restoring vehicle:', error);
+    res.status(500).json({ message: 'Error restoring vehicle' });
   }
 });
 
@@ -112,14 +257,16 @@ router.delete('/:id', async (req, res) => {
         where: { id: req.params.id },
         data: { isActive: false }
       });
+      return res.status(200).json({ message: 'Vehicle deactivated as it has associated records.', softDeleted: true });
     } else {
       // Hard delete
       await prisma.vehicle.delete({
         where: { id: req.params.id }
       });
+      return res.status(200).json({ message: 'Vehicle permanently removed.', softDeleted: false });
     }
-    res.status(204).send();
   } catch (error) {
+    console.error('Error deleting vehicle:', error);
     res.status(500).json({ message: 'Error deleting vehicle' });
   }
 });

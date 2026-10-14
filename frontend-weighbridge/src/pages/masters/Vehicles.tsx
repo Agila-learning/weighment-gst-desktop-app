@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Truck, Info, Clock, CheckCircle, Scale } from 'lucide-react';
+import { Plus, Search, LayoutList, LayoutGrid, Edit2, Trash2, Truck, Info, Clock, CheckCircle, Scale, RotateCcw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 
 const Vehicles = () => {
@@ -8,11 +8,13 @@ const Vehicles = () => {
   const [transporters, setTransporters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   const [showModal, setShowModal] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ id: '', vehicleNumber: '', vehicleType: 'Tipper', transporterId: '', state: '', capacityWeight: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   // Details Modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -40,7 +42,7 @@ const Vehicles = () => {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/vehicles');
+      const res = await api.get('/vehicles?status=all');
       setVehicles(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -66,17 +68,36 @@ const Vehicles = () => {
         transporterId: newVehicle.transporterId || null
       };
       
+      let res: any;
       if (isEditing && newVehicle.id) {
-        await api.put(`/vehicles/${newVehicle.id}`, payload);
+        res = await api.put(`/vehicles/${newVehicle.id}`, payload);
       } else {
-        await api.post('/vehicles', payload);
+        res = await api.post('/vehicles', payload);
       }
 
       setShowModal(false);
+      const savedNumber = newVehicle.vehicleNumber;
       setIsEditing(false);
       fetchVehicles();
+      if (res?.data?.restored) {
+        setSuccessMsg(`Vehicle ${res.data.vehicleNumber} was previously deleted and has now been successfully reactivated!`);
+      } else {
+        setSuccessMsg(`Vehicle ${savedNumber} saved successfully.`);
+      }
+      setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || 'Unexpected error occurred.');
+    }
+  };
+
+  const handleRestore = async (id: string, vehicleNum?: string) => {
+    try {
+      await api.post(`/vehicles/${id}/restore`);
+      setSuccessMsg(`Vehicle ${vehicleNum || ''} restored successfully.`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+      fetchVehicles();
+    } catch (err) {
+      console.error('Error restoring vehicle', err);
     }
   };
 
@@ -122,10 +143,56 @@ const Vehicles = () => {
     if (window.confirm('Are you sure you want to deactivate or remove this vehicle?')) {
       try {
         await api.delete(`/vehicles/${id}`);
+        setSuccessMsg('Vehicle deleted/deactivated successfully.');
+        setTimeout(() => setSuccessMsg(''), 4000);
         fetchVehicles();
       } catch (err) {
         console.error('Error deleting vehicle', err);
       }
+    }
+  };
+
+  const activeCount = vehicles.filter(v => v.isActive).length;
+  const inactiveCount = vehicles.filter(v => !v.isActive).length;
+  const allCount = vehicles.length;
+
+  const filteredVehicles = vehicles.filter(v => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || 
+      (v.vehicleNumber && v.vehicleNumber.toLowerCase().includes(q)) ||
+      (v.transporter?.name && v.transporter.name.toLowerCase().includes(q)) ||
+      (v.state && v.state.toLowerCase().includes(q));
+
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'active') return v.isActive;
+    if (statusFilter === 'inactive') return !v.isActive;
+    return true;
+  });
+
+  const matchingInactiveVehicles = search.trim() 
+    ? vehicles.filter(v => !v.isActive && v.vehicleNumber.toLowerCase().includes(search.trim().toLowerCase())) 
+    : [];
+
+  const getVehicleTypeBadge = (type?: string) => {
+    const t = (type || '').trim().toLowerCase();
+    switch (t) {
+      case 'tipper':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'lorry':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'tractor':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'mixer':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'container':
+        return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+      case 'tanker':
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'trailer':
+        return 'bg-teal-50 text-teal-700 border-teal-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
   
@@ -307,19 +374,98 @@ const Vehicles = () => {
         </div>
       )}
 
+      {successMsg && (
+        <div className="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-sm flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+            <span className="font-medium">{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900 font-bold ml-4">✕</button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative w-64">
+        <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search vehicles..."
+              placeholder="Search by vehicle number, transporter, state..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-colors"
+              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-colors text-sm"
             />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>Active</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`}>
+                {activeCount}
+              </span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('inactive')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'inactive' ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>Deleted / Inactive</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'inactive' ? 'bg-rose-100 text-rose-700' : 'bg-gray-200 text-gray-700'}`}>
+                {inactiveCount}
+              </span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>All</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'all' ? 'bg-gray-300 text-gray-800' : 'bg-gray-200 text-gray-700'}`}>
+                {allCount}
+              </span>
+            </button>
           </div>
         </div>
+
+        {statusFilter === 'active' && matchingInactiveVehicles.length > 0 && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm text-amber-900">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={18} className="text-amber-600 shrink-0" />
+              <span>
+                Found <strong>{matchingInactiveVehicles.length}</strong> previously deleted/inactive vehicle(s) matching "<strong>{search}</strong>" ({matchingInactiveVehicles.map(v => v.vehicleNumber).join(', ')}).
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setStatusFilter('inactive')}
+                className="text-xs bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold px-2.5 py-1.5 rounded transition-colors"
+              >
+                View Inactive
+              </button>
+              {matchingInactiveVehicles.length === 1 && (
+                <button
+                  onClick={() => handleRestore(matchingInactiveVehicles[0].id, matchingInactiveVehicles[0].vehicleNumber)}
+                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded transition-colors flex items-center gap-1 shadow-sm"
+                >
+                  <RotateCcw size={13} />
+                  Restore {matchingInactiveVehicles[0].vehicleNumber}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         
         {viewMode === 'list' ? (
           <div className="overflow-x-auto">
@@ -330,26 +476,67 @@ const Vehicles = () => {
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4">Capacity</th>
                   <th className="px-6 py-4">Transporter</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-gray-600 text-sm">
                 {loading ? (
-                  <tr><td colSpan={6} className="text-center py-4">Loading vehicles...</td></tr>
-                ) : vehicles.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-4">No vehicles found.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4">Loading vehicles...</td></tr>
+                ) : filteredVehicles.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                      No vehicles found {search && `matching "${search}"`}.
+                      {statusFilter === 'active' && inactiveCount > 0 && (
+                        <div className="mt-2">
+                          <button onClick={() => setStatusFilter('all')} className="text-blue-600 hover:underline font-semibold text-xs">
+                            Check Inactive/Deleted Vehicles ({inactiveCount})
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 ) : (
-                  vehicles.filter(v => v.vehicleNumber.toLowerCase().includes(search.toLowerCase())).map((vehicle: any) => (
-                    <tr key={vehicle.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  filteredVehicles.map((vehicle: any) => (
+                    <tr key={vehicle.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${!vehicle.isActive ? 'bg-rose-50/20' : ''}`}>
                       <td className="px-6 py-4 font-medium text-gray-900">{vehicle.vehicleNumber}</td>
-                      <td className="px-6 py-4">{vehicle.vehicleType || '-'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getVehicleTypeBadge(vehicle.vehicleType)}`}>
+                          {vehicle.vehicleType || 'Other'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">{vehicle.capacityWeight ? `${vehicle.capacityWeight} Tons` : '-'}</td>
                       <td className="px-6 py-4">{vehicle.transporter?.name || '-'}</td>
+                      <td className="px-6 py-4">
+                        {vehicle.isActive ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            Deleted
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2 justify-end items-center">
                           <button onClick={() => openDetailsModal(vehicle)} className="text-gray-500 hover:text-blue-600 transition-colors p-1" title="Vehicle Details"><Truck size={18} /></button>
-                          <button onClick={() => openEditModal(vehicle)} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Edit Vehicle"><Edit2 size={18} /></button>
-                          <button onClick={() => handleDelete(vehicle.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Delete Vehicle"><Trash2 size={18} /></button>
+                          {vehicle.isActive ? (
+                            <>
+                              <button onClick={() => openEditModal(vehicle)} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Edit Vehicle"><Edit2 size={18} /></button>
+                              <button onClick={() => handleDelete(vehicle.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Delete Vehicle"><Trash2 size={18} /></button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => handleRestore(vehicle.id, vehicle.vehicleNumber)} className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded px-2 py-1 transition-colors flex items-center gap-1 font-semibold text-xs border border-emerald-200" title="Restore Vehicle">
+                                <RotateCcw size={14} />
+                                <span>Restore</span>
+                              </button>
+                              <button onClick={() => handleDelete(vehicle.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Permanently Delete">
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -362,15 +549,39 @@ const Vehicles = () => {
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-gray-50/50">
             {loading ? (
               <div className="col-span-full text-center py-8 text-gray-500">Loading vehicles...</div>
-            ) : vehicles.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-gray-500">No vehicles found.</div>
+            ) : filteredVehicles.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                No vehicles found {search && `matching "${search}"`}.
+                {statusFilter === 'active' && inactiveCount > 0 && (
+                  <div className="mt-2">
+                    <button onClick={() => setStatusFilter('all')} className="text-blue-600 hover:underline font-semibold text-xs">
+                      Check Inactive/Deleted Vehicles ({inactiveCount})
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
-              vehicles.filter(v => v.vehicleNumber.toLowerCase().includes(search.toLowerCase())).map((vehicle: any) => (
-                <div key={vehicle.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+              filteredVehicles.map((vehicle: any) => (
+                <div key={vehicle.id} className={`bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between ${!vehicle.isActive ? 'border-rose-200 bg-rose-50/10' : 'border-gray-200'}`}>
                   <div>
-                    <div className="mb-3 pr-2">
-                      <h3 className="text-lg font-bold text-gray-900">{vehicle.vehicleNumber}</h3>
-                      <p className="text-sm font-medium text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1">{vehicle.vehicleType || 'Vehicle'}</p>
+                    <div className="mb-3 pr-2 flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{vehicle.vehicleNumber}</h3>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border mt-1 ${getVehicleTypeBadge(vehicle.vehicleType)}`}>
+                          {vehicle.vehicleType || 'Other'}
+                        </span>
+                      </div>
+                      <div>
+                        {vehicle.isActive ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            Deleted
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="space-y-2 text-sm text-gray-600">
@@ -391,9 +602,18 @@ const Vehicles = () => {
                         <Truck size={14} /> Details
                       </button>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEditModal(vehicle)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(vehicle.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /></button>
+                    <div className="flex gap-2 items-center">
+                      {vehicle.isActive ? (
+                        <>
+                          <button onClick={() => openEditModal(vehicle)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"><Edit2 size={16} /></button>
+                          <button onClick={() => handleDelete(vehicle.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /></button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => handleRestore(vehicle.id, vehicle.vehicleNumber)} className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-md transition-colors border border-emerald-200" title="Restore"><RotateCcw size={16} /></button>
+                          <button onClick={() => handleDelete(vehicle.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /></button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
